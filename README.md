@@ -1,11 +1,13 @@
 # Core API
 
-[![Java](https://img.shields.io/badge/Java-21%2B-orange.svg)](https://openjdk.java.net/projects/jdk/21/)
+[![Java](https://img.shields.io/badge/Java-22%2B-orange.svg)](https://openjdk.java.net/projects/jdk/22/)
 [![Panama FFM](https://img.shields.io/badge/Panama-Foreign%20Memory-blue.svg)](https://openjdk.java.net/projects/panama/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Sly%20Technologies-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
 
 The foundational module providing core services and APIs for high-performance network packet capture and analysis systems. Built on Java's Foreign Function & Memory (Panama FFM) API for zero-allocation, native-speed packet processing.
+
+> **Note**: Requires JDK 22+ for full Panama FFM support. While FFM was available as preview in JDK 21, production-ready features require JDK 22 final release.
 
 ## Overview
 
@@ -156,9 +158,11 @@ Core API is designed to support specialized network analysis modules:
 
 ## Requirements
 
-- **Java 21+** with Panama FFM support enabled
+- **Java 22+** with full Panama FFM support
 - **Native memory access** capabilities
 - **Linux/Windows/macOS** platform support
+
+> **Important**: JDK 22 is required for production use. While Panama FFM was available as preview in JDK 21, the mature API features needed for high-performance packet processing require JDK 22's final implementation.
 
 ## Building
 
@@ -175,7 +179,7 @@ mvn package
 
 ## License
 
-Licensed under the Sly Technologies Free License. See [LICENSE](LICENSE) for details.
+Licensed under the Sly Technologies License. See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
