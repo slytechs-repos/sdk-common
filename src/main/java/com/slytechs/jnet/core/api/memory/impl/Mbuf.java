@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.core.api;
+package com.slytechs.jnet.core.api.memory.impl;
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
