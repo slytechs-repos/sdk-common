@@ -549,4 +549,24 @@ public class MemoryProxy implements Memory {
             head.getClass().getSimpleName(), memoryOffset, memoryEnd, 
             current == this ? "self" : current.getClass().getSimpleName());
     }
+
+	/**
+	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#memoryDataOffset(long)
+	 */
+	@Override
+	public long memoryDataOffset(long newOffset) {
+        checkNotClosed();
+        
+        return current.memoryDataOffset(newOffset);
+	}
+
+	/**
+	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#memoryDataEnd(long)
+	 */
+	@Override
+	public long memoryDataEnd(long newEnd) {
+        checkNotClosed();
+        
+        return current.memoryDataEnd(newEnd);
+	}
 }

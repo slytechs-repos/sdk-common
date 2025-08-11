@@ -18,642 +18,887 @@
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.MemorySegment;
+import java.util.function.Consumer;
+
+import com.slytechs.jnet.core.api.memory.MemoryPool.MemoryPoolable;
 
 /**
- * Poolable memory buffer implementation with full buffer management
- * capabilities.
+ * Control layer for buffer management with positioning, error handling, and
+ * multi-segment support.
  * 
  * <p>
- * MemoryBuffer provides a comprehensive Memory implementation designed for
- * high-performance buffer management scenarios, particularly in memory pooling
- * environments. It combines mutable data bounds with automatic pool
- * integration, making it ideal for streaming data processing, network packet
- * handling, and other scenarios requiring efficient buffer reuse.
+ * MemoryBuffer provides the control infrastructure for buffer-style operations,
+ * following the java.nio.Buffer pattern. This abstract class manages buffer
+ * state (position, limit, mark), error accumulation, and multi-segment chain
+ * navigation. Concrete subclasses like MemoryByteBuffer build upon this
+ * foundation to provide data access operations.
  * </p>
+ * 
+ * <h2>Architecture Overview</h2>
+ * <p>
+ * Following the java.nio pattern:
+ * </p>
+ * 
+ * <pre>{@code
+ * java.nio:           Our Design:
+ * Buffer              MemoryBuffer        (control layer - THIS CLASS)
+ *   ↓                   ↓
+ * ByteBuffer          MemoryByteBuffer    (accessor layer)
+ * }</pre>
  * 
  * <h2>Key Features</h2>
  * <ul>
- * <li><strong>Pool Integration:</strong> Native support for memory pool
- * allocation and release</li>
- * <li><strong>Mutable Data Bounds:</strong> Dynamic adjustment of active data
- * region</li>
- * <li><strong>Buffer-like Operations:</strong> Leading/trailing space
- * management</li>
- * <li><strong>Thread-Safe Bounds:</strong> Synchronized data bound
- * modifications</li>
- * <li><strong>Automatic Cleanup:</strong> Pool return on reference count
- * reaching zero</li>
+ * <li><strong>Buffer State Management:</strong> Position, limit, mark, capacity
+ * tracking</li>
+ * <li><strong>Error Accumulation:</strong> Non-throwing operations with
+ * deferred error handling</li>
+ * <li><strong>Multi-Segment Support:</strong> Transparent chain navigation and
+ * spanning detection</li>
+ * <li><strong>Zero-Allocation Design:</strong> No object creation in critical
+ * paths</li>
  * </ul>
  * 
- * <h2>Memory Layout and Space Management</h2>
+ * <h2>Error Handling Philosophy</h2>
  * <p>
- * MemoryBuffer maintains sophisticated space tracking for efficient buffer
- * operations:
+ * All operations are non-throwing to support high-performance scenarios:
  * </p>
  * 
  * <pre>{@code
- * |------ Total Memory Capacity ------|
- * | leading |---- Data Region ----| trailing |
- * |  space  |                    |   space   |
- *          ↑                    ↑
- *   memoryDataOffset      memoryDataEnd
- * 
- * Space calculations:
- * - Leading Space  = memoryDataOffset - memoryOffset
- * - Data Length    = memoryDataEnd - memoryDataOffset  
- * - Trailing Space = memoryEnd - memoryDataEnd
- * - Total Capacity = memoryEnd - memoryOffset
+ * buffer.put(header) // Never throws
+ * 		.putLong(timestamp) // Accumulates errors
+ * 		.put(payload) // Skips if error set
+ * 		.orElseThrow(); // Throws accumulated error
  * }</pre>
- * 
- * <h2>Pool Integration Pattern</h2>
- * <p>
- * MemoryBuffer is designed to work seamlessly with {@link MemoryPool}:
- * </p>
- * 
- * <pre>{@code
- * // Pool allocation - buffer starts with refcount = 1
- * MemoryBuffer buffer = pool.allocate();
- * try {
- * 	// Fill buffer with data
- * 	buffer.memoryDataEnd(bytesReceived);
- * 
- * 	// Process data
- * 	processData(buffer.asByteBuffer());
- * 
- * 	// Advance position as data is consumed
- * 	buffer.memoryDataOffset(buffer.memoryDataOffset() + bytesProcessed);
- * 
- * } finally {
- * 	// Automatic pool return when refcount reaches 0
- * 	buffer.decrementRef();
- * }
- * }</pre>
- * 
- * <h2>Buffer Management Operations</h2>
- * 
- * <h3>Space Utilization</h3>
- * 
- * <pre>{@code
- * // Check available space for data expansion
- * if (buffer.hasMemoryTrailingSpace()) {
- * 	long available = buffer.memoryTrailingSpace();
- * 	// Extend data region
- * 	buffer.memoryDataEnd(buffer.memoryDataEnd() + Math.min(available, needed));
- * }
- * 
- * // Reclaim leading space after consumption
- * if (buffer.hasMemoryLeadingSpace() && buffer.memoryLeadingSpace() > threshold) {
- * 	// Compact buffer - move data to start
- * 	compactBuffer(buffer);
- * 	buffer.memoryDataOffset(buffer.memoryOffset());
- * }
- * }</pre>
- * 
- * <h3>Streaming Data Processing</h3>
- * 
- * <pre>{@code
- * // Receive data into buffer
- * MemoryBuffer receiveBuffer = pool.allocate();
- * int received = channel.read(receiveBuffer.asByteBuffer());
- * receiveBuffer.memoryDataEnd(receiveBuffer.memoryDataOffset() + received);
- * 
- * // Process complete packets
- * while (receiveBuffer.hasMemoryDataRemaining()) {
- * 	int packetLength = parsePacketLength(receiveBuffer);
- * 	if (receiveBuffer.memoryDataLength() >= packetLength) {
- * 		processPacket(receiveBuffer, packetLength);
- * 		receiveBuffer.memoryDataOffset(receiveBuffer.memoryDataOffset() + packetLength);
- * 	} else {
- * 		break; // Wait for more data
- * 	}
- * }
- * }</pre>
- * 
- * <h2>Performance Characteristics</h2>
- * <ul>
- * <li><strong>Allocation:</strong> O(1) from pool (pre-allocated segments)</li>
- * <li><strong>Bounds Adjustment:</strong> O(1) synchronized operations</li>
- * <li><strong>Space Queries:</strong> O(1) calculation-based results</li>
- * <li><strong>Pool Return:</strong> O(1) lock-free list operations</li>
- * </ul>
- * 
- * <h2>Thread Safety</h2>
- * <p>
- * MemoryBuffer provides thread-safe operations for:
- * </p>
- * <ul>
- * <li><strong>Data Bound Modification:</strong> Synchronized setters prevent
- * inconsistent states</li>
- * <li><strong>Reference Counting:</strong> Atomic operations from
- * AbstractMemory</li>
- * <li><strong>Pool Operations:</strong> Thread-safe allocation and release</li>
- * </ul>
- * 
- * <p>
- * <strong>Note:</strong> While bound modifications are synchronized,
- * applications should coordinate access patterns to avoid performance
- * bottlenecks in high-concurrency scenarios.
- * </p>
- * 
- * <h2>Comparison with Other Implementations</h2>
- * <table border="1">
- * <tr>
- * <th>Feature</th>
- * <th>MemoryBuffer</th>
- * <th>MemorySlice</th>
- * <th>MemoryWrapper</th>
- * </tr>
- * <tr>
- * <td>Pool Support</td>
- * <td>Yes</td>
- * <td>No</td>
- * <td>No</td>
- * </tr>
- * <tr>
- * <td>Data Bounds</td>
- * <td>Mutable</td>
- * <td>Mutable</td>
- * <td>Fixed</td>
- * </tr>
- * <tr>
- * <td>Space Management</td>
- * <td>Full</td>
- * <td>Basic</td>
- * <td>None</td>
- * </tr>
- * <tr>
- * <td>Auto Cleanup</td>
- * <td>Pool return</td>
- * <td>Simple close</td>
- * <td>Simple close</td>
- * </tr>
- * <tr>
- * <td>Use Case</td>
- * <td>Buffer mgmt</td>
- * <td>Windowing</td>
- * <td>Simple wrapping</td>
- * </tr>
- * </table>
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @since 1.0
- * @see MemoryPool for pool management
- * @see MemoryPool.MemoryPoolable for poolable interface
- * @see MemorySlice for non-pooled mutable bounds
  */
-public class MemoryBuffer extends AbstractMemory implements MemoryPool.MemoryPoolable {
+public abstract class MemoryBuffer extends AbstractMemory implements MemoryEditable, MemoryPoolable {
+
+	// Developer Note: Buffer state management - similar to java.nio.Buffer
+	// These track our position within the buffer for sequential operations
+	private long position = 0; // Current position in buffer
+	private long limit; // Upper bound for operations
+	private long mark = -1; // Saved position for reset()
+
+	// Developer Note: Error state management for non-throwing operations
+	// This enables fluent chains to continue even when errors occur
+	private volatile boolean hasError = false;
+	private volatile BufferOperationException pendingError = null;
+
+	// Developer Note: Multi-segment chain navigation cache
+	// We cache the current segment to avoid repeated lookups during sequential
+	// access
+	private Memory currentSegment; // Current segment in chain
+	private long currentSegmentOffset = 0; // Offset of current segment in chain
+
+	// Developer Note: Performance metrics for monitoring
+	// These help track error patterns in production without logs
+	private final BufferMetrics metrics = new BufferMetrics();
+
+	private final MemoryPool<? extends MemoryBuffer> owningPool;
 
 	/**
-	 * The absolute starting offset of the current data region (mutable).
-	 */
-	private volatile long memoryDataOffset;
-
-	/**
-	 * The absolute ending offset of the current data region (mutable, exclusive).
-	 */
-	private volatile long memoryDataEnd;
-
-	/**
-	 * The fixed capacity of this memory buffer.
-	 */
-	private final long memoryCapacity;
-
-	/**
-	 * The memory pool that owns this buffer, or null if not pooled.
-	 */
-	private final MemoryPool<MemoryBuffer> owningPool;
-
-	/**
-	 * Constructs a pooled MemoryBuffer wrapping a MemorySegment region.
+	 * Constructs a MemoryBuffer with specified bounds.
 	 * 
-	 * <p>
-	 * This constructor is typically called by {@link MemoryPool} implementations
-	 * during buffer allocation. The buffer starts with data bounds set to cover the
-	 * entire memory region, and with reference count = 1.
-	 * </p>
-	 * 
-	 * <p>
-	 * <strong>Pool Integration:</strong> When the reference count reaches 0, this
-	 * buffer will be automatically returned to the owning pool for reuse.
-	 * </p>
-	 * 
-	 * @param owningPool    the owning MemoryPool, or {@code null} if not pooled
-	 * @param memorySegment the backing MemorySegment, must not be null
-	 * @param offset        the starting offset within the segment (inclusive)
-	 * @param length        the length of the memory region
-	 * @throws NullPointerException     if memorySegment is null
-	 * @throws IllegalArgumentException if offset or length is invalid
+	 * @param memorySegment the backing memory segment
+	 * @param memoryOffset  starting offset within segment
+	 * @param memoryEnd     ending offset within segment (exclusive)
 	 */
-	public MemoryBuffer(MemoryPool<MemoryBuffer> owningPool, MemorySegment memorySegment,
-			long offset, long length) {
-		super(memorySegment, offset, offset + length);
-		this.memoryDataOffset = super.memoryOffset();
-		this.memoryDataEnd = super.memoryEnd();
-		this.memoryCapacity = length;
+	protected MemoryBuffer(MemoryPool<? extends MemoryBuffer> owningPool, MemorySegment memorySegment,
+			long memoryOffset, long memoryEnd) {
+		super(memorySegment, memoryOffset, memoryEnd);
 		this.owningPool = owningPool;
-
-		asByteBuffer(); // Preallocates byte ByteBuffer
+		this.limit = memoryEnd - memoryOffset;
+		this.currentSegment = this;
 	}
 
-	/**
-	 * Constructs a non-pooled MemoryBuffer wrapping the entire Memory object.
-	 * 
-	 * <p>
-	 * Creates a buffer that covers the complete capacity of the provided Memory.
-	 * This buffer will not be returned to any pool when closed, and increments the
-	 * reference count of the wrapped Memory.
-	 * </p>
-	 * 
-	 * @param memory the backing Memory object, must not be null
-	 * @throws NullPointerException if memory is null
-	 */
-	public MemoryBuffer(Memory memory) {
-		this(memory, 0, memory.memoryCapacity());
-	}
+	// ==================== Core Error State Methods (4) ====================
 
 	/**
-	 * Constructs a non-pooled MemoryBuffer wrapping a slice of the Memory object.
-	 * 
-	 * <p>
-	 * Creates a buffer that covers a specific region within the provided Memory.
-	 * This buffer will not be returned to any pool when closed, and increments the
-	 * reference count of the wrapped Memory to ensure validity.
-	 * </p>
-	 * 
-	 * @param memory the backing Memory object, must not be null
-	 * @param offset the starting offset within the memory (inclusive)
-	 * @param length the length of the memory region
-	 * @throws NullPointerException     if memory is null
-	 * @throws IllegalArgumentException if offset or length is invalid
-	 */
-	public MemoryBuffer(Memory memory, long offset, long length) {
-		super(memory.asMemorySegment(), memory.memoryOffset() + offset,
-				memory.memoryOffset() + offset + length);
-		if (offset < 0 || length < 0 || offset + length > memory.memoryCapacity()) {
-			throw new IllegalArgumentException("invalid offset or length: offset="
-					+ offset + ", length=" + length + ", capacity=" + memory.memoryCapacity());
-		}
-		this.memoryDataOffset = super.memoryOffset();
-		this.memoryDataEnd = super.memoryEnd();
-		this.memoryCapacity = length;
-		this.owningPool = null;
-		memory.incrementRef();
-
-		asByteBuffer(); // Preallocates byte ByteBuffer
-	}
-
-	/**
-	 * Returns the owning memory pool for this buffer.
-	 * 
-	 * <p>
-	 * This method fulfills the {@link MemoryPool.MemoryPoolable} contract, enabling
-	 * the pool to properly manage this buffer's lifecycle.
-	 * </p>
-	 * 
-	 * @return the owning MemoryPool, or {@code null} if this buffer is not pooled
+	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#memoryDataOffset(long)
 	 */
 	@Override
-	public MemoryPool<MemoryBuffer> getOwningPool() {
+	public long memoryDataOffset(long newOffset) {
+		return currentSegment.memoryDataOffset(newOffset);
+	}
+
+	/**
+	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#memoryDataEnd(long)
+	 */
+	@Override
+	public long memoryDataEnd(long newEnd) {
+		return currentSegment.memoryDataEnd(newEnd);
+	}
+
+	/**
+	 * @see com.slytechs.jnet.core.api.memory.MemoryPool.MemoryPoolable#getOwningPool()
+	 */
+	@Override
+	public MemoryPool<?> getOwningPool() {
 		return owningPool;
 	}
 
 	/**
-	 * Returns the fixed capacity of this memory buffer.
+	 * Checks if this buffer has an accumulated error.
 	 * 
 	 * <p>
-	 * The capacity represents the total addressable space within this buffer, which
-	 * remains constant throughout the buffer's lifetime. This value defines the
-	 * maximum bounds for all data operations.
+	 * When true, most operations become no-ops to maintain the fluent chain. The
+	 * error state persists until explicitly cleared or thrown.
 	 * </p>
 	 * 
-	 * @return the total capacity in bytes (always ≥ 0)
-	 * @throws IllegalStateException if this buffer is closed
+	 * @return true if an error has been accumulated
 	 */
-	@Override
-	public long memoryCapacity() {
-		checkNotClosed();
-		return memoryCapacity;
+	public boolean hasError() {
+		return hasError;
 	}
 
 	/**
-	 * Returns the absolute starting offset of the current data region.
+	 * Returns the accumulated error if present.
 	 * 
 	 * <p>
-	 * This represents the first byte of currently active data within the buffer,
-	 * similar to a ByteBuffer's position. The data region can be adjusted to
-	 * reflect consumption of data from the beginning of the buffer.
+	 * This method returns the first error that occurred in the operation chain.
+	 * Subsequent errors are typically ignored to preserve the original failure
+	 * context.
 	 * </p>
 	 * 
-	 * @return the absolute data starting offset (inclusive bound)
-	 * @throws IllegalStateException if this buffer is closed
-	 * 
-	 * @see #memoryDataOffset(long) to modify the data start position
-	 * @see #memoryDataEnd() for the data end position
+	 * @return the accumulated error, or null if no error
 	 */
-	@Override
-	public long memoryDataOffset() {
-		checkNotClosed();
-		return memoryDataOffset;
+	public BufferOperationException getError() {
+		return pendingError;
 	}
 
 	/**
-	 * Sets the absolute starting offset of the current data region.
+	 * Clears any accumulated error state.
 	 * 
 	 * <p>
-	 * This method allows dynamic adjustment of where active data begins within the
-	 * buffer, enabling efficient data consumption patterns. The operation is
-	 * synchronized to ensure thread-safe modification.
-	 * </p>
-	 * 
-	 * <p>
-	 * <strong>Bounds Validation:</strong> The new offset must satisfy:
-	 * </p>
-	 * <ul>
-	 * <li>{@code memoryOffset() ≤ newOffset ≤ memoryDataEnd()}</li>
-	 * </ul>
-	 * 
-	 * <p>
-	 * <strong>Common Usage:</strong> Advance the data offset after consuming data
-	 * from the beginning of the buffer:
+	 * Resets the buffer to a non-error state, allowing operations to proceed
+	 * normally. This is useful for recovery scenarios where you want to continue
+	 * using the buffer after handling an error.
 	 * </p>
 	 * 
 	 * <pre>{@code
-	 * int consumed = processData(buffer.asByteBuffer());
-	 * buffer.memoryDataOffset(buffer.memoryDataOffset() + consumed);
+	 * if (buffer.hasError()) {
+	 * 	handleError(buffer.getError());
+	 * 	buffer.clearError(); // Reset for continued use
+	 * }
 	 * }</pre>
 	 * 
-	 * @param newOffset the new data starting offset
-	 * @return the new data offset (same as parameter)
-	 * @throws IllegalStateException    if this buffer is closed
-	 * @throws IllegalArgumentException if newOffset is out of bounds
-	 * 
-	 * @see #memoryDataOffset() to query current position
-	 * @see #hasMemoryDataRemaining() to check for remaining data
+	 * @return this buffer for method chaining
 	 */
-	public synchronized long memoryDataOffset(long newOffset) {
-		checkNotClosed();
-		if (newOffset < super.memoryOffset() || newOffset > memoryDataEnd) {
-			throw new IllegalArgumentException("newOffset out of bounds: " + newOffset
-					+ " (valid range: " + super.memoryOffset() + " to " + memoryDataEnd + ")");
-		}
-		this.memoryDataOffset = newOffset;
-		return memoryDataOffset;
+	public MemoryBuffer clearError() {
+		this.hasError = false;
+		this.pendingError = null;
+		return this;
 	}
 
 	/**
-	 * Returns the absolute ending offset of the current data region.
+	 * Throws the accumulated error if present. Clears the error state.
 	 * 
 	 * <p>
-	 * This represents the first byte position beyond the currently active data,
-	 * similar to a ByteBuffer's limit. The data region can be adjusted to reflect
-	 * the addition of new data to the buffer.
-	 * </p>
-	 * 
-	 * @return the absolute data ending offset (exclusive bound)
-	 * @throws IllegalStateException if this buffer is closed
-	 * 
-	 * @see #memoryDataEnd(long) to modify the data end position
-	 * @see #memoryDataOffset() for the data start position
-	 */
-	@Override
-	public long memoryDataEnd() {
-		checkNotClosed();
-		return memoryDataEnd;
-	}
-
-	/**
-	 * Sets the absolute ending offset of the current data region.
-	 * 
-	 * <p>
-	 * This method allows dynamic adjustment of where active data ends within the
-	 * buffer, enabling efficient data production patterns. The operation is
-	 * synchronized to ensure thread-safe modification.
-	 * </p>
-	 * 
-	 * <p>
-	 * <strong>Bounds Validation:</strong> The new end must satisfy:
-	 * </p>
-	 * <ul>
-	 * <li>{@code memoryDataOffset() ≤ newEnd ≤ memoryEnd()}</li>
-	 * </ul>
-	 * 
-	 * <p>
-	 * <strong>Common Usage:</strong> Extend the data region after writing new data
-	 * to the buffer:
+	 * This is typically the final call in a fluent chain, converting accumulated
+	 * errors into thrown exceptions. If no error is present, returns normally.
 	 * </p>
 	 * 
 	 * <pre>{@code
-	 * int written = channel.read(buffer.asByteBuffer());
-	 * buffer.memoryDataEnd(buffer.memoryDataEnd() + written);
+	 * buffer.putInt(header)
+	 * 		.putLong(timestamp)
+	 * 		.put(payload)
+	 * 		.orElseThrow(); // Throws if any operation failed
 	 * }</pre>
 	 * 
-	 * @param newEnd the new data ending offset
-	 * @return the new data end (same as parameter)
-	 * @throws IllegalStateException    if this buffer is closed
-	 * @throws IllegalArgumentException if newEnd is out of bounds
-	 * 
-	 * @see #memoryDataEnd() to query current end position
-	 * @see #hasMemoryTrailingSpace() to check for available space
+	 * @return this buffer for method chaining
+	 * @throws BufferOperationException if an error has been accumulated
 	 */
-	public synchronized long memoryDataEnd(long newEnd) {
-		checkNotClosed();
-		if (newEnd < memoryDataOffset || newEnd > super.memoryEnd()) {
-			throw new IllegalArgumentException("newEnd out of bounds: " + newEnd
-					+ " (valid range: " + memoryDataOffset + " to " + super.memoryEnd() + ")");
+	public MemoryBuffer orElseThrow() throws BufferOperationException {
+		if (hasError && pendingError != null) {
+			BufferOperationException toThrow = pendingError;
+			clearError(); // Clear before throwing
+			throw toThrow;
 		}
-		this.memoryDataEnd = newEnd;
-		return memoryDataEnd;
+		return this;
+	}
+
+	// ==================== Chain-Ending Error Handlers (2) ====================
+
+	/**
+	 * Handles accumulated error with the provided handler.
+	 * 
+	 * <p>
+	 * This chain-ending method attempts to recover from an accumulated error. If
+	 * the handler executes successfully (doesn't throw), the error is cleared. If
+	 * the handler throws, the new exception replaces the current error.
+	 * </p>
+	 * 
+	 * <pre>{@code
+	 * buffer.tryInsertSpace(100, expansionHandler)
+	 * 		.put(data)
+	 * 		.onError((buf, error) -> {
+	 * 			// Attempt recovery
+	 * 			if (canRecover(error)) {
+	 * 				performRecovery(buf);
+	 * 				// No exception = success, error cleared
+	 * 			} else {
+	 * 				throw new BufferOperationException("Unrecoverable", error);
+	 * 			}
+	 * 		});
+	 * }</pre>
+	 * 
+	 * Developer Note: This is a terminal operation for error handling chains. It
+	 * either clears the error (on successful recovery) or replaces it.
+	 * 
+	 * @param handler the error handler to execute if error present
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer onError(BufferErrorHandler handler) {
+		if (hasError && pendingError != null) {
+			try {
+				handler.handle(this, pendingError);
+				// Handler succeeded without throwing - clear error
+				clearError();
+			} catch (BufferOperationException e) {
+				// Handler threw new/transformed error - replace current
+				this.pendingError = e;
+				// hasError remains true
+			}
+		}
+		return this;
 	}
 
 	/**
-	 * Returns the length of the current data region.
+	 * Monitors accumulated error without clearing it.
 	 * 
 	 * <p>
-	 * Calculates the amount of currently active data as
-	 * {@code memoryDataEnd() - memoryDataOffset()}. This represents the usable data
-	 * within the buffer, analogous to a ByteBuffer's remaining bytes.
+	 * This non-intrusive method allows observation of errors without affecting the
+	 * error state. Perfect for logging, metrics, or debugging. The error remains
+	 * accumulated after this call, allowing subsequent error handlers to process
+	 * it.
 	 * </p>
 	 * 
-	 * @return the current data length in bytes (always ≥ 0)
-	 * @throws IllegalStateException if this buffer is closed
+	 * <pre>{@code
+	 * buffer.tryInsertSpace(100, expansionHandler)
+	 * 		.ifError(System.err::println) // Log error
+	 * 		.ifError(metrics::recordError) // Update metrics
+	 * 		.onError(recoveryHandler); // Handle error
+	 * }</pre>
 	 * 
-	 * @see #hasMemoryDataRemaining() for a boolean check
-	 * @see #memoryCapacity() for total buffer capacity
+	 * Developer Note: Named 'ifError' to follow Optional.ifPresent() pattern. This
+	 * is purely observational - it never clears the error state.
+	 * 
+	 * @param errorConsumer the consumer to execute if error present
+	 * @return this buffer for method chaining
 	 */
-	@Override
-	public long memoryDataLength() {
-		checkNotClosed();
-		return memoryDataEnd - memoryDataOffset;
+	public MemoryBuffer ifError(Consumer<BufferOperationException> errorConsumer) {
+		if (hasError && pendingError != null) {
+			try {
+				errorConsumer.accept(pendingError);
+			} catch (Exception e) {
+				// If the consumer throws, wrap and replace current error
+				this.pendingError = new BufferOperationException(
+						"Error monitor failed: " + e.getMessage(), e);
+			}
+		}
+		return this;
+	}
+
+	// ==================== Buffer Positioning Methods ====================
+
+	/**
+	 * Returns the current position in this buffer.
+	 * 
+	 * <p>
+	 * The position is the index of the next element to be read or written. Position
+	 * is always between 0 and limit (inclusive).
+	 * </p>
+	 * 
+	 * @return the current position
+	 */
+	public long position() {
+		return position;
 	}
 
 	/**
-	 * Checks if there are remaining usable data bytes in this buffer.
+	 * Sets this buffer's position.
 	 * 
 	 * <p>
-	 * Provides a convenient boolean test for data availability, equivalent to
-	 * {@code memoryDataLength() > 0}. Useful in loop conditions and conditional
-	 * processing scenarios.
+	 * If the mark is defined and larger than the new position, it is discarded.
+	 * Setting position beyond limit will cause subsequent operations to fail.
 	 * </p>
 	 * 
-	 * @return {@code true} if there are remaining data bytes
-	 * @throws IllegalStateException if this buffer is closed
+	 * Developer Note: We don't throw here to maintain non-throwing philosophy.
+	 * Invalid positions will cause operations to accumulate errors instead.
 	 * 
-	 * @see #memoryDataLength() for the exact remaining count
+	 * @param newPosition the new position value
+	 * @return this buffer for method chaining
 	 */
-	public boolean hasMemoryDataRemaining() {
-		checkNotClosed();
-		return memoryDataOffset < memoryDataEnd;
+	public MemoryBuffer position(long newPosition) {
+		if (hasError)
+			return this;
+
+		if (newPosition < 0 || newPosition > limit) {
+			setError(new BufferOperationException(
+					"Position out of bounds: " + newPosition + " (limit=" + limit + ")"));
+			return this;
+		}
+
+		this.position = newPosition;
+		if (mark > position) {
+			mark = -1; // Discard mark if it's beyond new position
+		}
+
+		// Update segment cache for new position
+		updateCurrentSegment();
+		return this;
 	}
 
 	/**
-	 * Returns the amount of unused space before the current data region.
+	 * Returns this buffer's limit.
 	 * 
 	 * <p>
-	 * Calculates the leading space as {@code memoryDataOffset - memoryOffset}. This
-	 * space represents previously consumed data or intentionally reserved space at
-	 * the beginning of the buffer.
+	 * The limit is the index of the first element that should not be read or
+	 * written. Limit is always between 0 and capacity (inclusive).
 	 * </p>
 	 * 
-	 * <p>
-	 * <strong>Buffer Optimization:</strong> Leading space can be reclaimed by
-	 * moving data toward the beginning of the buffer and adjusting bounds.
-	 * </p>
-	 * 
-	 * @return the leading space in bytes (always ≥ 0)
-	 * @throws IllegalStateException if this buffer is closed
-	 * 
-	 * @see #hasMemoryLeadingSpace() for a boolean check
-	 * @see #memoryTrailingSpace() for trailing space
+	 * @return the limit of this buffer
 	 */
-	public long memoryLeadingSpace() {
-		checkNotClosed();
-		return memoryDataOffset - super.memoryOffset();
+	public long limit() {
+		return limit;
 	}
 
 	/**
-	 * Checks if there is unused space before the current data region.
+	 * Sets this buffer's limit.
 	 * 
 	 * <p>
-	 * Provides a convenient boolean test for leading space availability, equivalent
-	 * to {@code memoryLeadingSpace() > 0}.
+	 * If position is larger than the new limit, position is set to the new limit.
+	 * If mark is defined and larger than the new limit, it is discarded.
 	 * </p>
 	 * 
-	 * @return {@code true} if there is leading space available
-	 * @throws IllegalStateException if this buffer is closed
-	 * 
-	 * @see #memoryLeadingSpace() for the exact space amount
+	 * @param newLimit the new limit value
+	 * @return this buffer for method chaining
 	 */
-	public boolean hasMemoryLeadingSpace() {
-		checkNotClosed();
-		return memoryLeadingSpace() > 0;
+	public MemoryBuffer limit(long newLimit) {
+		if (hasError)
+			return this;
+
+		if (newLimit < 0 || newLimit > capacity()) {
+			setError(new BufferOperationException(
+					"Limit out of bounds: " + newLimit + " (capacity=" + capacity() + ")"));
+			return this;
+		}
+
+		this.limit = newLimit;
+		if (position > limit) {
+			position = limit; // Adjust position if beyond new limit
+		}
+		if (mark > limit) {
+			mark = -1; // Discard mark if beyond new limit
+		}
+
+		return this;
 	}
 
 	/**
-	 * Returns the amount of unused space after the current data region.
+	 * Returns the number of elements between current position and limit.
 	 * 
-	 * <p>
-	 * Calculates the trailing space as {@code memoryEnd - memoryDataEnd}. This
-	 * space represents available capacity for extending the data region without
-	 * buffer reallocation.
-	 * </p>
-	 * 
-	 * <p>
-	 * <strong>Data Extension:</strong> Trailing space can be used to extend the
-	 * data region when writing additional data to the buffer.
-	 * </p>
-	 * 
-	 * @return the trailing space in bytes (always ≥ 0)
-	 * @throws IllegalStateException if this buffer is closed
-	 * 
-	 * @see #hasMemoryTrailingSpace() for a boolean check
-	 * @see #memoryLeadingSpace() for leading space
+	 * @return the number of elements remaining in this buffer
 	 */
-	public long memoryTrailingSpace() {
-		checkNotClosed();
-		return super.memoryEnd() - memoryDataEnd;
+	public long remaining() {
+		return limit - position;
 	}
 
 	/**
-	 * Checks if there is unused space after the current data region.
+	 * Tells whether there are elements between position and limit.
 	 * 
-	 * <p>
-	 * Provides a convenient boolean test for trailing space availability,
-	 * equivalent to {@code memoryTrailingSpace() > 0}. Useful for determining if
-	 * the buffer can accept additional data.
-	 * </p>
-	 * 
-	 * @return {@code true} if there is trailing space available
-	 * @throws IllegalStateException if this buffer is closed
-	 * 
-	 * @see #memoryTrailingSpace() for the exact space amount
+	 * @return true if there is at least one element remaining
 	 */
-	public boolean hasMemoryTrailingSpace() {
-		checkNotClosed();
-		return memoryTrailingSpace() > 0;
+	public boolean hasRemaining() {
+		return position < limit;
 	}
 
 	/**
-	 * Resets this buffer for reuse by a memory pool.
+	 * Returns this buffer's capacity.
 	 * 
-	 * <p>
-	 * This method resets the buffer to its initial state, setting the reference
-	 * count to 1 and restoring data bounds to cover the entire memory region. This
-	 * method is typically called by memory pools when preparing buffers for
-	 * reallocation.
-	 * </p>
-	 * 
-	 * <p>
-	 * <strong>Pool Integration:</strong> This method is automatically called by
-	 * {@link MemoryPool#allocate()} before returning buffers to applications.
-	 * </p>
-	 * 
-	 * @throws IllegalStateException if refcount is not 0
+	 * @return the capacity of this buffer
 	 */
-	@Override
-	protected void resetForReuse() {
-		super.resetForReuse();
-		memoryDataOffset = super.memoryOffset();
-		memoryDataEnd = super.memoryEnd();
+	public long capacity() {
+		return memoryCapacity();
+	}
+
+	// ==================== Buffer Management Methods ====================
+
+	/**
+	 * Clears this buffer.
+	 * 
+	 * <p>
+	 * Sets position to zero, limit to capacity, and discards mark. This prepares
+	 * the buffer for a new sequence of channel-write or get operations.
+	 * </p>
+	 * 
+	 * Developer Note: This doesn't clear error state - use clearError() for that.
+	 * 
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer clear() {
+		position = 0;
+		limit = capacity();
+		mark = -1;
+		currentSegment = this;
+		currentSegmentOffset = 0;
+		return this;
 	}
 
 	/**
-	 * Closes this buffer, releasing it to the owning pool if present.
+	 * Flips this buffer.
 	 * 
 	 * <p>
-	 * This method performs cleanup operations and, for pooled buffers, triggers
-	 * return to the originating pool for reuse. The operation ensures proper
-	 * resource management and prevents memory leaks.
+	 * Sets limit to current position and position to zero. This prepares the buffer
+	 * for a new sequence of channel-read or put operations.
 	 * </p>
 	 * 
-	 * <p>
-	 * <strong>Automatic Pool Return:</strong> If this buffer was allocated from a
-	 * pool, it will be automatically returned to that pool for reuse.
-	 * </p>
+	 * <pre>{@code
+	 * buffer.put(data); // Fill buffer
+	 * buffer.flip(); // Prepare for reading
+	 * channel.write(buffer.asByteBuffer());
+	 * }</pre>
 	 * 
-	 * @throws IllegalStateException if refcount is not 0
+	 * @return this buffer for method chaining
 	 */
-	@Override
-	public void close() {
-		super.close();
-		if (owningPool != null) {
-			owningPool.release(this);
+	public MemoryBuffer flip() {
+		limit = position;
+		position = 0;
+		mark = -1;
+		updateCurrentSegment();
+		return this;
+	}
+
+	/**
+	 * Rewinds this buffer.
+	 * 
+	 * <p>
+	 * Sets position to zero and discards mark. Limit remains unchanged. This
+	 * prepares the buffer for re-reading the same data.
+	 * </p>
+	 * 
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer rewind() {
+		position = 0;
+		mark = -1;
+		updateCurrentSegment();
+		return this;
+	}
+
+	/**
+	 * Marks the current position.
+	 * 
+	 * <p>
+	 * Sets mark to current position. A subsequent reset() will restore the position
+	 * to this marked value.
+	 * </p>
+	 * 
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer mark() {
+		mark = position;
+		return this;
+	}
+
+	/**
+	 * Resets position to the previously marked position.
+	 * 
+	 * <p>
+	 * If no mark has been set, this operation fails with an error.
+	 * </p>
+	 * 
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer reset() {
+		if (hasError)
+			return this;
+
+		if (mark < 0) {
+			setError(new BufferOperationException("No mark set"));
+			return this;
+		}
+
+		position = mark;
+		updateCurrentSegment();
+		return this;
+	}
+
+	// ==================== Position Movement Methods ====================
+
+	/**
+	 * Adjusts position by the specified delta.
+	 * 
+	 * <p>
+	 * Moves position forward (positive delta) or backward (negative delta). The
+	 * resulting position must remain within [0, limit].
+	 * </p>
+	 * 
+	 * Developer Note: Useful for alignment adjustments or relative positioning.
+	 * 
+	 * @param delta the amount to adjust position by
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer adjustPosition(long delta) {
+		if (hasError)
+			return this;
+
+		long newPos = position + delta;
+		if (newPos < 0 || newPos > limit) {
+			setError(new BufferOperationException(
+					"Position adjustment out of bounds: " + newPos));
+			return this;
+		}
+
+		position = newPos;
+		updateCurrentSegment();
+		return this;
+	}
+
+	/**
+	 * Skips the specified number of bytes.
+	 * 
+	 * <p>
+	 * Advances position by the specified amount. Equivalent to
+	 * adjustPosition(bytes) but only allows forward movement.
+	 * </p>
+	 * 
+	 * @param bytes the number of bytes to skip
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer skip(long bytes) {
+		if (hasError)
+			return this;
+
+		if (bytes < 0) {
+			setError(new BufferOperationException("Cannot skip negative bytes: " + bytes));
+			return this;
+		}
+
+		return adjustPosition(bytes);
+	}
+
+	/**
+	 * Moves position backward by the specified number of bytes.
+	 * 
+	 * <p>
+	 * Equivalent to adjustPosition(-bytes). The position cannot go below 0.
+	 * </p>
+	 * 
+	 * @param bytes the number of bytes to move backward
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer backup(long bytes) {
+		if (hasError)
+			return this;
+
+		if (bytes < 0) {
+			setError(new BufferOperationException("Cannot backup negative bytes: " + bytes));
+			return this;
+		}
+
+		return adjustPosition(-bytes);
+	}
+
+	/**
+	 * Positions at the start of the specified memory proxy.
+	 * 
+	 * <p>
+	 * Sets position to the offset of the provided MemoryProxy within this buffer.
+	 * Useful for positioning at protocol headers or known structures.
+	 * </p>
+	 * 
+	 * Developer Note: This enables pattern like
+	 * buffer.positionAt(ipHeader).putShort(newChecksum)
+	 * 
+	 * @param proxy the memory proxy to position at
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer positionAt(MemoryProxy proxy) {
+		if (hasError)
+			return this;
+
+		if (proxy == null || !proxy.isBound()) {
+			setError(new BufferOperationException("Invalid or unbound proxy"));
+			return this;
+		}
+
+		// Calculate offset of proxy within our buffer
+		long proxyOffset = proxy.memoryOffset() - this.memoryOffset();
+		return position(proxyOffset);
+	}
+
+	// ==================== Multi-Segment Chain Methods ====================
+
+	/**
+	 * Returns the total remaining bytes across all segments in the chain.
+	 * 
+	 * <p>
+	 * Unlike remaining() which returns bytes in current segment, this returns total
+	 * bytes from position to end of entire chain.
+	 * </p>
+	 * 
+	 * Developer Note: Essential for operations that span segments.
+	 * 
+	 * @return total remaining bytes in chain
+	 */
+	public long chainRemaining() {
+		if (currentSegment == null)
+			return 0;
+
+		long total = currentSegment.memoryDataEnd() -
+				(currentSegment.memoryDataOffset() + localPosition());
+
+		Memory next = currentSegment.nextMemory();
+		while (next != null) {
+			total += next.memoryDataLength();
+			next = next.nextMemory();
+		}
+
+		return Math.min(total, limit - position);
+	}
+
+	/**
+	 * Positions at the specified offset within the entire chain.
+	 * 
+	 * <p>
+	 * Unlike position() which works within current segment, this positions anywhere
+	 * in the multi-segment chain.
+	 * </p>
+	 * 
+	 * @param chainOffset the offset within the entire chain
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer chainPosition(long chainOffset) {
+		if (hasError)
+			return this;
+
+		if (chainOffset < 0 || chainOffset > chainCapacity()) {
+			setError(new BufferOperationException(
+					"Chain position out of bounds: " + chainOffset));
+			return this;
+		}
+
+		// Find segment containing this offset
+		Memory segment = seekMemory(chainOffset);
+		if (segment != null) {
+			currentSegment = segment;
+			currentSegmentOffset = calculateSegmentOffset(segment);
+			position = chainOffset;
+		}
+
+		return this;
+	}
+
+	/**
+	 * Returns the chain-wide limit.
+	 * 
+	 * <p>
+	 * The maximum position that can be set across the entire chain.
+	 * </p>
+	 * 
+	 * @return the chain limit
+	 */
+	public long chainLimit() {
+		return Math.min(limit, chainCapacity());
+	}
+
+	// ==================== Space Management Methods ====================
+
+	/**
+	 * Ensures the specified amount of space is available.
+	 * 
+	 * <p>
+	 * Checks if sufficient space exists from current position. If not, accumulates
+	 * an error.
+	 * </p>
+	 * 
+	 * @param required the required space in bytes
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer ensureRemaining(long required) {
+		if (hasError)
+			return this;
+
+		if (remaining() < required) {
+			setError(new BufferOperationException(
+					"Insufficient space: need " + required + ", have " + remaining()));
+			metrics.recordInsufficientSpace();
+		}
+
+		return this;
+	}
+
+	/**
+	 * Compacts this buffer.
+	 * 
+	 * <p>
+	 * Moves remaining data to the beginning of the buffer. Position is set to
+	 * remaining(), limit to capacity.
+	 * </p>
+	 * 
+	 * Developer Note: This is a potentially expensive operation as it moves data.
+	 * Only use when necessary for buffer reuse.
+	 * 
+	 * @return this buffer for method chaining
+	 */
+	public MemoryBuffer compact() {
+		if (hasError)
+			return this;
+
+		long rem = remaining();
+		if (rem > 0 && position > 0) {
+			// Move remaining data to beginning
+			MemorySegment.copy(memorySegment, position, memorySegment, 0, rem);
+		}
+
+		position = rem;
+		limit = capacity();
+		mark = -1;
+		updateCurrentSegment();
+
+		return this;
+	}
+
+	// ==================== Protected Helper Methods ====================
+
+	/**
+	 * Sets the error state with the provided exception.
+	 * 
+	 * Developer Note: We only set the first error to preserve original failure
+	 * context. Subsequent errors are ignored unless error is cleared.
+	 * 
+	 * @param error the error to set
+	 */
+	protected void setError(BufferOperationException error) {
+		if (!hasError) { // Only set first error
+			this.pendingError = error;
+			this.hasError = true;
 		}
 	}
 
 	/**
-	 * Returns a string representation of this MemoryBuffer.
+	 * Checks if error state is set.
 	 * 
-	 * <p>
-	 * The string includes current data bounds, capacity, and reference count for
-	 * debugging and monitoring purposes.
-	 * </p>
+	 * Developer Note: Fast check for early return in operations.
 	 * 
-	 * @return a string representation of this buffer
+	 * @return true if error is set
+	 */
+	protected boolean checkError() {
+		return hasError;
+	}
+
+	/**
+	 * Updates the current segment cache based on position.
+	 * 
+	 * Developer Note: Critical for multi-segment performance. We cache the current
+	 * segment to avoid repeated lookups.
+	 */
+	protected void updateCurrentSegment() {
+		if (nextMemory == null) {
+			currentSegment = this;
+			currentSegmentOffset = 0;
+			return;
+		}
+
+		// Find segment containing current position
+		long offset = 0;
+		Memory segment = this;
+
+		while (segment != null && position >= offset + segment.memoryDataLength()) {
+			offset += segment.memoryDataLength();
+			segment = segment.nextMemory();
+		}
+
+		if (segment != null) {
+			currentSegment = segment;
+			currentSegmentOffset = offset;
+		}
+	}
+
+	/**
+	 * Returns the current segment in the chain.
+	 * 
+	 * @return the current memory segment
+	 */
+	protected Memory currentSegment() {
+		return currentSegment != null ? currentSegment : this;
+	}
+
+	/**
+	 * Returns the local position within the current segment.
+	 * 
+	 * @return position relative to current segment
+	 */
+	protected long localPosition() {
+		return position - currentSegmentOffset;
+	}
+
+	/**
+	 * Checks if an operation of the specified size needs spanning.
+	 * 
+	 * Developer Note: Key optimization point - we avoid spanning logic when
+	 * operation fits in current segment.
+	 * 
+	 * @param size the size of the operation
+	 * @return true if operation would span segments
+	 */
+	protected boolean needsSpanning(long size) {
+		if (currentSegment == null)
+			return false;
+
+		long localPos = localPosition();
+		long segmentRemaining = currentSegment.memoryDataEnd() -
+				(currentSegment.memoryDataOffset() + localPos);
+
+		return size > segmentRemaining;
+	}
+
+	/**
+	 * Ensures the specified space is available for writing.
+	 * 
+	 * @param size the required size
+	 * @return true if space is available
+	 */
+	protected boolean ensureSpace(long size) {
+		if (remaining() < size) {
+			setError(new BufferOperationException(
+					"Insufficient space: need " + size + ", have " + remaining()));
+			metrics.recordInsufficientSpace();
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Calculates the offset of a segment within the chain.
+	 * 
+	 * @param target the target segment
+	 * @return the byte offset of the segment start
+	 */
+	private long calculateSegmentOffset(Memory target) {
+		long offset = 0;
+		Memory current = this;
+
+		while (current != null && current != target) {
+			offset += current.memoryDataLength();
+			current = current.nextMemory();
+		}
+
+		return offset;
+	}
+
+	/**
+	 * Returns a string representation of this buffer's state.
+	 * 
+	 * @return a string describing this buffer
 	 */
 	@Override
 	public String toString() {
-		return String.format("MemoryBuffer[dataOffset=%d, dataEnd=%d, capacity=%d, refCount=%d]",
-				memoryDataOffset, memoryDataEnd, memoryCapacity, refCount());
+		return String.format("MemoryBuffer[pos=%d, lim=%d, cap=%d, err=%s]",
+				position, limit, capacity(), hasError ? pendingError : "none");
 	}
 }

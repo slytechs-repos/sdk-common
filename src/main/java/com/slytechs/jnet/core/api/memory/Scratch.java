@@ -15,12 +15,29 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-module com.slytechs.jnet.core.api {
-    exports com.slytechs.jnet.core.api.memory;
-    exports com.slytechs.jnet.core.api.format;
-    exports com.slytechs.jnet.core.api.time;
-    exports com.slytechs.jnet.core.api.util;
-    exports com.slytechs.jnet.core.api.util.function;
+package com.slytechs.jnet.core.api.memory;
 
-    requires java.logging;
+/**
+ * 
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ */
+public class Scratch {
+
+	/**
+	 * 
+	 */
+	public Scratch() {
+		// TODO Auto-generated constructor stub
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		MemoryBuffer buffer = null;
+		
+	}
+
 }

@@ -204,6 +204,9 @@ public interface MemoryWindow {
 	default long memoryDataOffset() {
 		return memoryOffset();
 	}
+	
+	long memoryDataOffset(long newOffset);
+	long memoryDataEnd(long newEnd);
 
 	/**
 	 * Returns the data offset within the memory segment containing the specified
@@ -231,5 +234,29 @@ public interface MemoryWindow {
 	 */
 	default long memoryDataOffsetAt(long chainOffset) {
 		return memoryDataOffset();
+	}
+
+	default long memoryLeadingSpace() {
+		return memoryDataOffset() - memoryOffset();
+	}
+
+	default long memoryTrailingSpace() {
+		return memoryEnd() - memoryDataEnd();
+	}
+
+	default boolean hasMemoryLeadingSpace() {
+		return memoryLeadingSpace() > 0;
+	}
+
+	default boolean hasMemoryTrailingSpace() {
+		return memoryTrailingSpace() > 0;
+	}
+
+	default long memoryDataRemaining() {
+		return memoryDataEnd() - memoryDataOffset();
+	}
+
+	default boolean hasMemoryDataRemaining() {
+		return memoryDataRemaining() > 0;
 	}
 }
