@@ -146,28 +146,6 @@ public interface MemoryRef {
     int decrementRef();
 
     /**
-     * Explicitly closes this memory object, marking it unusable.
-     * 
-     * <p>This method performs immediate cleanup of the memory object, releasing any
-     * associated resources such as returning memory to pools or unmapping native memory.
-     * After calling close(), all subsequent operations on this memory will throw
-     * IllegalStateException.</p>
-     * 
-     * <p><strong>Reference Count Requirement:</strong> This method can only be called
-     * when the reference count is 0. For active memory (refcount > 0), use
-     * {@link #decrementRef()} to trigger automatic cleanup.</p>
-     * 
-     * <p><strong>Pool Integration:</strong> For pooled memory objects, this method
-     * typically triggers return to the originating pool for reuse.</p>
-     * 
-     * @throws IllegalStateException if refcount is not 0, indicating active references exist
-     * 
-     * @see #decrementRef() for automatic cleanup
-     * @see #refCount() to check reference count
-     */
-    void close();
-
-    /**
      * Sets the next Memory object in a chain structure.
      * 
      * <p>This method establishes or modifies chain linkage between memory objects,
@@ -186,8 +164,8 @@ public interface MemoryRef {
      * @param next the next Memory object in the chain, or {@code null} to terminate the chain
      * @throws IllegalStateException if this memory is closed or in an invalid state
      * 
-     * @see MemoryView#nextMemory() to traverse chains
-     * @see MemoryView#hasNextMemory() to check for chain continuation
+     * @see MemoryView#nextSegment() to traverse chains
+     * @see MemoryView#hasNextSegment() to check for chain continuation
      */
     void setNextMemory(Memory next);
 }

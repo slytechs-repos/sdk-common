@@ -28,28 +28,31 @@ import static java.lang.foreign.ValueLayout.*;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class MemoryStructure extends AbstractMemory {
+public class MemoryStructureProxy extends MemoryProxy {
 
 	private final MemoryLayout layout;
 
-	public MemoryStructure(long byteSize, Arena arena) {
+	public MemoryStructureProxy(long byteSize, Arena arena) {
 		this(sequenceLayout(byteSize, JAVA_BYTE), arena);
 	}
 
-	public MemoryStructure(MemoryLayout layout, Arena arena) {
+	public MemoryStructureProxy(MemoryLayout layout) {
+		this.layout = layout;
+	}
+
+	public MemoryStructureProxy(MemoryLayout layout, Arena arena) {
 		this(layout, arena.allocate(layout), 0);
 	}
 
-	public MemoryStructure(MemoryLayout layout, MemorySegment pointer) {
+	public MemoryStructureProxy(MemoryLayout layout, MemorySegment pointer) {
 		this(layout, pointer.reinterpret(layout.byteSize()), 0);
 	}
 
-	public MemoryStructure(MemoryLayout layout, MemorySegment pointer, Arena arena) {
+	public MemoryStructureProxy(MemoryLayout layout, MemorySegment pointer, Arena arena) {
 		this(layout, pointer.reinterpret(layout.byteSize(), arena, null), 0);
 	}
 
-	public MemoryStructure(MemoryLayout layout, MemorySegment segment, long offset) {
-		super(segment, offset, offset + segment.byteSize());
+	public MemoryStructureProxy(MemoryLayout layout, MemorySegment segment, long offset) {
 		this.layout = layout;
 
 		assert segment.byteSize() > 0;

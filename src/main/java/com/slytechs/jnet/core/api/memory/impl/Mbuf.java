@@ -23,7 +23,7 @@ import java.lang.invoke.VarHandle;
 
 import com.slytechs.jnet.core.api.format.StructFormat;
 import com.slytechs.jnet.core.api.format.StructFormattable;
-import com.slytechs.jnet.core.api.memory.MemoryStructure;
+import com.slytechs.jnet.core.api.memory.MemoryStructureProxy;
 
 import static java.lang.foreign.MemoryLayout.*;
 import static java.lang.foreign.MemoryLayout.PathElement.*;
@@ -68,7 +68,7 @@ import static java.lang.foreign.ValueLayout.*;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class Mbuf extends MemoryStructure implements StructFormattable {
+public class Mbuf extends MemoryStructureProxy implements StructFormattable {
 
 	/**
 	 * Defines the memory layout for the rte_mbuf structure, including padding and
@@ -374,14 +374,14 @@ public class Mbuf extends MemoryStructure implements StructFormattable {
 	/**
 	 * @return
 	 */
-	public Mbuf nextMemory() {
+	public Mbuf nextSegment() {
 		throw new UnsupportedOperationException("not implemented yet");
 	}
 
 	/**
 	 * @return
 	 */
-	public int chainMemoryCount() {
+	public int segmentCount() {
 		throw new UnsupportedOperationException("not implemented yet");
 	}
 

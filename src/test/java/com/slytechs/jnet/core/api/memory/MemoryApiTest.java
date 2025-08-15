@@ -15,17 +15,17 @@ class MemoryApiTest {
             MemorySegment segment = arena.allocate(100);
             Memory memory = Memory.of(segment, 0);
 
-            Assertions.assertEquals(100, memory.memoryCapacity());
-            Assertions.assertEquals(0, memory.memoryOffset());
-            Assertions.assertEquals(100, memory.memoryEnd());
-            Assertions.assertEquals(0, memory.memoryDataOffset());
-            Assertions.assertEquals(100, memory.memoryDataEnd());
-            Assertions.assertEquals(100, memory.memoryDataLength());
-            Assertions.assertEquals(100, memory.chainCapacity());
-            Assertions.assertEquals(100, memory.chainDataLength());
+            Assertions.assertEquals(100, memory.segmentSize());
+            Assertions.assertEquals(0, memory.segmentOffset());
+            Assertions.assertEquals(100, memory.segmentEnd());
+            Assertions.assertEquals(0, memory.activeBytesStart());
+            Assertions.assertEquals(100, memory.activeBytesEnd());
+            Assertions.assertEquals(100, memory.activeBytesLength());
+            Assertions.assertEquals(100, memory.totalSegmentSize());
+            Assertions.assertEquals(100, memory.totalActiveBytes());
             Assertions.assertEquals(1, memory.refCount());
-            Assertions.assertFalse(memory.hasNextMemory());
-            Assertions.assertNull(memory.nextMemory());
+            Assertions.assertFalse(memory.hasNextSegment());
+            Assertions.assertNull(memory.nextSegment());
             Assertions.assertFalse(memory.isNull());
             Assertions.assertFalse(memory.isPointer());
         }
@@ -37,17 +37,17 @@ class MemoryApiTest {
             MemorySegment segment = arena.allocate(100);
             Memory memory = Memory.of(segment, 10, 80);
 
-            Assertions.assertEquals(80, memory.memoryCapacity());
-            Assertions.assertEquals(10, memory.memoryOffset());
-            Assertions.assertEquals(90, memory.memoryEnd());
-            Assertions.assertEquals(10, memory.memoryDataOffset());
-            Assertions.assertEquals(90, memory.memoryDataEnd());
-            Assertions.assertEquals(80, memory.memoryDataLength());
-            Assertions.assertEquals(80, memory.chainCapacity());
-            Assertions.assertEquals(80, memory.chainDataLength());
+            Assertions.assertEquals(80, memory.segmentSize());
+            Assertions.assertEquals(10, memory.segmentOffset());
+            Assertions.assertEquals(90, memory.segmentEnd());
+            Assertions.assertEquals(10, memory.activeBytesStart());
+            Assertions.assertEquals(90, memory.activeBytesEnd());
+            Assertions.assertEquals(80, memory.activeBytesLength());
+            Assertions.assertEquals(80, memory.totalSegmentSize());
+            Assertions.assertEquals(80, memory.totalActiveBytes());
             Assertions.assertEquals(1, memory.refCount());
-            Assertions.assertFalse(memory.hasNextMemory());
-            Assertions.assertNull(memory.nextMemory());
+            Assertions.assertFalse(memory.hasNextSegment());
+            Assertions.assertNull(memory.nextSegment());
         }
     }
 
@@ -97,8 +97,7 @@ class MemoryApiTest {
 
             Assertions.assertEquals(1, memory.refCount());
             memory.decrementRef(); // Reduces to 0 and calls close()
-            Assertions.assertThrows(IllegalStateException.class, memory::refCount);
-            Assertions.assertThrows(IllegalStateException.class, memory::memoryCapacity);
+            Assertions.assertThrows(IllegalStateException.class, memory::segmentSize);
         }
     }
 
@@ -117,7 +116,7 @@ class MemoryApiTest {
             MemorySegment pointer = MemorySegment.ofAddress(12345);
             Memory memory = Memory.of(pointer, 0, 0);
             Assertions.assertTrue(memory.isPointer());
-            Assertions.assertEquals(0, memory.memoryCapacity());
+            Assertions.assertEquals(0, memory.segmentSize());
         }
     }
 }

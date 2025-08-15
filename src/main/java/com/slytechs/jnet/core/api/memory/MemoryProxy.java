@@ -1,572 +1,935 @@
 /*
- * Sly Technologies Free License
- * 
- * Copyright 2025 Sly Technologies Inc.
- *
- * Licensed under the Sly Technologies Free License (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.slytechs.com/free-license-text
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
+* Sly Technologies Free License
+* 
+* Copyright 2025 Sly Technologies Inc.
+*
+* Licensed under the Sly Technologies Free License (the "License"); you may not
+* use this file except in compliance with the License. You may obtain a copy of
+* the License at
+* 
+* http://www.slytechs.com/free-license-text
+* 
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+* License for the specific language governing permissions and limitations under
+* the License.
+*/
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 
 /**
- * A lightweight, rebindable proxy for managing access to memory chains with zero-allocation efficiency.
- * 
- * <p>MemoryProxy provides a reusable binding mechanism that can attach to different points in
- * memory chains for high-performance access without object allocation. This class is specifically
- * designed for scenarios requiring frequent repositioning across memory structures, such as
- * network packet processing, protocol header parsing, and streaming data analysis.</p>
- * 
- * <h2>Key Features</h2>
- * <ul>
- *   <li><strong>Zero-Allocation Rebinding:</strong> Reuse proxy objects without creating new instances</li>
- *   <li><strong>Chain Traversal:</strong> Efficient navigation through linked memory structures</li>
- *   <li><strong>Automatic Reference Management:</strong> Proper cleanup of bound memory references</li>
- *   <li><strong>Flexible Bounds:</strong> Support for both full memory and custom slice binding</li>
- * </ul>
- * 
- * <h2>Binding Lifecycle</h2>
- * <p>MemoryProxy follows a strict bind/unbind lifecycle:</p>
- * <ol>
- *   <li><strong>Creation:</strong> Proxy starts in unbound state</li>
- *   <li><strong>Binding:</strong> Attach to memory with {@link #bindMemory(Memory, long)} or variants</li>
- *   <li><strong>Usage:</strong> Access memory through Memory interface methods</li>
- *   <li><strong>Unbinding:</strong> Release with {@link #unbindMemory()} or automatic via {@link #close()}</li>
- *   <li><strong>Reuse:</strong> Rebind to different memory for next operation</li>
- * </ol>
- * 
- * <h2>Network Packet Processing Example</h2>
- * <pre>{@code
- * // Create reusable proxies for different protocol layers
- * MemoryProxy ethernetProxy = new MemoryProxy();
- * MemoryProxy ipProxy = new MemoryProxy();
- * MemoryProxy tcpProxy = new MemoryProxy();
- * 
- * // Process incoming packet
- * Memory packet = receivePacket();
- * 
- * // Bind to Ethernet header (offset 0, length 14)
- * ethernetProxy.bindMemory(packet, 0, 14);
- * int etherType = ethernetProxy.asMemorySegment().get(ValueLayout.JAVA_SHORT_UNALIGNED, 12);
- * 
- * if (etherType == 0x0800) { // IPv4
- *     // Bind to IP header (offset 14, length 20)
- *     ipProxy.bindMemory(packet, 14, 20);
- *     int protocol = ipProxy.asMemorySegment().get(ValueLayout.JAVA_BYTE, 9);
- *     
- *     if (protocol == 6) { // TCP
- *         // Bind to TCP header (offset 34, dynamic length)
- *         tcpProxy.bindMemory(packet, 34);
- *         processTcpHeader(tcpProxy);
- *     }
- * }
- * 
- * // Cleanup - proxies can be reused for next packet
- * ethernetProxy.unbindMemory();
- * ipProxy.unbindMemory();
- * tcpProxy.unbindMemory();
- * }</pre>
- * 
- * <h2>Chain Navigation Pattern</h2>
- * <pre>{@code
- * // Bind to start of chain
- * proxy.bindMemory(chainHead, 0);
- * 
- * // Process all segments
- * do {
- *     processSegment(proxy.asByteBuffer());
- * } while (proxy.nextMemory() != null);
- * 
- * // Unbind when done
- * proxy.unbindMemory();
- * }</pre>
- * 
- * <h2>Performance Characteristics</h2>
- * <ul>
- *   <li><strong>Binding:</strong> O(1) - Simple reference assignment and bounds calculation</li>
- *   <li><strong>Access:</strong> O(1) - Direct delegation to bound memory</li>
- *   <li><strong>Navigation:</strong> O(1) - Chain traversal without allocation</li>
- *   <li><strong>Memory:</strong> Fixed overhead regardless of bound memory size</li>
- * </ul>
- * 
- * <h2>Thread Safety</h2>
- * <p>MemoryProxy is <strong>not thread-safe</strong> for binding operations. Each thread should
- * use its own proxy instance, or external synchronization must be provided if sharing proxies
- * across threads. Once bound, read operations are thread-safe as long as the underlying
- * memory remains valid.</p>
- * 
- * <h2>State Management</h2>
- * <p>The proxy maintains internal state for navigation and bounds:</p>
- * <ul>
- *   <li><strong>Bound Memory:</strong> Reference to the currently bound memory chain head</li>
- *   <li><strong>Current Position:</strong> Track position within the chain for navigation</li>
- *   <li><strong>Local Bounds:</strong> Override bounds for slice operations</li>
- *   <li><strong>Closure State:</strong> Prevent operations on closed proxies</li>
- * </ul>
- * 
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc.
- * @since 1.0
- * @see Memory for the complete memory interface
- * @see MemoryStructure for layout-aware proxy usage
- * @see MemoryPool for memory allocation
- */
+* A lightweight, rebindable proxy for zero-allocation memory access with minimal overhead.
+* 
+* <p>
+* MemoryProxy provides a reusable view mechanism that can be bound to different memory
+* regions without allocation overhead. This class is optimized for high-performance
+* scenarios requiring frequent rebinding, such as network packet processing where
+* thousands of packets per second are accessed through the same proxy objects.
+* </p>
+* 
+* <h2>Design Philosophy</h2>
+* 
+* <h3>Minimalist Architecture</h3>
+* <p>
+* MemoryProxy maintains only essential state (4 fields), delegating all operations
+* to the bound memory. This design provides:
+* </p>
+* <ul>
+* <li><strong>Fast binding:</strong> O(1) with minimal field assignments</li>
+* <li><strong>Small footprint:</strong> ~32 bytes per proxy instance</li>
+* <li><strong>Cache efficiency:</strong> Optimal CPU cache line utilization</li>
+* <li><strong>Zero allocation:</strong> Reusable across unlimited bind/unbind cycles</li>
+* </ul>
+* 
+* <h3>Binding Modes</h3>
+* <pre>{@code
+* UNBOUNDED MODE (length = -1):
+* Proxy → [Memory Segment 1] → [Segment 2] → [Segment 3]
+*         ↑
+*      offset (can access entire chain from offset)
+* 
+* BOUNDED MODE (length ≥ 0):
+* Proxy → [Memory Segment]
+*         ↑─────length─────↑
+*      offset          (isolated view)
+* }</pre>
+* 
+* <table border="1">
+* <caption>Binding Mode Characteristics</caption>
+* <thead>
+* <tr>
+*   <th>Mode</th>
+*   <th>Length Value</th>
+*   <th>Chain Access</th>
+*   <th>Use Case</th>
+* </tr>
+* </thead>
+* <tbody>
+* <tr>
+*   <td>Unbounded</td>
+*   <td>-1</td>
+*   <td>Full chain navigation</td>
+*   <td>Packet-level views</td>
+* </tr>
+* <tr>
+*   <td>Bounded</td>
+*   <td>≥ 0</td>
+*   <td>Single segment only</td>
+*   <td>Headers, fields</td>
+* </tr>
+* </tbody>
+* </table>
+* 
+* <h2>Lifecycle Management</h2>
+* 
+* <h3>Reference Counting</h3>
+* <p>
+* MemoryProxy participates in the memory's reference counting:
+* </p>
+* <ul>
+* <li>Binding increments the target memory's reference count</li>
+* <li>Unbinding decrements the reference count</li>
+* <li>Automatic unbinding occurs if bound memory is released</li>
+* </ul>
+* 
+* <h3>Chain Stability Requirements</h3>
+* <p>
+* <strong>CRITICAL:</strong> The underlying memory chain structure must remain
+* stable while a proxy is bound. Chain modifications require:
+* </p>
+* <ol>
+* <li>Unbind all proxies from the chain</li>
+* <li>Modify the chain structure</li>
+* <li>Rebind proxies as needed</li>
+* </ol>
+* 
+* <h2>Thread Safety</h2>
+* <ul>
+* <li><strong>Binding operations:</strong> NOT thread-safe, require external synchronization</li>
+* <li><strong>Read operations:</strong> Thread-safe once bound (if underlying memory is stable)</li>
+* <li><strong>Recommendation:</strong> Use thread-local proxy instances or synchronize binding</li>
+* </ul>
+* 
+* <h2>Usage Patterns</h2>
+* 
+* <h3>Network Packet Processing</h3>
+* <pre>{@code
+* // Reusable proxy pool for packet analysis
+* class PacketAnalyzer {
+*     private final MemoryProxy packet = new MemoryProxy();
+*     private final MemoryProxy ethernet = new MemoryProxy();
+*     private final MemoryProxy ip = new MemoryProxy();
+*     private final MemoryProxy tcp = new MemoryProxy();
+*     
+*     void analyzePacket(Memory capturedData) {
+*         try {
+*             // Bind to full packet (unbounded)
+*             packet.bindMemory(capturedData, 0);
+*             
+*             // Bind to protocol layers (bounded)
+*             ethernet.bindMemory(packet, 0, 14);        // Ethernet: 14 bytes
+*             ip.bindMemory(packet, 14, 20);             // IPv4: 20 bytes
+*             tcp.bindMemory(packet, 34, getTcpLength()); // TCP: variable
+*             
+*             // Process packet data
+*             processEthernet(ethernet);
+*             processIp(ip);
+*             processTcp(tcp);
+*             
+*         } finally {
+*             // Clean unbinding for reuse
+*             tcp.unbindMemory();
+*             ip.unbindMemory();
+*             ethernet.unbindMemory();
+*             packet.unbindMemory();
+*         }
+*     }
+* }
+* }</pre>
+* 
+* <h3>Buffer Iteration (Hardware Capture)</h3>
+* <pre>{@code
+* // Process packets in a large capture buffer
+* void processCapture(Memory captureBuffer, List<PacketInfo> packets) {
+*     MemoryProxy proxy = new MemoryProxy();
+*     
+*     for (PacketInfo info : packets) {
+*         // Bind to each packet region
+*         proxy.bindMemory(captureBuffer, info.offset, info.length);
+*         
+*         // Process packet
+*         processPacket(proxy);
+*         
+*         // Unbind for next iteration
+*         proxy.unbindMemory();
+*     }
+* }
+* }</pre>
+* 
+* <h3>Hierarchical Proxy Structure</h3>
+* <pre>{@code
+* class EthernetHeader extends MemoryProxy {
+*     private final MacAddress dstMac = new MacAddress();
+*     private final MacAddress srcMac = new MacAddress();
+*     
+*     @Override
+*     protected void onBindMemory() {
+*         // Cascade binding to sub-elements
+*         dstMac.bindMemory(this, 0, 6);   // Destination MAC
+*         srcMac.bindMemory(this, 6, 6);   // Source MAC
+*     }
+*     
+*     @Override
+*     protected void onUnbindMemory() {
+*         // Clean cascade unbinding
+*         srcMac.unbindMemory();
+*         dstMac.unbindMemory();
+*     }
+*     
+*     public MacAddress getDestination() { return dstMac; }
+*     public MacAddress getSource() { return srcMac; }
+*     public int getEtherType() {
+*         return asMemorySegment().get(ValueLayout.JAVA_SHORT_BE, 12);
+*     }
+* }
+* }</pre>
+* 
+* <h2>Performance Characteristics</h2>
+* 
+* <table border="1">
+* <caption>Operation Performance</caption>
+* <thead>
+* <tr>
+*   <th>Operation</th>
+*   <th>Complexity</th>
+*   <th>Allocations</th>
+* </tr>
+* </thead>
+* <tbody>
+* <tr>
+*   <td>bind/unbind</td>
+*   <td>O(1)</td>
+*   <td>0</td>
+* </tr>
+* <tr>
+*   <td>delegate call</td>
+*   <td>O(1)</td>
+*   <td>0</td>
+* </tr>
+* <tr>
+*   <td>boundary check</td>
+*   <td>O(1)</td>
+*   <td>0</td>
+* </tr>
+* </tbody>
+* </table>
+* 
+* @author Mark Bednarczyk [mark@slytechs.com]
+* @author Sly Technologies Inc.
+* @since 1.0
+* @see Memory for the complete memory interface
+* @see AbstractMemory for base implementation
+* @see MemoryBuffer for editable memory buffers
+*/
 public class MemoryProxy implements Memory {
 
-    /**
-     * The head of the currently bound memory chain.
-     * 
-     * <p>This field maintains a reference to the original memory object that this
-     * proxy is bound to. When the proxy is unbound, this field is set to null.</p>
-     */
-    private Memory head;
+   /**
+    * The memory object this proxy is currently bound to.
+    * 
+    * <p>
+    * When null, the proxy is unbound and all operations throw IllegalStateException.
+    * This reference ensures the bound memory remains valid during the proxy's
+    * bound lifetime through reference counting.
+    * </p>
+    */
+   private Memory boundMemory;
 
-    /**
-     * Current navigation position within the memory chain.
-     * 
-     * <p>This field tracks the current position during chain traversal. It starts
-     * as 'this' when initially bound, and changes as {@link #nextMemory()} is called
-     * to navigate through the chain. Package-private for test access.</p>
-     */
-    Memory current;
+   /**
+    * Starting position within the bound memory where this proxy's view begins.
+    * 
+    * <p>
+    * This position is relative to the bound memory's coordinate system and is
+    * applied to all position-based operations to translate proxy coordinates
+    * to bound memory coordinates.
+    * </p>
+    */
+   private long proxyOffset;
 
-    /**
-     * Local memory offset override for slice binding.
-     * 
-     * <p>When the proxy is bound to a specific slice of memory, this field stores
-     * the starting offset within the bound memory region.</p>
-     */
-    private long memoryOffset;
+   /**
+    * Size of this proxy's view, or -1 for unbounded views.
+    * 
+    * <p>
+    * Controls the proxy's access mode:
+    * <ul>
+    * <li><strong>-1:</strong> Unbounded - full chain access from offset</li>
+    * <li><strong>≥0:</strong> Bounded - limited to specified byte count</li>
+    * </ul>
+    * </p>
+    */
+   private long proxyLength;
 
-    /**
-     * Local memory end override for slice binding.
-     * 
-     * <p>When the proxy is bound to a specific slice of memory, this field stores
-     * the ending offset within the bound memory region (exclusive).</p>
-     */
-    private long memoryEnd;
+   /**
+    * Indicates if this proxy has been permanently closed.
+    * 
+    * <p>
+    * Once closed, the proxy cannot be reused. All operations on a closed
+    * proxy throw IllegalStateException.
+    * </p>
+    */
+   private boolean isClosed;
 
-    /**
-     * Cached reference to next memory for navigation efficiency.
-     * 
-     * <p>This field caches the next memory in the chain to enable efficient
-     * navigation without repeatedly querying the bound memory object.</p>
-     */
-    private Memory nextMemory;
+   /**
+    * Constructs a new MemoryProxy in unbound state.
+    * 
+    * <p>
+    * The proxy starts unbound and must be bound to memory using one of the
+    * bindMemory methods before use. All Memory interface operations will
+    * throw IllegalStateException until binding occurs.
+    * </p>
+    */
+   public MemoryProxy() {
+   	this.boundMemory = null;
+   	this.proxyOffset = 0;
+   	this.proxyLength = 0;
+   	this.isClosed = false;
+   }
 
-    /**
-     * Flag indicating if this proxy has been closed.
-     * 
-     * <p>Once closed, the proxy cannot be used for any operations and will
-     * throw IllegalStateException for all method calls.</p>
-     */
-    private boolean isClosed;
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Returns the active bytes end boundary, constrained by both the proxy's
+    * bounds and the underlying memory's active region.
+    * </p>
+    */
+   @Override
+   public long activeBytesEnd() {
+   	checkBound();
+   	if (proxyLength == -1) {
+   		return boundMemory.activeBytesEnd(); // Unbounded - use bound's end
+   	}
+   	// Bounded - constrain to our view
+   	long ourEnd = boundMemory.segmentOffset() + proxyOffset + proxyLength;
+   	return Math.min(ourEnd, boundMemory.activeBytesEnd());
+   }
 
-    /**
-     * Constructs a new MemoryProxy in unbound state.
-     * 
-     * <p>The proxy starts in unbound state and must be bound to memory using one of the
-     * {@code bindMemory} methods before use. All Memory interface operations will throw
-     * IllegalStateException until binding occurs.</p>
-     */
-    public MemoryProxy() {
-        this.isClosed = false;
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Sets the active bytes end within this proxy's view. The new boundary
+    * must be within the proxy's segment bounds.
+    * </p>
+    */
+   @Override
+   public long activeBytesEnd(long newEnd) {
+   	checkBound();
+   	// Validate within our bounds
+   	long minEnd = activeBytesStart();
+   	long maxEnd = segmentEnd();
+   	if (newEnd < minEnd || newEnd > maxEnd) {
+   		throw new IllegalArgumentException(
+   			String.format("Active bytes end out of bounds: %d (must be between %d and %d)",
+   				newEnd, minEnd, maxEnd));
+   	}
+   	// Delegate to bound memory
+   	return boundMemory.activeBytesEnd(newEnd);
+   }
 
-    /**
-     * Binds this proxy to the specified memory starting at the given offset.
-     * 
-     * <p>This method establishes a binding to the memory chain, setting up the proxy
-     * to access memory from the specified offset to the end of the bound memory's capacity.
-     * The proxy increments the bound memory's reference count to ensure validity.</p>
-     * 
-     * @param memory the memory chain to bind to
-     * @param offset the starting offset within the memory
-     * @throws MemoryBindingException if this proxy is already bound
-     * @throws NullPointerException if memory is null
-     * @throws IllegalArgumentException if offset is invalid
-     * @throws IllegalStateException if this proxy is closed
-     */
-    public void bindMemory(Memory memory, long offset) {
-        checkNotClosed();
-        if (head != null) {
-            throw new MemoryBindingException("Proxy is already bound to memory");
-        }
-        if (memory == null) {
-            throw new NullPointerException("memory cannot be null");
-        }
-        if (offset < 0 || offset > memory.memoryCapacity()) {
-            throw new IllegalArgumentException("Invalid offset: " + offset);
-        }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Returns the active bytes start boundary, constrained by both the proxy's
+    * bounds and the underlying memory's active region.
+    * </p>
+    */
+   @Override
+   public long activeBytesStart() {
+   	checkBound();
+   	long boundStart = boundMemory.activeBytesStart();
+   	long ourStart = boundMemory.segmentOffset() + proxyOffset;
+   	return Math.max(boundStart, ourStart);
+   }
 
-        head = memory;
-        head.incrementRef();
-        current = this;
-        memoryOffset = memory.memoryOffset() + offset;
-        memoryEnd = memory.memoryEnd();
-        nextMemory = memory.nextMemory();
-        onBindMemory();
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Sets the active bytes start within this proxy's view. The new boundary
+    * must be within the proxy's segment bounds.
+    * </p>
+    */
+   @Override
+   public long activeBytesStart(long newStart) {
+   	checkBound();
+   	// Validate within our bounds
+   	long minStart = segmentOffset();
+   	long maxStart = activeBytesEnd();
+   	if (newStart < minStart || newStart > maxStart) {
+   		throw new IllegalArgumentException(
+   			String.format("Active bytes start out of bounds: %d (must be between %d and %d)",
+   				newStart, minStart, maxStart));
+   	}
+   	// Delegate to bound memory
+   	return boundMemory.activeBytesStart(newStart);
+   }
 
-    /**
-     * Binds this proxy to the specified memory region with explicit bounds.
-     * 
-     * <p>This method establishes a binding to a specific slice of the memory chain,
-     * setting up the proxy to access only the specified region. This enables precise
-     * control over the accessible memory area.</p>
-     * 
-     * @param memory the memory chain to bind to
-     * @param offset the starting offset within the memory
-     * @param length the length of the accessible region
-     * @throws MemoryBindingException if this proxy is already bound
-     * @throws NullPointerException if memory is null
-     * @throws IllegalArgumentException if offset or length is invalid
-     * @throws IllegalStateException if this proxy is closed
-     */
-    public void bindMemory(Memory memory, long offset, long length) {
-        checkNotClosed();
-        if (head != null) {
-            throw new MemoryBindingException("Proxy is already bound to memory");
-        }
-        if (memory == null) {
-            throw new NullPointerException("memory cannot be null");
-        }
-        if (offset < 0 || offset > memory.memoryCapacity()) {
-            throw new IllegalArgumentException("Invalid offset: " + offset);
-        }
-        if (length < 0 || offset + length > memory.memoryCapacity()) {
-            throw new IllegalArgumentException("Invalid length: " + length);
-        }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Creates a ByteBuffer view by delegating to the bound memory and
+    * adjusting position and limit to match this proxy's view.
+    * </p>
+    */
+   @Override
+   public ByteBuffer asByteBuffer() {
+   	checkBound();
+   	ByteBuffer buffer = boundMemory.asByteBuffer();
+   	buffer.position((int) proxyOffset);
+   	if (proxyLength != -1) {
+   		buffer.limit((int) (proxyOffset + proxyLength));
+   	}
+   	return buffer.slice();
+   }
 
-        head = memory;
-        head.incrementRef();
-        current = this;
-        memoryOffset = memory.memoryOffset() + offset;
-        memoryEnd = memory.memoryOffset() + offset + length;
-        nextMemory = memory.nextMemory();
-        onBindMemory();
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Returns the bound memory object, not the proxy itself.
+    * </p>
+    */
+   @Override
+   public Memory asMemory() {
+   	checkBound();
+   	return boundMemory;
+   }
 
-    /**
-     * Unbinds this proxy from its currently bound memory.
-     * 
-     * <p>This method releases the binding to the current memory, decrements the
-     * memory's reference count, and resets the proxy to unbound state. After
-     * unbinding, the proxy can be reused by binding to different memory.</p>
-     * 
-     * @throws IllegalStateException if this proxy is closed or not bound
-     */
-    public void unbindMemory() {
-        checkNotClosed();
-        if (head == null) {
-            throw new IllegalStateException("Proxy is not bound to memory");
-        }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Creates a MemorySegment view by delegating to the bound memory and
+    * creating an appropriate slice for this proxy's bounds.
+    * </p>
+    */
+   @Override
+   public MemorySegment asMemorySegment() {
+   	checkBound();
+   	MemorySegment segment = boundMemory.asMemorySegment();
+   	if (proxyLength == -1) {
+   		return segment.asSlice(proxyOffset);
+   	}
+   	return segment.asSlice(proxyOffset, proxyLength);
+   }
 
-        onUnbindMemory();
-        head.decrementRef();
-        head = null;
-        current = null;
-        nextMemory = null;
-        memoryOffset = 0;
-        memoryEnd = 0;
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Delegates to the bound memory with position adjustment, allowing
+    * position-based access relative to this proxy's offset.
+    * </p>
+    */
+   @Override
+   public MemorySegment asMemorySegmentAt(long position) {
+   	checkBound();
+   	if (proxyLength != -1 && position >= proxyLength) {
+   		throw new IllegalArgumentException(
+   			String.format("Position %d exceeds bounded view length %d", 
+   				position, proxyLength));
+   	}
+   	return boundMemory.asMemorySegmentAt(proxyOffset + position);
+   }
 
-    /**
-     * Checks if this proxy is currently bound to memory.
-     * 
-     * @return {@code true} if bound to memory, {@code false} if unbound
-     * @throws IllegalStateException if this proxy is closed
-     */
-    public boolean isBound() {
-        checkNotClosed();
-        return head != null;
-    }
+   /**
+    * Binds this proxy to an unbounded view of memory from the specified offset.
+    * 
+    * <p>
+    * Creates an unbounded view extending from the offset to the end of the
+    * bound memory, including access to any chained segments. This mode is
+    * ideal for packet-level views that may span multiple segments.
+    * </p>
+    * 
+    * <pre>{@code
+    * Memory packet = receivePacket();
+    * proxy.bindMemory(packet, 0);  // View entire packet chain
+    * }</pre>
+    * 
+    * @param memory the memory to bind to, must not be null
+    * @param offset the starting position within the memory, must be ≥ 0
+    * @throws IllegalStateException if this proxy is already bound or closed
+    * @throws NullPointerException if memory is null
+    * @throws IllegalArgumentException if offset is negative
+    */
+   public void bindMemory(Memory memory, long offset) {
+   	checkNotClosed();
+   	if (boundMemory != null) {
+   		throw new IllegalStateException("Proxy is already bound - call unbindMemory() first");
+   	}
+   	if (memory == null) {
+   		throw new NullPointerException("Cannot bind to null memory");
+   	}
+   	if (offset < 0) {
+   		throw new IllegalArgumentException("Offset cannot be negative: " + offset);
+   	}
 
-    /**
-     * Returns the currently bound memory head, or null if unbound.
-     * 
-     * <p>This method provides access to the original memory object that this
-     * proxy is bound to, useful for debugging and advanced operations.</p>
-     * 
-     * @return the bound memory head, or {@code null} if unbound
-     * @throws IllegalStateException if this proxy is closed
-     */
-    public Memory getBoundMemory() {
-        checkNotClosed();
-        return head;
-    }
+   	this.boundMemory = memory;
+   	this.proxyOffset = offset;
+   	this.proxyLength = -1; // Unbounded marker
+   	memory.incrementRef();
 
-    // Memory interface implementation - delegates to bound memory or provides proxy behavior
+   	onBindMemory();
+   }
 
-    @Override
-    public ByteBuffer asByteBuffer() {
-        checkBound();
-        if (current == this) {
-            return head.asMemorySegment()
-                .asSlice(memoryOffset - head.memoryOffset(), memoryEnd - memoryOffset)
-                .asByteBuffer();
-        }
-        return current.asByteBuffer();
-    }
+   /**
+    * Binds this proxy to a bounded view of memory.
+    * 
+    * <p>
+    * Creates a bounded view limited to the specified region. This mode is
+    * ideal for protocol headers, fields, or when iterating through buffers
+    * containing multiple packets. Bounded views do not provide chain navigation.
+    * </p>
+    * 
+    * <pre>{@code
+    * // Bind to Ethernet header (14 bytes at offset 0)
+    * proxy.bindMemory(packet, 0, 14);
+    * }</pre>
+    * 
+    * @param memory the memory to bind to, must not be null
+    * @param offset the starting position within the memory, must be ≥ 0
+    * @param length the size of the view in bytes, must be ≥ 0
+    * @throws IllegalStateException if this proxy is already bound or closed
+    * @throws NullPointerException if memory is null
+    * @throws IllegalArgumentException if offset or length is invalid
+    */
+   public void bindMemory(Memory memory, long offset, long length) {
+   	checkNotClosed();
+   	if (boundMemory != null) {
+   		throw new IllegalStateException("Proxy is already bound - call unbindMemory() first");
+   	}
+   	if (memory == null) {
+   		throw new NullPointerException("Cannot bind to null memory");
+   	}
+   	if (offset < 0) {
+   		throw new IllegalArgumentException("Offset cannot be negative: " + offset);
+   	}
+   	if (length < 0) {
+   		throw new IllegalArgumentException("Length cannot be negative: " + length);
+   	}
 
-    @Override
-    public MemorySegment asMemorySegment() {
-        checkBound();
-        if (current == this) {
-            return head.asMemorySegment()
-                .asSlice(memoryOffset - head.memoryOffset(), memoryEnd - memoryOffset);
-        }
-        return current.asMemorySegment();
-    }
+   	this.boundMemory = memory;
+   	this.proxyOffset = offset;
+   	this.proxyLength = length;
+   	memory.incrementRef();
 
-    @Override
-    public MemorySegment asMemorySegmentAt(long chainOffset) {
-        checkBound();
-        return Memory.super.asMemorySegmentAt(chainOffset);
-    }
+   	onBindMemory();
+   }
 
-    @Override
-    public Memory nextMemory() {
-        checkBound();
-        if (current == this) {
-            current = nextMemory;
-            return nextMemory;
-        }
-        if (current != null) {
-            current = current.nextMemory();
-            return current;
-        }
-        return null;
-    }
+   /**
+    * Validates that this proxy is bound to memory.
+    * 
+    * @throws IllegalStateException if not bound or closed
+    */
+   private void checkBound() {
+   	checkNotClosed();
+   	if (boundMemory == null) {
+   		throw new IllegalStateException("Proxy is not bound to memory");
+   	}
+   }
 
-    @Override
-    public boolean hasNextMemory() {
-        checkBound();
-        if (current == this) {
-            return nextMemory != null;
-        }
-        return current != null && current.hasNextMemory();
-    }
+   /**
+    * Validates that this proxy is not closed.
+    * 
+    * @throws IllegalStateException if closed
+    */
+   private void checkNotClosed() {
+   	if (isClosed) {
+   		throw new IllegalStateException("Proxy has been closed");
+   	}
+   }
 
-    @Override
-    public Memory seekMemory(long chainOffset) {
-        checkBound();
-        if (nextMemory == null) {
-            if (chainOffset < 0 || chainOffset >= memoryDataLength()) {
-                throw new IllegalArgumentException("chainOffset out of bounds: " + chainOffset);
-            }
-            return this;
-        }
-        
-        long currentOffset = 0;
-        Memory search = head;
-        while (search != null && chainOffset >= (currentOffset += search.memoryDataLength())) {
-            search = search.nextMemory();
-        }
-        
-        if (search == null) {
-            throw new IllegalArgumentException("chainOffset out of bounds: " + chainOffset);
-        }
-        return search;
-    }
+   /**
+    * Permanently closes this proxy, releasing any bound memory.
+    * 
+    * <p>
+    * After closing, the proxy cannot be reused. Any bound memory is
+    * properly unbound with reference counting.
+    * </p>
+    */
+   public void close() {
+   	if (!isClosed) {
+   		if (boundMemory != null) {
+   			unbindMemory();
+   		}
+   		isClosed = true;
+   	}
+   }
 
-    @Override
-    public boolean isNull() {
-        checkBound();
-        return Memory.isNull(asMemorySegment());
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Decrements the reference count of the bound memory. If the count
+    * reaches zero, this proxy is automatically unbound.
+    * </p>
+    */
+   @Override
+   public int decrementRef() {
+   	checkBound();
+   	int newRef = boundMemory.decrementRef();
+   	if (newRef == 0) {
+   		// Auto-unbind when memory is released
+   		boundMemory = null;
+   		proxyOffset = 0;
+   		proxyLength = 0;
+   	}
+   	return newRef;
+   }
 
-    @Override
-    public boolean isPointer() {
-        checkBound();
-        if (current == this) {
-            return head.isPointer();
-        }
-        return current.isPointer();
-    }
+   /**
+    * Returns the memory object this proxy is bound to.
+    * 
+    * @return the bound memory, or null if unbound
+    * @throws IllegalStateException if this proxy is closed
+    */
+   public Memory getBoundMemory() {
+   	checkNotClosed();
+   	return boundMemory;
+   }
 
-    @Override
-    public long memoryCapacity() {
-        checkBound();
-        return current == this ? memoryEnd - memoryOffset : current.memoryCapacity();
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * For bounded views, always returns false as they represent single segments.
+    * For unbounded views, delegates to the bound memory.
+    * </p>
+    */
+   @Override
+   public boolean hasNextSegment() {
+   	checkBound();
+   	if (proxyLength != -1) {
+   		return false; // Bounded views have no chain
+   	}
+   	return boundMemory.hasNextSegment();
+   }
 
-    @Override
-    public long memoryOffset() {
-        checkBound();
-        return current == this ? memoryOffset : current.memoryOffset();
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public int incrementRef() {
+   	checkBound();
+   	return boundMemory.incrementRef();
+   }
 
-    @Override
-    public long memoryEnd() {
-        checkBound();
-        return current == this ? memoryEnd : current.memoryEnd();
-    }
+   /**
+    * Checks if this proxy is currently bound to memory.
+    * 
+    * @return true if bound, false if unbound
+    * @throws IllegalStateException if this proxy is closed
+    */
+   public boolean isBound() {
+   	checkNotClosed();
+   	return boundMemory != null;
+   }
 
-    @Override
-    public long memoryDataOffset() {
-        checkBound();
-        return current == this ? memoryOffset : current.memoryDataOffset();
-    }
+   /**
+    * Checks if this proxy has been closed.
+    * 
+    * @return true if closed, false if still usable
+    */
+   public boolean isClosed() {
+   	return isClosed;
+   }
 
-    @Override
-    public long memoryDataEnd() {
-        checkBound();
-        return current == this ? memoryEnd : current.memoryDataEnd();
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public boolean isNull() {
+   	checkBound();
+   	return boundMemory.isNull();
+   }
 
-    @Override
-    public long memoryDataLength() {
-        checkBound();
-        return current == this ? memoryEnd - memoryOffset : current.memoryDataLength();
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public boolean isPointer() {
+   	checkBound();
+   	return boundMemory.isPointer();
+   }
 
-    @Override
-    public long chainDataLength() {
-        checkBound();
-        if (nextMemory == null && current == this) {
-            return memoryEnd - memoryOffset;
-        }
-        
-        long total = 0;
-        for (Memory mem = head; mem != null; mem = mem.nextMemory()) {
-            total += mem.memoryDataLength();
-        }
-        return total;
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * For bounded views, returns null as they don't support chain navigation.
+    * For unbounded views, delegates to the bound memory.
+    * </p>
+    */
+   @Override
+   public Memory nextSegment() {
+   	checkBound();
+   	if (proxyLength != -1) {
+   		return null; // Bounded views don't navigate chains
+   	}
+   	return boundMemory.nextSegment();
+   }
 
-    @Override
-    public int chainMemoryCount() {
-        checkBound();
-        int count = 0;
-        for (Memory mem = head; mem != null; mem = mem.nextMemory()) {
-            count++;
-        }
-        return count;
-    }
+   /**
+    * Hook method called after successful memory binding.
+    * 
+    * <p>
+    * Subclasses override this method to perform initialization after binding,
+    * commonly used for cascading bindings of sub-elements. For example, an
+    * Ethernet header proxy might bind MAC address proxies here.
+    * </p>
+    * 
+    * <p>
+    * This method is called after all binding state is set and the reference
+    * count has been incremented, ensuring the proxy is fully initialized.
+    * </p>
+    * 
+    * <pre>{@code
+    * public class IpHeader extends MemoryProxy {
+    *     private final IpAddress srcAddr = new IpAddress();
+    *     private final IpAddress dstAddr = new IpAddress();
+    *     
+    *     @Override
+    *     protected void onBindMemory() {
+    *         srcAddr.bindMemory(this, 12, 4);  // Source IP at offset 12
+    *         dstAddr.bindMemory(this, 16, 4);  // Dest IP at offset 16
+    *     }
+    *     
+    *     @Override
+    *     protected void onUnbindMemory() {
+    *         dstAddr.unbindMemory();
+    *         srcAddr.unbindMemory();
+    *     }
+    * }
+    * }</pre>
+    * 
+    * <p>
+    * The default implementation does nothing.
+    * </p>
+    */
+   protected void onBindMemory() {
+   	// Hook for subclasses
+   }
 
-    @Override
-    public int refCount() {
-        checkBound();
-        return head.refCount();
-    }
+   /**
+    * Hook method called before memory unbinding.
+    * 
+    * <p>
+    * Subclasses override this method to perform cleanup before unbinding,
+    * typically to unbind sub-elements that were bound in {@link #onBindMemory()}.
+    * Always unbind in reverse order of binding to maintain consistency.
+    * </p>
+    * 
+    * <p>
+    * This method is called before the reference count is decremented and
+    * before the binding state is cleared.
+    * </p>
+    * 
+    * <p>
+    * The default implementation does nothing.
+    * </p>
+    */
+   protected void onUnbindMemory() {
+   	// Hook for subclasses
+   }
 
-    @Override
-    public int incrementRef() {
-        checkBound();
-        return head.incrementRef();
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public int refCount() {
+   	checkBound();
+   	return boundMemory.refCount();
+   }
 
-    @Override
-    public int decrementRef() {
-        checkBound();
-        int newRef = head.decrementRef();
-        if (newRef == 0) {
-            close();
-        }
-        return newRef;
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Delegates to the bound memory with position adjustment for correct
+    * segment resolution within the chain.
+    * </p>
+    */
+   @Override
+   public Memory seekSegment(long position) {
+   	checkBound();
+   	if (proxyLength != -1 && position >= proxyLength) {
+   		throw new IllegalArgumentException(
+   			String.format("Position %d beyond bounded view length %d", 
+   				position, proxyLength));
+   	}
+   	return boundMemory.seekSegment(proxyOffset + position);
+   }
 
-    @Override
-    public void setNextMemory(Memory next) {
-        checkBound();
-        if (head != null) {
-            head.setNextMemory(next);
-        }
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * For bounded views, returns 1 as they appear as single segments.
+    * For unbounded views, returns the actual chain count.
+    * </p>
+    */
+   @Override
+   public int segmentCount() {
+   	checkBound();
+   	if (proxyLength != -1) {
+   		return 1; // Bounded views appear as single segment
+   	}
+   	return boundMemory.segmentCount();
+   }
 
-    @Override
-    public void close() {
-        if (!isClosed && head != null) {
-            unbindMemory();
-        }
-        isClosed = true;
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public long segmentEnd() {
+   	checkBound();
+   	if (proxyLength == -1) {
+   		return boundMemory.segmentEnd(); // Unbounded - use bound's end
+   	}
+   	return boundMemory.segmentOffset() + proxyOffset + proxyLength;
+   }
 
-    /**
-     * Hook method called after successful memory binding.
-     * 
-     * <p>Subclasses can override this method to perform additional initialization
-     * after binding to memory. The default implementation does nothing.</p>
-     */
-    protected void onBindMemory() {
-        // Default implementation - subclasses can override
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public long segmentOffset() {
+   	checkBound();
+   	return boundMemory.segmentOffset() + proxyOffset;
+   }
 
-    /**
-     * Hook method called before memory unbinding.
-     * 
-     * <p>Subclasses can override this method to perform cleanup operations
-     * before releasing the memory binding. The default implementation does nothing.</p>
-     */
-    protected void onUnbindMemory() {
-        // Default implementation - subclasses can override
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public long segmentSize() {
+   	checkBound();
+   	if (proxyLength == -1) {
+   		// Unbounded - calculate from offset to segment end
+   		long start = boundMemory.segmentOffset() + proxyOffset;
+   		long end = boundMemory.segmentEnd();
+   		
+   		// Safety check for overflow or invalid bounds
+   		if (start < 0 || start > end) {
+   			return 0;
+   		}
+   		return end - start;
+   	}
+   	return proxyLength;
+   }
 
-    /**
-     * Validates that this proxy is not closed.
-     * 
-     * @throws IllegalStateException if this proxy is closed
-     */
-    private void checkNotClosed() {
-        if (isClosed) {
-            throw new IllegalStateException("Memory proxy is closed");
-        }
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * Chain modification is only supported for unbounded views.
+    * Bounded views throw UnsupportedOperationException.
+    * </p>
+    */
+   @Override
+   public void setNextMemory(Memory next) {
+   	checkBound();
+   	if (proxyLength != -1) {
+   		throw new UnsupportedOperationException(
+   			"Cannot modify chain through bounded view");
+   	}
+   	boundMemory.setNextMemory(next);
+   }
 
-    /**
-     * Validates that this proxy is bound to memory.
-     * 
-     * @throws IllegalStateException if this proxy is not bound or is closed
-     */
-    private void checkBound() {
-        checkNotClosed();
-        if (head == null) {
-            throw new IllegalStateException("Memory proxy is not bound");
-        }
-    }
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+   public String toString() {
+   	if (isClosed) {
+   		return "MemoryProxy[CLOSED]";
+   	}
+   	if (boundMemory == null) {
+   		return "MemoryProxy[UNBOUND]";
+   	}
+   	String mode = (proxyLength == -1) ? "unbounded" : "bounded:" + proxyLength;
+   	return String.format("MemoryProxy[%s, offset=%d, bound=%s]",
+   		mode, proxyOffset, boundMemory.getClass().getSimpleName());
+   }
 
-    @Override
-    public String toString() {
-        if (isClosed) {
-            return "MemoryProxy[CLOSED]";
-        }
-        if (head == null) {
-            return "MemoryProxy[UNBOUND]";
-        }
-        return String.format("MemoryProxy[bound=%s, offset=%d, end=%d, current=%s]",
-            head.getClass().getSimpleName(), memoryOffset, memoryEnd, 
-            current == this ? "self" : current.getClass().getSimpleName());
-    }
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * For bounded views, returns the active bytes within the bounded region.
+    * For unbounded views, returns the total from the offset position.
+    * </p>
+    */
+   @Override
+   public long totalActiveBytes() {
+   	checkBound();
+   	if (proxyLength != -1) {
+   		// Bounded - active bytes within our view
+   		long start = activeBytesStart();
+   		long end = activeBytesEnd();
+   		return end - start;
+   	}
+   	// Unbounded - total from our offset
+   	long fullChainTotal = boundMemory.totalActiveBytes();
+   	long skipped = proxyOffset;
+   	return Math.max(0, fullChainTotal - skipped);
+   }
 
-	/**
-	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#memoryDataOffset(long)
-	 */
-	@Override
-	public long memoryDataOffset(long newOffset) {
-        checkNotClosed();
-        
-        return current.memoryDataOffset(newOffset);
-	}
+   /**
+    * {@inheritDoc}
+    * 
+    * <p>
+    * For bounded views, returns the bounded segment size.
+    * For unbounded views, returns the total from the offset position.
+    * </p>
+    */
+   @Override
+   public long totalSegmentSize() {
+   	checkBound();
+   	if (proxyLength != -1) {
+   		return proxyLength; // Bounded view size
+   	}
+   	// Unbounded - calculate total from our offset
+   	return boundMemory.totalSegmentSize() - proxyOffset;
+   }
 
-	/**
-	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#memoryDataEnd(long)
-	 */
-	@Override
-	public long memoryDataEnd(long newEnd) {
-        checkNotClosed();
-        
-        return current.memoryDataEnd(newEnd);
-	}
+   /**
+    * Unbinds this proxy from its currently bound memory.
+    * 
+    * <p>
+    * Releases the binding and decrements the bound memory's reference count.
+    * After unbinding, the proxy returns to unbound state and can be reused
+    * by binding to different memory.
+    * </p>
+    * 
+    * @throws IllegalStateException if this proxy is not bound or is closed
+    */
+   public void unbindMemory() {
+   	checkNotClosed();
+   	if (boundMemory == null) {
+   		throw new IllegalStateException("Proxy is not bound");
+   	}
+
+   	onUnbindMemory();
+
+   	boundMemory.decrementRef();
+   	boundMemory = null;
+   	proxyOffset = 0;
+   	proxyLength = 0;
+   }
 }
