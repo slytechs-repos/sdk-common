@@ -97,6 +97,13 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 	protected final BufferMetrics metrics;
 	private final MemoryPool<? extends MemoryBuffer> owningPool;
 
+	protected MemoryBuffer(MemoryPool<? extends MemoryBuffer> owningPool) {
+		this.owningPool = owningPool;
+		this.metrics = (owningPool != null)
+				? owningPool.getBufferMetrics()
+				: BufferMetrics.global();
+	}
+
 	/**
 	 * Constructs a MemoryBuffer with specified bounds.
 	 * 
@@ -124,7 +131,7 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 
 		this.metrics = (owningPool != null)
 				? owningPool.getBufferMetrics()
-				: new BufferMetrics();
+				: BufferMetrics.global();
 	}
 
 	/**
@@ -395,8 +402,6 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 	protected Memory currentSegment() {
 		return currentSegment != null ? currentSegment : this;
 	}
-
-	// ==================== Buffer Positioning Methods ====================
 
 	/**
 	 * Ensures the specified amount of space is available.
@@ -687,8 +692,6 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 		return (T) this;
 	}
 
-	// ==================== Space Management Methods ====================
-
 	@Override
 	protected void onRefCountZero() {
 		if (owningPool != null) {
@@ -699,8 +702,6 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 			super.onRefCountZero();
 		}
 	}
-
-	// ==================== Protected Helper Methods ====================
 
 	/**
 	 * Throws the accumulated error if present. Clears the error state.

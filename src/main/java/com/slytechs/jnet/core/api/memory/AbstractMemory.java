@@ -1,20 +1,20 @@
 /*
-* Sly Technologies Free License
-* 
-* Copyright 2025 Sly Technologies Inc.
-*
-* Licensed under the Sly Technologies Free License (the "License"); you may not
-* use this file except in compliance with the License. You may obtain a copy of
-* the License at
-* 
-* http://www.slytechs.com/free-license-text
-* 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-* License for the specific language governing permissions and limitations under
-* the License.
-*/
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.MemorySegment;
@@ -39,21 +39,21 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <h3>Segment Region Structure</h3>
  * 
  * <pre>{@code
-* Memory Segment:
-* ┌──────────────────────────────────────────────────────┐
-* │                  segmentSize                          │
-* │  ┌──────────┬─────────────────────┬──────────┐      │
-* │  │ headroom │  activeBytesLength   │ tailroom │      │
-* │  └──────────┴─────────────────────┴──────────┘      │
-* └──────────────────────────────────────────────────────┘
-*    ↑          ↑                      ↑          ↑
-* segmentOffset activeBytesStart  activeBytesEnd  segmentEnd
-* 
-* Invariants maintained:
-* • segmentOffset ≤ activeBytesStart ≤ activeBytesEnd ≤ segmentEnd
-* • segmentSize = segmentEnd - segmentOffset (immutable)
-* • activeBytesLength = activeBytesEnd - activeBytesStart (mutable)
-* }</pre>
+ * Memory Segment:
+ * ┌─────────────────────────────────────────────────┐
+ * │                  segmentSize                    │
+ * │  ┌──────────┬─────────────────────┬──────────┐  │
+ * │  │ headroom │  activeBytesLength  │ tailroom │  │
+ * │  └──────────┴─────────────────────┴──────────┘  │
+ * └─────────────────────────────────────────────────┘
+ *    ↑          ↑                     ↑          ↑
+ * segmentOffset activeBytesStart  activeBytesEnd  segmentEnd
+ * 
+ * Invariants maintained:
+ * • segmentOffset ≤ activeBytesStart ≤ activeBytesEnd ≤ segmentEnd
+ * • segmentSize = segmentEnd - segmentOffset (immutable)
+ * • activeBytesLength = activeBytesEnd - activeBytesStart (mutable)
+ * }</pre>
  * 
  * <h3>Reference Counting Model</h3>
  * <p>
@@ -142,13 +142,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * to active bytes boundaries and ByteBuffer access require external
  * synchronization if accessed concurrently.
  * </p>
- * 
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @since 1.0
  * @see Memory for the complete interface specification
  * @see MemoryBuffer for poolable buffer implementation
  * @see MemoryProxy for rebindable proxy implementation
+ * @since 1.0
  */
 public abstract class AbstractMemory implements Memory {
 
@@ -210,7 +210,7 @@ public abstract class AbstractMemory implements Memory {
 	 * with IllegalStateException.
 	 * </p>
 	 */
-	protected final AtomicInteger refCount = new AtomicInteger(1);
+	final AtomicInteger refCount = new AtomicInteger(1);
 
 	/**
 	 * The backing MemorySegment providing actual memory storage.
@@ -221,7 +221,7 @@ public abstract class AbstractMemory implements Memory {
 	 * the region managed by this Memory object.
 	 * </p>
 	 */
-	protected final MemorySegment segment;
+	protected MemorySegment segment;
 
 	/**
 	 * Starting offset of the segment region (immutable).
@@ -231,7 +231,7 @@ public abstract class AbstractMemory implements Memory {
 	 * Memory object manages. This boundary is immutable after construction.
 	 * </p>
 	 */
-	protected final long segmentStart;
+	protected long segmentStart;
 
 	/**
 	 * Ending offset of the segment region (immutable, exclusive).
@@ -241,7 +241,7 @@ public abstract class AbstractMemory implements Memory {
 	 * MemorySegment. This boundary is immutable after construction.
 	 * </p>
 	 */
-	protected final long segmentStop;
+	protected long segmentStop;
 
 	/**
 	 * Starting offset of active bytes within the segment (mutable).
@@ -286,6 +286,11 @@ public abstract class AbstractMemory implements Memory {
 	 * </p>
 	 */
 	private ByteBuffer cachedByteBuffer;
+
+	/**
+	 * Instantiates a new unbound abstract memory.
+	 */
+	protected AbstractMemory() {}
 
 	/**
 	 * Constructs an AbstractMemory with specified segment and full active bounds.
@@ -424,6 +429,11 @@ public abstract class AbstractMemory implements Memory {
 		return activeBytesStop - activeBytesStart;
 	}
 
+	/**
+	 * Active bytes length raw.
+	 *
+	 * @return the long
+	 */
 	long activeBytesLengthRaw() {
 		return activeBytesStop - activeBytesStart;
 	}
@@ -545,10 +555,24 @@ public abstract class AbstractMemory implements Memory {
 		return target.asMemorySegment().asSlice(localOffset);
 	}
 
+	/**
+	 * Bind memory segment.
+	 *
+	 * @param segment     the segment
+	 * @param start       the start
+	 * @param stop        the stop
+	 * @param activeStart the active start
+	 * @param activeStop  the active stop
+	 */
 	public void bindMemorySegment(MemorySegment segment,
 			long start, long stop, long activeStart, long activeStop) {
 		if (refCount() != 0)
 			throw new MemoryBindingException("already bound, refCount=" + refCount());
+
+		this.segmentStart = start;
+		this.segmentStop = stop;
+		this.activeBytesStart = activeStart;
+		this.activeBytesStop = activeStop;
 	}
 
 	/**
@@ -596,6 +620,11 @@ public abstract class AbstractMemory implements Memory {
 		return nextSegment != null;
 	}
 
+	/**
+	 * Headroom raw.
+	 *
+	 * @return the long
+	 */
 	long headroomRaw() {
 		return activeBytesStart - segmentStart;
 	}
@@ -696,7 +725,7 @@ public abstract class AbstractMemory implements Memory {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public final int refCount() {
+	public int refCount() {
 		return refCount.get();
 	}
 
@@ -864,6 +893,11 @@ public abstract class AbstractMemory implements Memory {
 		this.nextSegment = next;
 	}
 
+	/**
+	 * Tailroom raw.
+	 *
+	 * @return the long
+	 */
 	long tailroomRaw() {
 		return segmentStop - activeBytesStop;
 	}
@@ -897,6 +931,11 @@ public abstract class AbstractMemory implements Memory {
 		return total;
 	}
 
+	/**
+	 * Total active bytes raw.
+	 *
+	 * @return the long
+	 */
 	long totalActiveBytesRaw() {
 		long total = 0;
 		for (AbstractMemory seg = this; seg != null; seg = (AbstractMemory) seg.nextSegment()) {
@@ -922,7 +961,19 @@ public abstract class AbstractMemory implements Memory {
 		return total;
 	}
 
+	/**
+	 * Unbind memory segment.
+	 */
 	public void unbindMemorySegment() {
 
+		while (refCount() > 0)
+			decrementRef();
+
+		this.segment = null;
+		this.segmentStart = 0;
+		this.segmentStop = 0;
+		this.activeBytesStart = 0;
+		this.activeBytesStop = 0;
+		this.nextSegment = null;
 	}
 }

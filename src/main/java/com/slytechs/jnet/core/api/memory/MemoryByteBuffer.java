@@ -116,6 +116,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		return memory.asMemorySegment(); // Fallback
 	}
 
+	public MemoryByteBuffer() {
+		super(null);
+
+	}
+
 	/**
 	 * Constructs a MemoryByteBuffer with specified bounds.
 	 * 
@@ -200,14 +205,13 @@ public class MemoryByteBuffer extends MemoryBuffer {
 			byte testByte = segment.get(ValueLayout.JAVA_BYTE, position());
 			System.out.printf("Byte at position %d: %d%n", position(), testByte);
 			System.out.printf("Segment size: %d%n", segment.byteSize());
-			
-			
+
 			metrics.recordBytesCopiedCrossSegment(dataToMove);
 			MemorySegment.copy(
-			    segment, activeBytesStart() + position(),  // Absolute segment offset
-			    newSegment.segment, newSegment.activeBytesStart() + gapRemaining,
-			    dataToMove);
-			
+					segment, activeBytesStart() + position(), // Absolute segment offset
+					newSegment.segment, newSegment.activeBytesStart() + gapRemaining,
+					dataToMove);
+
 			newSegment.activeBytesEnd(newSegment.activeBytesStart() + dataToMove + gapRemaining);
 		}
 
@@ -231,7 +235,7 @@ public class MemoryByteBuffer extends MemoryBuffer {
 			setError(new BufferOperationException("No pool available for allocation"));
 			return;
 		}
-		
+
 		allocateGapAndOverflow(totalSize, null);
 
 		long dataToMove = remaining();

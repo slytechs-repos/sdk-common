@@ -12,7 +12,7 @@ package com.slytechs.jnet.core.api.memory;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-class MemoryBindingException extends RuntimeException {
+public class MemoryBindingException extends RuntimeException {
 
 	private static final long serialVersionUID = -595068674386606756L;
 
