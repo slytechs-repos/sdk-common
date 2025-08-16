@@ -19,6 +19,7 @@ module com.slytechs.jnet.core.api {
     exports com.slytechs.jnet.core.api.memory;
     exports com.slytechs.jnet.core.api.format;
     exports com.slytechs.jnet.core.api.time;
+    exports com.slytechs.jnet.core.api.foreign;
     exports com.slytechs.jnet.core.api.util;
     exports com.slytechs.jnet.core.api.util.function;
 
