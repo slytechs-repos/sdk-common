@@ -3,7 +3,7 @@
  * 
  * <p>This package provides a comprehensive memory management system built on Java's Foreign Function
  * &amp; Memory (Panama FFM) API, designed for sustained throughput exceeding 100 million packets per second.
- * The API supports both single memory segments and chained structures with reference counting, memory
+ * The API supports both single memory segments and chained segment structures with reference counting, memory
  * pooling, and efficient editing capabilities.
  * 
  * <h2>Getting Started</h2>
@@ -11,35 +11,37 @@
  * <p>The simplest way to begin using the Memory API is with the factory methods:
  * 
  * <pre>{@code
- * // Create memory from a MemorySegment
- * try (Arena arena = Arena.ofConfined()) {
- *     MemorySegment segment = arena.allocate(1024);
- *     Memory memory = Memory.of(segment, 0);  // Wrap entire segment
- *     
- *     // Access as ByteBuffer
- *     ByteBuffer buffer = memory.asByteBuffer();
- *     buffer.put("Hello World".getBytes());
- *     
- *     // Check basic properties
- *     System.out.println("Capacity: " + memory.memoryCapacity());
- *     System.out.println("Data length: " + memory.memoryDataLength());
- * }
+ * // Allocate a new MemoryByteBuffer
+ * MemoryByteBuffer buffer = Memory.of(2048);  // Allocates 2KB buffer
+ * 
+ * // Use buffer for data operations
+ * buffer.put("Hello World".getBytes());
+ * buffer.flip();  // Prepare for reading
+ * 
+ * // Check basic properties
+ * System.out.println("Capacity: " + buffer.capacity());
+ * System.out.println("Active bytes: " + buffer.activeBytesLength());
+ * 
+ * // Release when done
+ * buffer.decrementRef();  // Returns to internal pool or frees
  * }</pre>
  * 
  * <p>For high-performance scenarios, use memory pools:
  * 
  * <pre>{@code
  * // Create a memory pool for sustained allocation
- * MemoryPool<MemoryBuffer> pool = new MemoryPool<>(
+ * MemoryPool<MemoryByteBuffer> pool = new MemoryPool<>(
  *     "packet-processing-pool",    // Named resource for monitoring
  *     2048,                        // Segment size (typical packet size)
  *     1000,                        // Number of pre-allocated segments
+ *     128,                         // Default headroom
+ *     128,                         // Default tailroom
  *     Arena.global(),              // Memory arena
- *     MemoryBuffer::new            // Factory method
+ *     MemoryByteBuffer::new        // Factory method
  * );
  * 
- * // Allocate from pool
- * MemoryBuffer buffer = pool.allocate();
+ * // Allocate from pool - O(1) operation
+ * MemoryByteBuffer buffer = pool.allocate();
  * try {
  *     // Use buffer for packet processing...
  *     buffer.put(packetData);
@@ -50,46 +52,59 @@
  * 
  * <h2>Key Concepts</h2>
  * 
- * <h3>Memory vs Data Bounds</h3>
- * <p>The API distinguishes between <em>memory bounds</em> (total addressable space) and 
- * <em>data bounds</em> (currently active data region):
+ * <h3>Regions vs Projections</h3>
+ * <p>The API distinguishes between <em>regions</em> (local segment properties) and 
+ * <em>projections</em> (chain-wide views):
  * 
  * <pre>{@code
- * |-------- Memory Bounds (Fixed) --------|
- * |  gap  |--- Data Bounds ---|   gap     |
- *         ↑                   ↑
- *   memoryDataOffset     memoryDataEnd
+ * REGIONS (Per-Segment):
+ * |---------- Segment Region (Fixed) --------|
+ * | headroom |--- Active Bytes ---| tailroom |
+ *            ↑                    ↑
+ *     activeBytesStart      activeBytesEnd
  * 
- * // Memory bounds: memoryOffset() to memoryEnd() - immutable
- * // Data bounds: memoryDataOffset() to memoryDataEnd() - can be adjusted
+ * PROJECTIONS (Across Chain):
+ * [Segment 1] → [Segment 2] → [Segment 3]
+ *     ↑             ↑             ↑
+ * position=100  position=400  position=700
+ * |------------- capacity (chain-wide) --------------|
+ * |------ limit -------|
+ * 
+ * // Regions: segmentOffset() to segmentEnd() - per-segment bounds
+ * // Active region: activeBytesStart() to activeBytesEnd() - data within segment
+ * // Projections: position(), limit(), capacity() - across entire chain
  * }</pre>
  * 
- * <p>This design enables efficient space management similar to DPDK's rte_mbuf, where leading
- * and trailing space can be used for in-place expansion.
+ * <p>This design enables efficient space management similar to DPDK's rte_mbuf, where headroom
+ * and tailroom can be used for in-place expansion without data movement.
  * 
  * <h3>Reference Counting</h3>
  * <p>All memory objects use atomic reference counting for safe resource management:
  * 
  * <pre>{@code
- * Memory original = Memory.of(segment, 0);    // refcount = 1
- * Memory shared = original.incrementRef();    // refcount = 2
+ * MemoryByteBuffer original = Memory.of(2048);    // refcount = 1
+ * Memory shared = original.incrementRef();        // refcount = 2
  * 
- * // When refcount reaches 0, memory is automatically cleaned up
+ * // When refcount reaches 0, memory is automatically released to pool
  * shared.decrementRef();    // refcount = 1
- * original.decrementRef();  // refcount = 0, memory closed
+ * original.decrementRef();  // refcount = 0, returned to pool or freed
  * }</pre>
  * 
- * <h3>Memory Chains</h3>
+ * <h3>Chained Segments</h3>
  * <p>Memory objects can be linked together to handle fragmented data without copying:
  * 
  * <pre>{@code
- * Memory segment1 = Memory.of(firstSegment, 0);
- * Memory segment2 = Memory.of(secondSegment, 0);
+ * MemoryByteBuffer segment1 = Memory.of(1500);
+ * MemoryByteBuffer segment2 = Memory.of(1500);
  * segment1.setNextMemory(segment2);  // Create chain
  * 
- * // Chain operations work across all segments
- * long totalLength = segment1.chainDataLength();
- * int segmentCount = segment1.chainMemoryCount();
+ * // Segment chain operations work across all segments
+ * long totalActiveBytes = segment1.chainedActiveBytesLength();
+ * int segmentCount = segment1.chainedSegmentCount();
+ * 
+ * // Buffer operations transparently span segments
+ * segment1.position(1400);
+ * segment1.putLong(0x123456789ABCDEFL);  // Automatically spans to segment2
  * }</pre>
  * 
  * <h3>Type Safety Through Interfaces</h3>
@@ -97,59 +112,172 @@
  * 
  * <ul>
  * <li>{@link MemoryView} - Read-only access and navigation</li>
- * <li>{@link MemoryWindow} - Bounds and positioning information</li>
+ * <li>{@link MemoryWindow} - Region and projection information</li>
  * <li>{@link MemoryRef} - Reference counting and lifecycle</li>
  * <li>{@link Memory} - Complete memory abstraction (extends all three)</li>
  * </ul>
  * 
- * <p>{@link MemoryProxy} implements the first three interfaces but <em>not</em> Memory,
- * preventing proxies from being used in chains or where actual memory is expected.
+ * <p>{@link MemoryProxy} provides flexible, efficient access to chained segments without
+ * buffer-style positioning, ideal for protocol parsing across segment boundaries.
  * 
- * <h2>Basic Memory Operations</h2>
+ * <h2>MemoryByteBuffer - Buffer-Style Operations</h2>
  * 
- * <h3>Creating Memory Objects</h3>
+ * <p>{@link MemoryByteBuffer} provides efficient buffer manipulation with get/put accessors
+ * mimicking java.nio.ByteBuffer operations, but with multi-segment support:
+ * 
+ * <h3>Position, Limit, and Capacity</h3>
  * 
  * <pre>{@code
- * // Factory methods for MemoryWrapper (lightweight, immutable)
- * Memory memory1 = Memory.of(segment, 0);           // Entire segment
- * Memory memory2 = Memory.of(segment, 100, 512);    // Specific region
+ * MemoryByteBuffer buffer = pool.allocate();
  * 
- * // For mutable data bounds, use MemorySlice
- * MemorySlice slice = new MemorySlice(segment, 0, 1024, 100, 600);
- * slice.memoryDataOffset(200);  // Adjust data start
- * slice.memoryDataEnd(800);     // Adjust data end
+ * // Position/limit/capacity operate within totalActiveBytes region
+ * buffer.position(100)     // Set position within active bytes
+ *       .limit(500)        // Set limit within active bytes  
+ *       .mark();           // Mark current position
+ * 
+ * // These are projections across the entire chain
+ * long cap = buffer.capacity();      // Total active bytes across chain
+ * long pos = buffer.position();      // Current position in chain
+ * long lim = buffer.limit();         // Current limit in chain
+ * 
+ * // Buffer state
+ * long remaining = buffer.remaining();     // Bytes between position and limit
+ * boolean hasData = buffer.hasRemaining(); // Check for remaining data
  * }</pre>
  * 
- * <h3>Accessing Memory Content</h3>
+ * <h3>Data Access Operations</h3>
  * 
  * <pre>{@code
- * // ByteBuffer access (most common)
- * ByteBuffer buffer = memory.asByteBuffer();
- * buffer.put(data);
+ * // Relative put operations (advance position automatically)
+ * buffer.put((byte) 0x42)          // Write byte, position += 1
+ *       .putShort((short) 0x1234)  // Write short, position += 2
+ *       .putInt(0x12345678)        // Write int, position += 4
+ *       .putLong(0x123456789ABCDEFL) // Write long, position += 8
+ *       .put(byteArray);           // Write array, position += array.length
  * 
- * // Direct MemorySegment access
- * MemorySegment segment = memory.asMemorySegment();
- * segment.set(ValueLayout.JAVA_INT, 0, 42);
+ * // Absolute put operations (don't change position)
+ * buffer.put(100, (byte) 0x42)     // Write byte at index 100
+ *       .putInt(200, 0x12345678);  // Write int at index 200
  * 
- * // Chain-aware access
- * MemorySegment segmentAt = memory.asMemorySegmentAt(1500);  // May span segments
+ * // Network byte order operations
+ * buffer.putShortBE((short) 0x0800)  // Write EtherType in big-endian
+ *       .putIntBE(0x0A000001)        // Write IP address in network order
+ *       .putLongBE(timestamp);        // Write timestamp in network order
+ * 
+ * // Get operations (advance position automatically)
+ * byte b = buffer.get();             // Read byte, position += 1
+ * short s = buffer.getShort();       // Read short, position += 2
+ * int etherType = buffer.getShortBE() & 0xFFFF; // Read network byte order
+ * buffer.get(destinationArray);      // Read into array
+ * 
+ * // Operations transparently span segments
+ * buffer.position(segmentSize - 4);
+ * buffer.putLong(0x123456789ABCDEFL); // Automatically spans segments
  * }</pre>
  * 
- * <h3>Memory Properties</h3>
+ * <h3>Buffer Editing Operations - InsertSpace and RemoveSpace</h3>
  * 
  * <pre>{@code
- * // Basic properties
- * long capacity = memory.memoryCapacity();           // Total addressable space
- * long dataLength = memory.memoryDataLength();       // Current data size
+ * // InsertSpace - creates gaps for data insertion
+ * buffer.position(12);
+ * buffer.insertSpace(4);        // Creates 4-byte gap at position
+ * buffer.putIntBE(0x8100BEEF);  // Write VLAN header in gap
  * 
- * // Chain properties
- * long chainCapacity = memory.chainCapacity();       // Total across all segments
- * long chainDataLength = memory.chainDataLength();   // Data across all segments
- * int segmentCount = memory.chainMemoryCount();      // Number of segments
+ * // The insertSpace algorithm:
+ * // 1. Try to expand into headroom or tailroom (no data movement)
+ * // 2. Move smaller data portion to create space (left or right)
+ * // 3. Push overflow to next segment's headroom if available
+ * // 4. Allocate new segment(s) from pool if needed
  * 
- * // State checks
- * boolean isNull = memory.isNull();                  // Check for null/invalid
- * boolean isPointer = memory.isPointer();            // Check for zero-sized pointer
+ * // RemoveSpace - removes bytes from buffer
+ * buffer.position(100);
+ * buffer.removeSpace(20);       // Remove 20 bytes starting at position
+ * 
+ * // Split - divides segment into two with expansion space
+ * buffer.position(1500);
+ * buffer.split();               // Creates new segment at position
+ *                              // Both segments get optimal headroom/tailroom
+ * }</pre>
+ * 
+ * <h3>Native Segment Binding</h3>
+ * 
+ * <pre>{@code
+ * // Bind buffer to external memory (zero-copy)
+ * MemorySegment dpdkMbuf = ...; // From DPDK rx_burst
+ * buffer.rewrap(dpdkMbuf, 0, packetLength);
+ * 
+ * // Process packet using same buffer instance
+ * int etherType = buffer.getShortBE(12) & 0xFFFF;
+ * 
+ * // If modifications needed, insertSpace allocates from pool
+ * if (needsVlan) {
+ *     buffer.position(12);
+ *     buffer.insertSpace(4);    // Allocates from linked pool
+ *     buffer.putIntBE(vlanTag);
+ * }
+ * 
+ * // Release native memory when done
+ * buffer.decrementRef();        // Calls native release handler
+ * }</pre>
+ * 
+ * <h2>MemoryProxy - Flexible Chain Access</h2>
+ * 
+ * <p>{@link MemoryProxy} provides efficient, full chain accessible access to segments
+ * without buffer-style positioning constraints:
+ * 
+ * <h3>Basic Proxy Usage</h3>
+ * 
+ * <pre>{@code
+ * // Create reusable proxy (typically as instance field)
+ * MemoryProxy proxy = new MemoryProxy();
+ * 
+ * // Bind to memory region (can span segments)
+ * proxy.bindMemory(packet, 0, packet.chainedActiveBytesLength());
+ * 
+ * // Access data at any offset efficiently
+ * byte b = proxy.getByte(1000);        // Direct access at offset 1000
+ * short s = proxy.getShort(1500);      // May span segments
+ * int ip = proxy.getInt(26);           // Source IP at offset 26
+ * 
+ * // Read into arrays across segments
+ * byte[] payload = new byte[1000];
+ * proxy.getBytes(100, payload);        // Read from offset 100
+ * 
+ * // Unbind for reuse
+ * proxy.unbindMemory();
+ * }</pre>
+ * 
+ * <h3>Protocol Parsing with Proxies</h3>
+ * 
+ * <pre>{@code
+ * public class PacketParser {
+ *     private final MemoryProxy ethProxy = new MemoryProxy();
+ *     private final MemoryProxy ipProxy = new MemoryProxy();
+ *     private final MemoryProxy tcpProxy = new MemoryProxy();
+ *     
+ *     public void parse(Memory packet) {
+ *         // Bind to entire packet for flexible access
+ *         ethProxy.bindMemory(packet, 0, packet.chainedActiveBytesLength());
+ *         
+ *         // Parse Ethernet
+ *         int etherType = ethProxy.getShortBE(12) & 0xFFFF;
+ *         
+ *         if (etherType == 0x0800) {  // IPv4
+ *             // Bind IP proxy to IP header region
+ *             ipProxy.bindMemory(packet, 14, 20);
+ *             
+ *             int ipProto = ipProxy.getByte(9) & 0xFF;
+ *             int ipHdrLen = (ipProxy.getByte(0) & 0x0F) * 4;
+ *             
+ *             if (ipProto == 6) {  // TCP
+ *                 // TCP header may span segments in jumbo frames
+ *                 tcpProxy.bindMemory(packet, 14 + ipHdrLen, 20);
+ *                 int srcPort = tcpProxy.getShortBE(0) & 0xFFFF;
+ *                 int dstPort = tcpProxy.getShortBE(2) & 0xFFFF;
+ *             }
+ *         }
+ *     }
+ * }
  * }</pre>
  * 
  * <h2>Memory Pools for High Performance</h2>
@@ -161,353 +289,186 @@
  * 
  * <pre>{@code
  * // Standard pool with Arena allocator
- * MemoryPool<MemoryBuffer> standardPool = new MemoryPool<>(
+ * MemoryPool<MemoryByteBuffer> standardPool = new MemoryPool<>(
  *     "ingress-packet-pool",
  *     2048,                        // Segment size
  *     10000,                       // Segment count
+ *     128,                         // Default headroom
+ *     128,                         // Default tailroom
  *     Arena.global(),              // Arena for allocation
- *     MemoryBuffer::new            // Factory method
+ *     MemoryByteBuffer::new        // Factory method
  * );
  * 
  * // Pool with custom backend allocator
  * MemoryAllocator dpdkAllocator = new DpdkMemoryAllocator("dpdk-pool", rteMempool);
- * MemoryPool<MemoryBuffer> dpdkPool = new MemoryPool<>(
+ * MemoryPool<MemoryByteBuffer> dpdkPool = new MemoryPool<>(
  *     "dpdk-packet-pool",
  *     2048, 10000,
+ *     128, 128,                    // Headroom/tailroom
  *     dpdkAllocator,               // Backend-specific allocator
- *     MemoryBuffer::new
+ *     MemoryByteBuffer::new
  * );
  * }</pre>
  * 
- * <h3>Allocation Strategies</h3>
+ * <h3>Pool Monitoring with Metrics</h3>
  * 
  * <pre>{@code
- * // Non-throwing allocation (returns null on exhaustion)
- * MemoryBuffer buffer = pool.allocate();
- * if (buffer == null) {
- *     handlePoolExhaustion();
- *     return;
- * }
+ * // Monitor pool health via PoolMetrics
+ * PoolMetrics metrics = pool.getPoolMetrics();
  * 
- * // Fail-fast allocation (throws on exhaustion)
- * try {
- *     MemoryBuffer buffer = pool.allocateOrThrow();
- *     processPacket(buffer);
- * } catch (OutOfMemoryError e) {
- *     handlePoolExhaustion();
- * }
- * }</pre>
- * 
- * <h3>Pool Monitoring</h3>
- * 
- * <pre>{@code
- * // Check pool health
- * PoolMetrics metrics = pool.getMetrics();
- * double utilization = metrics.getUtilizationRatio();
+ * // Check allocation failures (non-blocking counters)
  * long failures = metrics.getAllocationFailures();
+ * if (failures > lastKnownFailures) {
+ *     log.warn("Pool {} experiencing allocation failures: {}", 
+ *              pool.name(), failures);
+ *     // Consider increasing pool size
+ * }
  * 
+ * // Monitor utilization
+ * double utilization = metrics.getUtilizationRatio();
  * if (utilization > 0.9) {
- *     log.warn("Pool '{}' nearly exhausted: {:.1f}%", pool.name(), utilization * 100);
+ *     log.warn("Pool {} nearly exhausted: {:.1f}%", 
+ *              pool.name(), utilization * 100);
+ * }
+ * 
+ * // Track segment allocations
+ * long allocated = metrics.getSegmentsAllocated();
+ * long inUse = metrics.getSegmentsInUse();
+ * log.info("Pool {}: {}/{} segments in use", 
+ *          pool.name(), inUse, allocated);
+ * }</pre>
+ * 
+ * <h2>Buffer Metrics for Operation Monitoring</h2>
+ * 
+ * <p>BufferMetrics tracks all buffer operations without interrupting data flow:
+ * 
+ * <pre>{@code
+ * BufferMetrics metrics = buffer.getMetrics();
+ * 
+ * // Monitor editing operations
+ * long inserts = metrics.getInsertSpaceCount();
+ * long removes = metrics.getRemoveSpaceCount();
+ * long splits = metrics.getSplitCount();
+ * 
+ * // Track data movement
+ * long bytesMovedLeft = metrics.getBytesMovedLeft();
+ * long bytesMovedRight = metrics.getBytesMovedRight();
+ * long crossSegmentCopies = metrics.getBytesCopiedCrossSegment();
+ * 
+ * // Monitor failures (non-throwing)
+ * long outOfMemory = metrics.getOutOfMemoryCount();
+ * long boundaryErrors = metrics.getBoundaryWriteErrors();
+ * 
+ * if (outOfMemory > 0) {
+ *     // Pool exhaustion during insertSpace - adjust pool size
+ *     adjustPoolSize(pool);
+ * }
+ * 
+ * if (boundaryErrors > 0) {
+ *     // Cross-segment write failures - check segment linking
+ *     checkSegmentIntegrity(buffer);
  * }
  * }</pre>
  * 
- * <h2>Memory Proxies for Protocol Processing</h2>
+ * <h2>Wrapper Pools for External Memory</h2>
  * 
- * <p>{@link MemoryProxy} provides zero-allocation, rebindable access to memory regions,
- * ideal for protocol header parsing:
+ * <p>WrapperBufferPool provides efficient wrapping of external memory (DPDK, Napatech, libpcap):
  * 
- * <h3>Basic Proxy Usage</h3>
+ * <h3>Creating Wrapper Pools</h3>
  * 
  * <pre>{@code
- * // Create reusable proxies (typically as instance fields)
- * MemoryProxy ethernetProxy = new MemoryProxy();
- * MemoryProxy ipProxy = new MemoryProxy();
+ * // Create per-lcore wrapper pool (no thread contention)
+ * MemoryPool<MemoryByteBuffer> editPool = new MemoryPool<>(
+ *     "EditPool-lcore" + lcoreId,
+ *     2048, 1000, 128, 128,
+ *     hugepagesArena,
+ *     MemoryByteBuffer::new);
  * 
- * // Bind to protocol headers in packet
- * ethernetProxy.bindMemory(packet, 0, 14);      // Ethernet header
- * ipProxy.bindMemory(packet, 14, 20);           // IP header
- * 
- * // Access header data
- * ByteBuffer ethHeader = ethernetProxy.asByteBuffer();
- * int etherType = ethHeader.getShort(12) & 0xFFFF;
- * 
- * // Unbind for reuse with next packet
- * ethernetProxy.unbindMemory();
- * ipProxy.unbindMemory();
+ * WrapperBufferPool wrapperPool = new WrapperBufferPool(
+ *     "WrapperPool-lcore" + lcoreId,
+ *     editPool,      // Pool for edit operations
+ *     100,           // Initial wrapper count
+ *     1000);         // Max wrapper count
  * }</pre>
  * 
- * <h3>Protocol Header Classes</h3>
- * 
- * <p>Extend MemoryProxy for protocol-specific access:
+ * <h3>Wrapping External Packets</h3>
  * 
  * <pre>{@code
- * public class EthernetHeader extends MemoryProxy {
- *     private final MacAddressProxy dstMac = new MacAddressProxy();
- *     private final MacAddressProxy srcMac = new MacAddressProxy();
- *     
- *     @Override
- *     protected void onBind() {
- *         dstMac.bindMemory(asMemory(), 0, 6);
- *         srcMac.bindMemory(asMemory(), 6, 6);
- *     }
- *     
- *     public int getEtherType() {
- *         return asMemorySegment().get(ValueLayout.JAVA_SHORT_UNALIGNED, 12) & 0xFFFF;
- *     }
+ * // Wrap DPDK mbuf - zero copy
+ * MemorySegment mbufData = Mbuf.getDataSegment(mbufPtr);
+ * WrapperByteBuffer packet = wrapperPool.wrap(mbufData, 0, packetLen);
+ * packet.setNativeContext(mbufPtr, mbuf -> rte_pktmbuf_free(mbuf));
+ * 
+ * // Process wrapped packet
+ * if (needsEncapsulation) {
+ *     packet.position(0);
+ *     packet.insertSpace(14);  // Allocates from editPool if needed
+ *     packet.put(outerEtherHeader);
  * }
+ * 
+ * // Track wrapper pool metrics
+ * WrapperMetrics wrapMetrics = wrapperPool.getMetrics();
+ * log.debug("Wrapper pool: {} allocated, {} free, {} in use",
+ *           wrapMetrics.getAllocated(),
+ *           wrapMetrics.getFree(),
+ *           wrapMetrics.getInUse());
+ * 
+ * // Release (returns wrapper to pool, frees mbuf)
+ * packet.decrementRef();
  * }</pre>
  * 
- * <h3>Proxy Type Safety</h3>
+ * <h2>Error Handling Philosophy</h2>
  * 
- * <p>Proxies cannot be used where Memory is expected (compile-time protection):
+ * <p>The Memory API uses non-interrupting error handling with metrics for production environments:
  * 
- * <pre>{@code
- * MemoryProxy proxy = new MemoryProxy();
- * proxy.bindMemory(packet, 0, 14);
- * 
- * // These operations are NOT allowed (won't compile):
- * // editor.edit(proxy);              // ❌ Proxy is not Memory
- * // packet.setNextMemory(proxy);     // ❌ Proxy cannot be in chains
- * 
- * // Get actual memory for editing:
- * Memory actualMemory = proxy.asMemory();  // ✅ Returns bound memory
- * editor.edit(actualMemory);               // ✅ Can edit actual memory
- * }</pre>
- * 
- * <h2>Buffer-Style Operations</h2>
- * 
- * <p>{@link MemoryBuffer} provides familiar buffer-style positioning operations
- * that work across memory chains:
- * 
- * <h3>Position and Limit Management</h3>
+ * <h3>Non-Throwing Operations</h3>
  * 
  * <pre>{@code
- * MemoryBuffer buffer = pool.allocate();
- * 
- * // Buffer-style operations (similar to java.nio.Buffer)
- * buffer.position(100)           // Set absolute position
- *       .limit(500)              // Set limit
- *       .mark();                 // Mark current position
- * 
- * // Delta operations (more efficient)
- * buffer.adjustPosition(50)      // Move position forward/backward
- *       .skip(20)                // Move forward (convenience)
- *       .backup(10)              // Move backward (convenience)
- *       .adjustLimit(-100);      // Shrink limit
- * 
- * // Buffer state
- * long remaining = buffer.remaining();        // Bytes between position and limit
- * boolean hasData = buffer.hasRemaining();    // Check for remaining data
- * }</pre>
- * 
- * <h3>Automatic Positioning with Proxies</h3>
- * 
- * <pre>{@code
- * // Position buffer at protocol headers with automatic bounds
- * MemoryBuffer packetBuffer = packet.asMemoryBuffer();
- * 
- * // Edit Ethernet header (position=0, limit=14)
- * packetBuffer.positionAt(ethernetProxy)
- *             .skip(6)                    // Move to source MAC
- *             .put(newSrcMacBytes)        // Write 6 bytes
- *             .putShort(0x0800);          // Write EtherType
- * 
- * // Edit IP header (position=14, limit=34)  
- * packetBuffer.positionAt(ipProxy)
- *             .skip(8)                    // Move to TTL field
- *             .put((byte)(ttl - 1));      // Decrement TTL
- * }</pre>
- * 
- * <h3>Data Access Operations</h3>
- * 
- * <pre>{@code
- * // Put operations (advance position automatically)
- * buffer.put((byte) 0x42)          // Write byte, position += 1
- *       .putShort((short) 0x1234)  // Write short, position += 2
- *       .putInt(0x12345678)        // Write int, position += 4
- *       .put(byteArray);           // Write array, position += array.length
- * 
- * // Get operations (advance position automatically)
- * byte b = buffer.get();           // Read byte, position += 1
- * short s = buffer.getShort();     // Read short, position += 2
- * buffer.get(destinationArray);    // Read into array
- * 
- * // Cross-segment writes (automatic expansion attempts)
- * buffer.putLong(0x123456789ABCDEFL);  // May span segments, handles automatically
- * }</pre>
- * 
- * <h2>Complex Memory Editing</h2>
- * 
- * <p>{@link MemoryEditor} provides comprehensive editing capabilities for complex
- * memory chain modifications:
- * 
- * <h3>Creating and Using Editors</h3>
- * 
- * <pre>{@code
- * // Create named editor for monitoring
- * try (MemoryEditor<MemoryBuffer> editor = MemoryEditor.create("vlan-insertion")) {
- *     
- *     MemoryBuffer result = editor
- *         .edit(packet)                              // Bind to memory chain
- *         .insertAt(12, vlanHeader)                  // Insert VLAN after MAC addresses
- *         .removeRange(100, 120)                     // Remove optional fields
- *         .appendToChain(trailer)                    // Add trailer
- *         .commit();                                 // Apply changes
- *     
- *     // Editor can be reused
- *     MemoryBuffer result2 = editor
- *         .edit(anotherPacket)
- *         .prependToChain(tunnelHeader)
- *         .commit();
- * }
- * }</pre>
- * 
- * <h3>Structural Operations</h3>
- * 
- * <pre>{@code
- * // Chain modification operations
- * editor.insertAt(offset, data)              // Insert at specific offset
- *       .removeRange(start, end)             // Remove byte range
- *       .replaceRange(start, end, newData)   // Replace with new data
- *       .appendToChain(data)                 // Add to end
- *       .prependToChain(data);               // Add to beginning
- * 
- * // Advanced operations
- * editor.splitAt(offset)                     // Split chain at offset
- *       .mergeWith(otherChain)               // Merge chains
- *       .compactChain();                     // Optimize structure
- * }</pre>
- * 
- * <h3>Editor Monitoring</h3>
- * 
- * <pre>{@code
- * // Monitor editor performance
- * EditorMetrics metrics = editor.getMetrics();
- * 
- * log.info("Editor '{}': {} operations, {} failures, {} cross-segment writes",
- *          editor.name(),
- *          metrics.getEditOperations(),
- *          metrics.getAllocationFailures(),
- *          metrics.getCrossSegmentOperations());
- * }</pre>
- * 
- * <h2>Backend Integration</h2>
- * 
- * <p>The Memory API supports multiple allocation backends through the
- * {@link MemoryAllocator} interface:
- * 
- * <h3>Standard Arena Allocator</h3>
- * 
- * <pre>{@code
- * // For development and testing
- * MemoryAllocator standardAllocator = new ArenaMemoryAllocator(
- *     "test-allocator", Arena.global());
- * }</pre>
- * 
- * <h3>DPDK Integration</h3>
- * 
- * <pre>{@code
- * // High-performance DPDK allocation
- * RteMempool rtePool = RteMbuf.pktmbufPoolCreate("dpdk-pool", 1024, 256, 0, 2048, 0);
- * MemoryAllocator dpdkAllocator = new DpdkMemoryAllocator("dpdk-allocator", rtePool);
- * 
- * // Pool automatically uses DPDK allocation
- * MemoryPool<MemoryBuffer> pool = new MemoryPool<>(
- *     "dpdk-packet-pool", 2048, 1000, dpdkAllocator, MemoryBuffer::new);
- * }</pre>
- * 
- * <h3>Napatech NTAPI Integration</h3>
- * 
- * <pre>{@code
- * // Hardware-accelerated capture
- * NtNetStreamRx ntStream = NtNetStreamRx.open("stream-0", NtNetInterface.NT_NET_INTERFACE_SEGMENT, 0, 64);
- * MemoryAllocator ntapiAllocator = new NtapiMemoryAllocator("ntapi-allocator", ntStream);
- * }</pre>
- * 
- * <h3>Custom Backend Implementation</h3>
- * 
- * <pre>{@code
- * public class CustomMemoryAllocator implements MemoryAllocator {
- *     private final String name;
- *     private final CustomMetrics metrics = new CustomMetrics();
- *     
- *     @Override
- *     public String name() { return name; }
- *     
- *     @Override
- *     public Memory allocateMemory(long size) {
- *         // Custom allocation logic
- *         MemorySegment segment = customAllocate(size);
- *         metrics.recordAllocation();
- *         return Memory.of(segment, 0);
- *     }
- *     
- *     @Override
- *     public BackendMemoryMetrics getMetrics() { return metrics; }
- * }
- * }</pre>
- * 
- * <h2>Error Handling and Monitoring</h2>
- * 
- * <p>The Memory API uses non-throwing error handling for production environments:
- * 
- * <h3>Error Counter Philosophy</h3>
- * 
- * <pre>{@code
- * // Operations increment error counters instead of throwing exceptions
- * MemoryBuffer buffer = pool.allocate();  // Returns null on exhaustion
+ * // Operations don't throw - they increment failure counters
+ * MemoryByteBuffer buffer = pool.allocate();  // Returns null on exhaustion
  * if (buffer == null) {
- *     // Handle gracefully, check pool metrics
- *     PoolMetrics metrics = pool.getMetrics();
+ *     // Check metrics to understand failure
+ *     PoolMetrics metrics = pool.getPoolMetrics();
  *     long failures = metrics.getAllocationFailures();
  *     handlePoolExhaustion(failures);
- *     return;
+ *     return;  // Graceful degradation
  * }
  * 
- * // Cross-segment writes handle failures gracefully
- * buffer.putLong(value);  // Attempts expansion, falls back to byte-by-byte on failure
- * long boundaryErrors = buffer.getBoundaryWriteErrors();
- * if (boundaryErrors > 0) {
- *     log.warn("Boundary write failures: {}", boundaryErrors);
+ * // Buffer operations accumulate errors
+ * buffer.insertSpace(2000);  // May fail if pool exhausted
+ * 
+ * // Check accumulated errors
+ * if (buffer.hasError()) {
+ *     BufferOperationException error = buffer.getError();
+ *     // Log but don't interrupt processing
+ *     log.error("Buffer operation failed: {}", error.getMessage());
+ *     buffer.clearError();  // Clear for continued use
  * }
  * }</pre>
  * 
- * <h3>Operational Monitoring</h3>
+ * <h3>Metrics-Based Monitoring</h3>
  * 
  * <pre>{@code
- * // Monitor pool health
- * public void monitorMemoryHealth() {
+ * // Monitor system health through metrics (all atomic/CAS operations)
+ * public void monitorSystemHealth() {
+ *     // Pool metrics
  *     for (MemoryPool<?> pool : activePools) {
- *         PoolMetrics metrics = pool.getMetrics();
- *         
- *         // Check utilization
- *         if (metrics.getUtilizationRatio() > 0.9) {
- *             alertHighUtilization(pool.name(), metrics.getUtilizationRatio());
- *         }
- *         
- *         // Check for allocation failures
- *         long failures = metrics.getAllocationFailures();
- *         if (failures > previousFailures.get(pool.name())) {
- *             alertAllocationFailures(pool.name(), failures);
+ *         PoolMetrics pm = pool.getPoolMetrics();
+ *         if (pm.getAllocationFailures() > threshold) {
+ *             // Adjust pool size or alert operators
+ *             expandPool(pool);
  *         }
  *     }
+ *     
+ *     // Buffer metrics
+ *     BufferMetrics bm = globalBufferMetrics();
+ *     if (bm.getOutOfMemoryCount() > 0) {
+ *         // System under memory pressure
+ *         triggerMemoryPressureResponse();
+ *     }
+ *     
+ *     // No exceptions thrown - system continues processing
  * }
- * }</pre>
- * 
- * <h3>Exception Cases</h3>
- * 
- * <p>Exceptions are still thrown for programming errors and serious issues:
- * 
- * <pre>{@code
- * // Programming errors (IllegalStateException)
- * memory.memoryCapacity();  // Throws if memory is closed
- * proxy.bindMemory(mem, 0); // Throws if already bound
- * 
- * // Resource corruption (IllegalStateException)
- * memory.decrementRef();    // Throws on refcount underflow
- * 
- * // Resource exhaustion (OutOfMemoryError - only with allocateOrThrow)
- * MemoryBuffer buffer = pool.allocateOrThrow();  // Throws if pool exhausted
  * }</pre>
  * 
  * <h2>Best Practices</h2>
@@ -515,28 +476,28 @@
  * <h3>Performance Optimization</h3>
  * 
  * <ul>
- * <li><strong>Reuse objects:</strong> Create MemoryProxy instances once and reuse across packets</li>
- * <li><strong>Use appropriate tiers:</strong> Inline operations for 100M+ pps, structural for 10M+ pps</li>
- * <li><strong>Pool sizing:</strong> Size pools to handle burst traffic without exhaustion</li>
- * <li><strong>Backend selection:</strong> Use DPDK for highest performance, Arena for flexibility</li>
+ * <li><strong>Reuse buffers:</strong> Use WrapperBufferPool for external packets</li>
+ * <li><strong>Pre-size headroom/tailroom:</strong> Configure based on typical editing patterns</li>
+ * <li><strong>Monitor metrics:</strong> Adjust pool sizes based on failure counters</li>
+ * <li><strong>Use network byte order methods:</strong> putShortBE/getShortBE for protocols</li>
  * </ul>
  * 
  * <h3>Memory Safety</h3>
  * 
  * <ul>
  * <li><strong>Reference counting:</strong> Always pair incrementRef() with decrementRef()</li>
- * <li><strong>Try-finally blocks:</strong> Ensure cleanup even during exceptions</li>
- * <li><strong>Proxy lifecycle:</strong> Unbind proxies when done to prevent memory leaks</li>
- * <li><strong>Pool monitoring:</strong> Watch for allocation failures and high utilization</li>
+ * <li><strong>Chain management:</strong> Use setNextMemory(null) before releasing segments</li>
+ * <li><strong>Native memory:</strong> Set proper release handlers for external memory</li>
+ * <li><strong>Error checking:</strong> Monitor metrics for resource exhaustion</li>
  * </ul>
  * 
  * <h3>Operational Excellence</h3>
  * 
  * <ul>
- * <li><strong>Named resources:</strong> Use descriptive names for pools and editors</li>
- * <li><strong>Metrics monitoring:</strong> Set up alerts for error counters and utilization</li>
- * <li><strong>Error handling:</strong> Handle null returns gracefully, monitor error counters</li>
- * <li><strong>Backend matching:</strong> Choose allocators that match your deployment environment</li>
+ * <li><strong>Named resources:</strong> Use descriptive names for pools and metrics</li>
+ * <li><strong>Non-interrupting design:</strong> Use metrics instead of exceptions</li>
+ * <li><strong>Capacity planning:</strong> Size pools for burst traffic + editing overhead</li>
+ * <li><strong>Chain release:</strong> Use proper reverse-order release for long chains</li>
  * </ul>
  * 
  * <h2>Thread Safety</h2>
@@ -545,20 +506,22 @@
  * 
  * <ul>
  * <li><strong>Reference counting:</strong> Fully thread-safe (atomic operations)</li>
- * <li><strong>Memory pools:</strong> Fully thread-safe (lock-free algorithms)</li>
- * <li><strong>Chain navigation:</strong> Thread-safe for reading</li>
- * <li><strong>Buffer positioning:</strong> Not thread-safe (use external synchronization)</li>
- * <li><strong>Proxy operations:</strong> Not thread-safe (one proxy per thread)</li>
+ * <li><strong>Memory pools:</strong> Fully thread-safe (lock-free freelist)</li>
+ * <li><strong>Metrics:</strong> Fully thread-safe (atomic/CAS counters)</li>
+ * <li><strong>Buffer operations:</strong> Not thread-safe (use one buffer per thread)</li>
+ * <li><strong>Proxy operations:</strong> Not thread-safe (use one proxy per thread)</li>
  * </ul>
  * 
  * <h2>Related Documentation</h2>
  * 
  * <ul>
- * <li>{@link Memory} - Main memory interface</li>
+ * <li>{@link Memory} - Main memory interface and factory methods</li>
  * <li>{@link MemoryPool} - High-performance memory pooling</li>
- * <li>{@link MemoryBuffer} - Buffer-style operations</li>
- * <li>{@link MemoryProxy} - Zero-allocation protocol parsing</li>
- * <li>{@link MemoryEditor} - Complex memory editing</li>
+ * <li>{@link MemoryByteBuffer} - Buffer-style operations with editing</li>
+ * <li>{@link MemoryProxy} - Flexible chain-aware access</li>
+ * <li>{@link WrapperBufferPool} - Pool for wrapping external memory</li>
+ * <li>{@link BufferMetrics} - Buffer operation metrics</li>
+ * <li>{@link PoolMetrics} - Pool allocation metrics</li>
  * <li>{@link MemoryAllocator} - Backend allocation strategies</li>
  * </ul>
  * 
