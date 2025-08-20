@@ -15,14 +15,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-module com.slytechs.jnet.core.api {
-    exports com.slytechs.jnet.core.api.memory;
-    exports com.slytechs.jnet.core.api.format;
-    exports com.slytechs.jnet.core.api.time;
-    exports com.slytechs.jnet.core.api.foreign;
-    exports com.slytechs.jnet.core.api.util;
-    exports com.slytechs.jnet.core.api.util.function;
-    exports com.slytechs.jnet.core.api.settings;
+package com.slytechs.jnet.core.api.util.function;
 
-    requires java.logging;
+/**
+ * Custom exception for invalid packet field values
+ */
+public class IllegalValueException extends IllegalArgumentException {
+	private static final long serialVersionUID = 6947050383511059550L;
+
+	public IllegalValueException(String message) {
+		super(message);
+	}
 }

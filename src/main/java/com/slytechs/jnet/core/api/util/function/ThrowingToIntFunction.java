@@ -15,14 +15,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-module com.slytechs.jnet.core.api {
-    exports com.slytechs.jnet.core.api.memory;
-    exports com.slytechs.jnet.core.api.format;
-    exports com.slytechs.jnet.core.api.time;
-    exports com.slytechs.jnet.core.api.foreign;
-    exports com.slytechs.jnet.core.api.util;
-    exports com.slytechs.jnet.core.api.util.function;
-    exports com.slytechs.jnet.core.api.settings;
+package com.slytechs.jnet.core.api.util.function;
 
-    requires java.logging;
+/**
+ * A function from T to int that may throw an exception.
+ *
+ * @param <T> the type of the input to the function
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ */
+@FunctionalInterface
+public interface ThrowingToIntFunction<T> {
+    int applyAsInt(T value) throws Exception;
 }

@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,14 +15,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-module com.slytechs.jnet.core.api {
-    exports com.slytechs.jnet.core.api.memory;
-    exports com.slytechs.jnet.core.api.format;
-    exports com.slytechs.jnet.core.api.time;
-    exports com.slytechs.jnet.core.api.foreign;
-    exports com.slytechs.jnet.core.api.util;
-    exports com.slytechs.jnet.core.api.util.function;
-    exports com.slytechs.jnet.core.api.settings;
+package com.slytechs.jnet.core.api.util.function;
 
-    requires java.logging;
+/**
+ * The Interface ShortConsumer.
+ *
+ * @author Sly Technologies
+ */
+public interface ShortConsumer {
+
+	/**
+	 * Accept.
+	 *
+	 * @param value the value
+	 */
+	void accept(short value);
+
+	/**
+	 * And then.
+	 *
+	 * @param after the after
+	 * @return the short consumer
+	 */
+	default ShortConsumer andThen(ShortConsumer after) {
+		return b -> {
+			accept(b);
+			after.accept(b);
+		};
+	}
 }

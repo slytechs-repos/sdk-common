@@ -15,14 +15,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-module com.slytechs.jnet.core.api {
-    exports com.slytechs.jnet.core.api.memory;
-    exports com.slytechs.jnet.core.api.format;
-    exports com.slytechs.jnet.core.api.time;
-    exports com.slytechs.jnet.core.api.foreign;
-    exports com.slytechs.jnet.core.api.util;
-    exports com.slytechs.jnet.core.api.util.function;
-    exports com.slytechs.jnet.core.api.settings;
+package com.slytechs.jnet.core.api.util.function;
 
-    requires java.logging;
+/**
+ * A supplier of long values that may throw an exception.
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ */
+@FunctionalInterface
+public interface ThrowingLongSupplier {
+    long getAsLong() throws Exception;
 }

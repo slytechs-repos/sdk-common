@@ -15,14 +15,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-module com.slytechs.jnet.core.api {
-    exports com.slytechs.jnet.core.api.memory;
-    exports com.slytechs.jnet.core.api.format;
-    exports com.slytechs.jnet.core.api.time;
-    exports com.slytechs.jnet.core.api.foreign;
-    exports com.slytechs.jnet.core.api.util;
-    exports com.slytechs.jnet.core.api.util.function;
-    exports com.slytechs.jnet.core.api.settings;
+package com.slytechs.jnet.core.api.util.function;
 
-    requires java.logging;
+import java.util.function.Supplier;
+
+/**
+ * A supplier that may throw an unchecked exception.
+ *
+ * @param <T> the type of value supplied
+ */
+@FunctionalInterface
+public interface ThrowingSupplier<T> {
+
+	static <T> Supplier<T> lift(ThrowingSupplier<T> supplier) {
+		return () -> {
+			try {
+				return supplier.get();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		};
+	}
+
+	static <T> ThrowingSupplier<T> of(ThrowingSupplier<T> supplier) {
+		return supplier;
+	}
+
+	T get() throws Exception;
+
 }
