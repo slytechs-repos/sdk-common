@@ -1,3 +1,20 @@
+/*
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.Arena;
@@ -5,25 +22,52 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * The Class MemoryPool.
+ *
+ * @param <T> the generic type
+ */
 public class MemoryPool<T extends AbstractMemory & MemoryPoolable> {
 
+	/** The free list head. */
 	private final AtomicReference<T> freeListHead = new AtomicReference<>();
+	
+	/** The segment size. */
 	private final long segmentSize;
+	
+	/** The segment count. */
 	private final long segmentCount;
+	
+	/** The arena. */
 	private final Arena arena;
+	
+	/** The leading space. */
 	private final long leadingSpace;
+	
+	/** The trailing space. */
 	private final long trailingSpace;
 
+	/** The pool metrics. */
 	// Single metrics instance shared by all pooled objects
 	private final PoolMetrics poolMetrics;
+	
+	/** The buffer metrics. */
 	private final BufferMetrics bufferMetrics = new BufferMetrics();
+	
+	/** The default headroom. */
 	private long defaultHeadroom;
+	
+	/** The name. */
 	private final String name;
 
 	/**
 	 * Constructs a MemoryPool with default spacing (no leading/trailing space).
-	 * 
-	 * @param name TODO
+	 *
+	 * @param name           TODO
+	 * @param segmentSize    the segment size
+	 * @param segmentCount   the segment count
+	 * @param arena          the arena
+	 * @param elementFactory the element factory
 	 */
 	public MemoryPool(String name, long segmentSize, long segmentCount, Arena arena,
 			MemoryPoolableFactory<T> elementFactory) {
@@ -32,8 +76,14 @@ public class MemoryPool<T extends AbstractMemory & MemoryPoolable> {
 
 	/**
 	 * Constructs a MemoryPool with specified leading/trailing space.
-	 * 
-	 * @param name TODO
+	 *
+	 * @param name           TODO
+	 * @param segmentSize    the segment size
+	 * @param segmentCount   the segment count
+	 * @param leadingSpace   the leading space
+	 * @param trailingSpace  the trailing space
+	 * @param arena          the arena
+	 * @param elementFactory the element factory
 	 */
 	public MemoryPool(String name, long segmentSize,
 			long segmentCount, long leadingSpace,
@@ -63,6 +113,11 @@ public class MemoryPool<T extends AbstractMemory & MemoryPoolable> {
 		initializePool(elementFactory);
 	}
 
+	/**
+	 * Name.
+	 *
+	 * @return the string
+	 */
 	public String name() {
 		return name;
 	}
@@ -217,6 +272,8 @@ public class MemoryPool<T extends AbstractMemory & MemoryPoolable> {
 
 	/**
 	 * Returns metrics for monitoring (not in hot path).
+	 *
+	 * @return the pool metrics
 	 */
 	public PoolMetrics getPoolMetrics() {
 		return poolMetrics;
@@ -256,6 +313,12 @@ public class MemoryPool<T extends AbstractMemory & MemoryPoolable> {
 		}
 	}
 
+	/**
+	 * Release chain in reverse order.
+	 *
+	 * @param mem   the mem
+	 * @param depth the depth
+	 */
 	void releaseChainInReverseOrder(AbstractMemory mem, int depth) {
 		if (mem.nextSegment() != null) {
 			if (depth > 100)
@@ -298,27 +361,57 @@ public class MemoryPool<T extends AbstractMemory & MemoryPoolable> {
 		return count;
 	}
 
+	/**
+	 * Gets the segment count.
+	 *
+	 * @return the segment count
+	 */
 	// Getters remain the same
 	public long getSegmentCount() {
 		return segmentCount;
 	}
 
+	/**
+	 * Gets the segment size.
+	 *
+	 * @return the segment size
+	 */
 	public long getSegmentSize() {
 		return segmentSize;
 	}
 
+	/**
+	 * Gets the leading space.
+	 *
+	 * @return the leading space
+	 */
 	public long getLeadingSpace() {
 		return leadingSpace;
 	}
 
+	/**
+	 * Gets the trailing space.
+	 *
+	 * @return the trailing space
+	 */
 	public long getTrailingSpace() {
 		return trailingSpace;
 	}
 
+	/**
+	 * Gets the buffer metrics.
+	 *
+	 * @return the buffer metrics
+	 */
 	public BufferMetrics getBufferMetrics() {
 		return bufferMetrics;
 	}
 
+	/**
+	 * Gets the default headroom.
+	 *
+	 * @return the default headroom
+	 */
 	public long getDefaultHeadroom() {
 		return defaultHeadroom;
 	}

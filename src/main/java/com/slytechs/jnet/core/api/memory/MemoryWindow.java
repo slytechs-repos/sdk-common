@@ -1,20 +1,20 @@
 /*
-* Sly Technologies Free License
-* 
-* Copyright 2025 Sly Technologies Inc.
-*
-* Licensed under the Sly Technologies Free License (the "License"); you may not
-* use this file except in compliance with the License. You may obtain a copy of
-* the License at
-* 
-* http://www.slytechs.com/free-license-text
-* 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-* License for the specific language governing permissions and limitations under
-* the License.
-*/
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.memory;
 
 /**
@@ -44,22 +44,22 @@ package com.slytechs.jnet.core.api.memory;
  * </ul>
  * 
  * <pre>{@code
-* SEGMENT REGION:
-* ┌────────────────────────────────────────────────────────┐
-* │                    segmentSize                         │
-* │  ┌──────────┬─────────────────────┬──────────┐         │
-* │  │ headroom │  activeBytesLength  │ tailroom │         │
-* │  └──────────┴─────────────────────┴──────────┘         │
-* └────────────────────────────────────────────────────────┘
-*    ↑          ↑                     ↑          ↑
-* segmentOffset activeBytesStart activeBytesEnd segmentEnd
-* 
-* Invariants:
-* • segmentOffset ≤ activeBytesStart ≤ activeBytesEnd ≤ segmentEnd
-* • headroom = activeBytesStart - segmentOffset
-* • tailroom = segmentEnd - activeBytesEnd
-* • segmentSize = segmentEnd - segmentOffset (immutable)
-* }</pre>
+ * SEGMENT REGION:
+ * ┌────────────────────────────────────────────────────────┐
+ * │                    segmentSize                         │
+ * │  ┌──────────┬─────────────────────┬──────────┐         │
+ * │  │ headroom │  activeBytesLength  │ tailroom │         │
+ * │  └──────────┴─────────────────────┴──────────┘         │
+ * └────────────────────────────────────────────────────────┘
+ *    ↑          ↑                     ↑          ↑
+ * segmentOffset activeBytesStart activeBytesEnd segmentEnd
+ * 
+ * Invariants:
+ * • segmentOffset ≤ activeBytesStart ≤ activeBytesEnd ≤ segmentEnd
+ * • headroom = activeBytesStart - segmentOffset
+ * • tailroom = segmentEnd - activeBytesEnd
+ * • segmentSize = segmentEnd - segmentOffset (immutable)
+ * }</pre>
  * 
  * <h3>Chain-Wide Projection</h3>
  * <p>
@@ -68,19 +68,19 @@ package com.slytechs.jnet.core.api.memory;
  * </p>
  * 
  * <pre>{@code
-* CHAIN PROJECTION (3 segments):
-* 
-* Segment 1           Segment 2           Segment 3
-* ┌──────────┐       ┌──────────┐       ┌─────────────┐
-* │ ┌─────┐  │  ───► │  ┌─────┐ │  ───► │   ┌─────┐   │
-* │ │bytes│  │       │  │bytes│ │       │   │bytes│   │
-* │ └─────┘  │       │  └─────┘ │       │   └─────┘   │
-* └──────────┘       └──────────┘       └─────────────┘
-* 
-* totalActiveBytes() = sum of all activeBytesLength()
-* totalSegmentSize() = sum of all segmentSize()
-* segmentCount() = 3
-* }</pre>
+ * CHAIN PROJECTION (3 segments):
+ * 
+ * Segment 1           Segment 2           Segment 3
+ * ┌──────────┐       ┌──────────┐       ┌─────────────┐
+ * │ ┌─────┐  │  ───► │  ┌─────┐ │  ───► │   ┌─────┐   │
+ * │ │bytes│  │       │  │bytes│ │       │   │bytes│   │
+ * │ └─────┘  │       │  └─────┘ │       │   └─────┘   │
+ * └──────────┘       └──────────┘       └─────────────┘
+ * 
+ * totalActiveBytes() = sum of all activeBytesLength()
+ * totalSegmentSize() = sum of all segmentSize()
+ * segmentCount() = 3
+ * }</pre>
  * 
  * <h2>Key Concepts</h2>
  * 
@@ -202,13 +202,13 @@ package com.slytechs.jnet.core.api.memory;
  * <li><strong>total*</strong> - Explicitly indicates chain-wide
  * projections</li>
  * </ul>
- * 
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @since 1.0
  * @see MemoryView for content access operations
  * @see MemoryRef for lifecycle and reference management
  * @see Memory for the complete memory abstraction
+ * @since 1.0
  */
 public interface MemoryWindow {
 

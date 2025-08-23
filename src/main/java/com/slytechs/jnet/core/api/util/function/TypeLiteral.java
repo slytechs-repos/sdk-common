@@ -27,10 +27,17 @@ import java.util.stream.Collectors;
 
 /**
  * Type literal for preserving generic type information at runtime.
+ *
+ * @param <T> the generic type
  */
 public abstract class TypeLiteral<T> {
+	
+	/** The type. */
 	private final Type type;
 
+	/**
+	 * Instantiates a new type literal.
+	 */
 	protected TypeLiteral() {
 		Type superclass = getClass().getGenericSuperclass();
 		if (!(superclass instanceof ParameterizedType)) {
@@ -39,10 +46,20 @@ public abstract class TypeLiteral<T> {
 		this.type = ((ParameterizedType) superclass).getActualTypeArguments()[0];
 	}
 
+	/**
+	 * Gets the type.
+	 *
+	 * @return the type
+	 */
 	public final Type getType() {
 		return type;
 	}
 
+	/**
+	 * Gets the generic class.
+	 *
+	 * @return the generic class
+	 */
 	@SuppressWarnings("unchecked")
 	public final Class<T> getGenericClass() {
 		Class<T> rawType = (Class<T>) ((ParameterizedType) getType()).getRawType();
@@ -50,6 +67,9 @@ public abstract class TypeLiteral<T> {
 		return rawType;
 	}
 
+	/**
+	 * @see java.lang.Object#toString()
+	 */
 	@Override
 	public String toString() {
 		return getTypeName(type);
@@ -57,6 +77,9 @@ public abstract class TypeLiteral<T> {
 
 	/**
 	 * Recursively builds a string representation of a Type object.
+	 *
+	 * @param type the type
+	 * @return the type name
 	 */
 	private static String getTypeName(Type type) {
 		if (type instanceof Class<?>) {

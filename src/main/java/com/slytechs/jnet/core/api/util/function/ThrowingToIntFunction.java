@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -26,5 +26,13 @@ package com.slytechs.jnet.core.api.util.function;
  */
 @FunctionalInterface
 public interface ThrowingToIntFunction<T> {
+    
+    /**
+	 * Apply as int.
+	 *
+	 * @param value the value
+	 * @return the int
+	 * @throws Exception the exception
+	 */
     int applyAsInt(T value) throws Exception;
 }

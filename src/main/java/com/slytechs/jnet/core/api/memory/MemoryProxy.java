@@ -1,239 +1,246 @@
 /*
-* Sly Technologies Free License
-* 
-* Copyright 2025 Sly Technologies Inc.
-*
-* Licensed under the Sly Technologies Free License (the "License"); you may not
-* use this file except in compliance with the License. You may obtain a copy of
-* the License at
-* 
-* http://www.slytechs.com/free-license-text
-* 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-* License for the specific language governing permissions and limitations under
-* the License.
-*/
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 
 /**
-* A lightweight, rebindable proxy for zero-allocation memory access with minimal overhead.
-* 
-* <p>
-* MemoryProxy provides a reusable view mechanism that can be bound to different memory
-* regions without allocation overhead. This class is optimized for high-performance
-* scenarios requiring frequent rebinding, such as network packet processing where
-* thousands of packets per second are accessed through the same proxy objects.
-* </p>
-* 
-* <h2>Design Philosophy</h2>
-* 
-* <h3>Minimalist Architecture</h3>
-* <p>
-* MemoryProxy maintains only essential state (4 fields), delegating all operations
-* to the bound memory. This design provides:
-* </p>
-* <ul>
-* <li><strong>Fast binding:</strong> O(1) with minimal field assignments</li>
-* <li><strong>Small footprint:</strong> ~32 bytes per proxy instance</li>
-* <li><strong>Cache efficiency:</strong> Optimal CPU cache line utilization</li>
-* <li><strong>Zero allocation:</strong> Reusable across unlimited bind/unbind cycles</li>
-* </ul>
-* 
-* <h3>Binding Modes</h3>
-* <pre>{@code
-* UNBOUNDED MODE (length = -1):
-* Proxy → [Memory Segment 1] → [Segment 2] → [Segment 3]
-*         ↑
-*      offset (can access entire chain from offset)
-* 
-* BOUNDED MODE (length ≥ 0):
-* Proxy → [Memory Segment]
-*         ↑─────length─────↑
-*      offset          (isolated view)
-* }</pre>
-* 
-* <table border="1">
-* <caption>Binding Mode Characteristics</caption>
-* <thead>
-* <tr>
-*   <th>Mode</th>
-*   <th>Length Value</th>
-*   <th>Chain Access</th>
-*   <th>Use Case</th>
-* </tr>
-* </thead>
-* <tbody>
-* <tr>
-*   <td>Unbounded</td>
-*   <td>-1</td>
-*   <td>Full chain navigation</td>
-*   <td>Packet-level views</td>
-* </tr>
-* <tr>
-*   <td>Bounded</td>
-*   <td>≥ 0</td>
-*   <td>Single segment only</td>
-*   <td>Headers, fields</td>
-* </tr>
-* </tbody>
-* </table>
-* 
-* <h2>Lifecycle Management</h2>
-* 
-* <h3>Reference Counting</h3>
-* <p>
-* MemoryProxy participates in the memory's reference counting:
-* </p>
-* <ul>
-* <li>Binding increments the target memory's reference count</li>
-* <li>Unbinding decrements the reference count</li>
-* <li>Automatic unbinding occurs if bound memory is released</li>
-* </ul>
-* 
-* <h3>Chain Stability Requirements</h3>
-* <p>
-* <strong>CRITICAL:</strong> The underlying memory chain structure must remain
-* stable while a proxy is bound. Chain modifications require:
-* </p>
-* <ol>
-* <li>Unbind all proxies from the chain</li>
-* <li>Modify the chain structure</li>
-* <li>Rebind proxies as needed</li>
-* </ol>
-* 
-* <h2>Thread Safety</h2>
-* <ul>
-* <li><strong>Binding operations:</strong> NOT thread-safe, require external synchronization</li>
-* <li><strong>Read operations:</strong> Thread-safe once bound (if underlying memory is stable)</li>
-* <li><strong>Recommendation:</strong> Use thread-local proxy instances or synchronize binding</li>
-* </ul>
-* 
-* <h2>Usage Patterns</h2>
-* 
-* <h3>Network Packet Processing</h3>
-* <pre>{@code
-* // Reusable proxy pool for packet analysis
-* class PacketAnalyzer {
-*     private final MemoryProxy packet = new MemoryProxy();
-*     private final MemoryProxy ethernet = new MemoryProxy();
-*     private final MemoryProxy ip = new MemoryProxy();
-*     private final MemoryProxy tcp = new MemoryProxy();
-*     
-*     void analyzePacket(Memory capturedData) {
-*         try {
-*             // Bind to full packet (unbounded)
-*             packet.bindMemory(capturedData, 0);
-*             
-*             // Bind to protocol layers (bounded)
-*             ethernet.bindMemory(packet, 0, 14);        // Ethernet: 14 bytes
-*             ip.bindMemory(packet, 14, 20);             // IPv4: 20 bytes
-*             tcp.bindMemory(packet, 34, getTcpLength()); // TCP: variable
-*             
-*             // Process packet data
-*             processEthernet(ethernet);
-*             processIp(ip);
-*             processTcp(tcp);
-*             
-*         } finally {
-*             // Clean unbinding for reuse
-*             tcp.unbindMemory();
-*             ip.unbindMemory();
-*             ethernet.unbindMemory();
-*             packet.unbindMemory();
-*         }
-*     }
-* }
-* }</pre>
-* 
-* <h3>Buffer Iteration (Hardware Capture)</h3>
-* <pre>{@code
-* // Process packets in a large capture buffer
-* void processCapture(Memory captureBuffer, List<PacketInfo> packets) {
-*     MemoryProxy proxy = new MemoryProxy();
-*     
-*     for (PacketInfo info : packets) {
-*         // Bind to each packet region
-*         proxy.bindMemory(captureBuffer, info.offset, info.length);
-*         
-*         // Process packet
-*         processPacket(proxy);
-*         
-*         // Unbind for next iteration
-*         proxy.unbindMemory();
-*     }
-* }
-* }</pre>
-* 
-* <h3>Hierarchical Proxy Structure</h3>
-* <pre>{@code
-* class EthernetHeader extends MemoryProxy {
-*     private final MacAddress dstMac = new MacAddress();
-*     private final MacAddress srcMac = new MacAddress();
-*     
-*     @Override
-*     protected void onBindMemory() {
-*         // Cascade binding to sub-elements
-*         dstMac.bindMemory(this, 0, 6);   // Destination MAC
-*         srcMac.bindMemory(this, 6, 6);   // Source MAC
-*     }
-*     
-*     @Override
-*     protected void onUnbindMemory() {
-*         // Clean cascade unbinding
-*         srcMac.unbindMemory();
-*         dstMac.unbindMemory();
-*     }
-*     
-*     public MacAddress getDestination() { return dstMac; }
-*     public MacAddress getSource() { return srcMac; }
-*     public int getEtherType() {
-*         return asMemorySegment().get(ValueLayout.JAVA_SHORT_BE, 12);
-*     }
-* }
-* }</pre>
-* 
-* <h2>Performance Characteristics</h2>
-* 
-* <table border="1">
-* <caption>Operation Performance</caption>
-* <thead>
-* <tr>
-*   <th>Operation</th>
-*   <th>Complexity</th>
-*   <th>Allocations</th>
-* </tr>
-* </thead>
-* <tbody>
-* <tr>
-*   <td>bind/unbind</td>
-*   <td>O(1)</td>
-*   <td>0</td>
-* </tr>
-* <tr>
-*   <td>delegate call</td>
-*   <td>O(1)</td>
-*   <td>0</td>
-* </tr>
-* <tr>
-*   <td>boundary check</td>
-*   <td>O(1)</td>
-*   <td>0</td>
-* </tr>
-* </tbody>
-* </table>
-* 
-* @author Mark Bednarczyk [mark@slytechs.com]
-* @author Sly Technologies Inc.
-* @since 1.0
-* @see Memory for the complete memory interface
-* @see AbstractMemory for base implementation
-* @see MemoryBuffer for editable memory buffers
-*/
+ * A lightweight, rebindable proxy for zero-allocation memory access with
+ * minimal overhead.
+ * 
+ * <p>
+ * MemoryProxy provides a reusable view mechanism that can be bound to different
+ * memory regions without allocation overhead. This class is optimized for
+ * high-performance scenarios requiring frequent rebinding, such as network
+ * packet processing where thousands of packets per second are accessed through
+ * the same proxy objects.
+ * </p>
+ * 
+ * <h2>Design Philosophy</h2>
+ * 
+ * <h3>Minimalist Architecture</h3>
+ * <p>
+ * MemoryProxy maintains only essential state (4 fields), delegating all
+ * operations to the bound memory. This design provides:
+ * </p>
+ * <ul>
+ * <li><strong>Fast binding:</strong> O(1) with minimal field assignments</li>
+ * <li><strong>Small footprint:</strong> ~32 bytes per proxy instance</li>
+ * <li><strong>Cache efficiency:</strong> Optimal CPU cache line
+ * utilization</li>
+ * <li><strong>Zero allocation:</strong> Reusable across unlimited bind/unbind
+ * cycles</li>
+ * </ul>
+ * 
+ * <h3>Binding Modes</h3>
+ * 
+ * <pre>{@code
+ * UNBOUNDED MODE (length = -1):
+ * Proxy → [Memory Segment 1] → [Segment 2] → [Segment 3]
+ *         ↑
+ *      offset (can access entire chain from offset)
+ * 
+ * BOUNDED MODE (length ≥ 0):
+ * Proxy → [Memory Segment]
+ *         ↑─────length─────↑
+ *      offset          (isolated view)
+ * }</pre>
+ * 
+ * <table border="1">
+ * <caption>Binding Mode Characteristics</caption> <thead>
+ * <tr>
+ * <th>Mode</th>
+ * <th>Length Value</th>
+ * <th>Chain Access</th>
+ * <th>Use Case</th>
+ * </tr>
+ * </thead> <tbody>
+ * <tr>
+ * <td>Unbounded</td>
+ * <td>-1</td>
+ * <td>Full chain navigation</td>
+ * <td>Packet-level views</td>
+ * </tr>
+ * <tr>
+ * <td>Bounded</td>
+ * <td>≥ 0</td>
+ * <td>Single segment only</td>
+ * <td>Headers, fields</td>
+ * </tr>
+ * </tbody>
+ * </table>
+ * 
+ * <h2>Lifecycle Management</h2>
+ * 
+ * <h3>Reference Counting</h3>
+ * <p>
+ * MemoryProxy participates in the memory's reference counting:
+ * </p>
+ * <ul>
+ * <li>Binding increments the target memory's reference count</li>
+ * <li>Unbinding decrements the reference count</li>
+ * <li>Automatic unbinding occurs if bound memory is released</li>
+ * </ul>
+ * 
+ * <h3>Chain Stability Requirements</h3>
+ * <p>
+ * <strong>CRITICAL:</strong> The underlying memory chain structure must remain
+ * stable while a proxy is bound. Chain modifications require:
+ * </p>
+ * <ol>
+ * <li>Unbind all proxies from the chain</li>
+ * <li>Modify the chain structure</li>
+ * <li>Rebind proxies as needed</li>
+ * </ol>
+ * 
+ * <h2>Thread Safety</h2>
+ * <ul>
+ * <li><strong>Binding operations:</strong> NOT thread-safe, require external
+ * synchronization</li>
+ * <li><strong>Read operations:</strong> Thread-safe once bound (if underlying
+ * memory is stable)</li>
+ * <li><strong>Recommendation:</strong> Use thread-local proxy instances or
+ * synchronize binding</li>
+ * </ul>
+ * 
+ * <h2>Usage Patterns</h2>
+ * 
+ * <h3>Network Packet Processing</h3>
+ * 
+ * <pre>{@code
+ * // Reusable proxy pool for packet analysis
+ * class PacketAnalyzer {
+ * 	private final MemoryProxy packet = new MemoryProxy();
+ * 	private final MemoryProxy ethernet = new MemoryProxy();
+ * 	private final MemoryProxy ip = new MemoryProxy();
+ * 	private final MemoryProxy tcp = new MemoryProxy();
+ * 
+ * 	void analyzePacket(Memory capturedData) {
+ * 		try {
+ * 			// Bind to full packet (unbounded)
+ * 			packet.bindMemory(capturedData, 0);
+ * 
+ * 			// Bind to protocol layers (bounded)
+ * 			ethernet.bindMemory(packet, 0, 14); // Ethernet: 14 bytes
+ * 			ip.bindMemory(packet, 14, 20); // IPv4: 20 bytes
+ * 			tcp.bindMemory(packet, 34, getTcpLength()); // TCP: variable
+ * 
+ * 			// Process packet data
+ * 			processEthernet(ethernet);
+ * 			processIp(ip);
+ * 			processTcp(tcp);
+ * 
+ * 		} finally {
+ * 			// Clean unbinding for reuse
+ * 			tcp.unbindMemory();
+ * 			ip.unbindMemory();
+ * 			ethernet.unbindMemory();
+ * 			packet.unbindMemory();
+ * 		}
+ * 	}
+ * }
+ * }</pre>
+ * 
+ * <h3>Buffer Iteration (Hardware Capture)</h3>
+ * 
+ * <pre>{@code
+ * // Process packets in a large capture buffer
+ * void processCapture(Memory captureBuffer, List<PacketInfo> packets) {
+ * 	MemoryProxy proxy = new MemoryProxy();
+ * 
+ * 	for (PacketInfo info : packets) {
+ * 		// Bind to each packet region
+ * 		proxy.bindMemory(captureBuffer, info.offset, info.length);
+ * 
+ * 		// Process packet
+ * 		processPacket(proxy);
+ * 
+ * 		// Unbind for next iteration
+ * 		proxy.unbindMemory();
+ * 	}
+ * }
+ * }</pre>
+ * 
+ * <h3>Hierarchical Proxy Structure</h3>
+ * 
+ * <pre>
+ * {@code
+ * class EthernetHeader extends MemoryProxy {
+ *     private final MacAddress dstMac = new MacAddress();
+ *     private final MacAddress srcMac = new MacAddress();
+ *     
+ *
+ * &#64;author Mark Bednarczyk [mark@slytechs.com]
+ * &#64;author Sly Technologies Inc.
+ * &#64;see Memory for the complete memory interface
+ * &#64;see AbstractMemory for base implementation
+ * &#64;see MemoryBuffer for editable memory buffers
+ * &#64;since 1.0
+ * &#64;Override     protected void onBindMemory() {
+ *         // Cascade binding to sub-elements
+ *         dstMac.bindMemory(this, 0, 6);   // Destination MAC
+ *         srcMac.bindMemory(this, 6, 6);   // Source MAC
+ *     }
+ *     
+ * @Override     protected void onUnbindMemory() {
+ *         // Clean cascade unbinding
+ *         srcMac.unbindMemory();
+ *         dstMac.unbindMemory();
+ *     }
+ *     
+ *     public MacAddress getDestination() { return dstMac; }
+ *     public MacAddress getSource() { return srcMac; }
+ *     public int getEtherType() {
+ *         return asMemorySegment().get(ValueLayout.JAVA_SHORT_BE, 12);
+ *     }
+ * }
+ * }
+ * </pre>
+ * 
+ * <h2>Performance Characteristics</h2>
+ * 
+ * <table border="1">
+ * <caption>Operation Performance</caption> <thead>
+ * <tr>
+ * <th>Operation</th>
+ * <th>Complexity</th>
+ * <th>Allocations</th>
+ * </tr>
+ * </thead> <tbody>
+ * <tr>
+ * <td>bind/unbind</td>
+ * <td>O(1)</td>
+ * <td>0</td>
+ * </tr>
+ * <tr>
+ * <td>delegate call</td>
+ * <td>O(1)</td>
+ * <td>0</td>
+ * </tr>
+ * <tr>
+ * <td>boundary check</td>
+ * <td>O(1)</td>
+ * <td>0</td>
+ * </tr>
+ * </tbody>
+ * </table>
+ */
 public class MemoryProxy implements Memory {
 
    /**
@@ -593,11 +600,10 @@ public class MemoryProxy implements Memory {
    }
 
    /**
-    * Returns the memory object this proxy is bound to.
-    * 
-    * @return the bound memory, or null if unbound
-    * @throws IllegalStateException if this proxy is closed
-    */
+	 * Returns the memory object this proxy is bound to.
+	 *
+	 * @return the bound memory, or null if unbound
+	 */
    public Memory getBoundMemory() {
    	checkNotClosed();
    	return boundMemory;

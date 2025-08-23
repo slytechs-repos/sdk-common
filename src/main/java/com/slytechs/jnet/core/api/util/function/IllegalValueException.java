@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,11 +18,18 @@
 package com.slytechs.jnet.core.api.util.function;
 
 /**
- * Custom exception for invalid packet field values
+ * Custom exception for invalid packet field values.
  */
 public class IllegalValueException extends IllegalArgumentException {
+	
+	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 6947050383511059550L;
 
+	/**
+	 * Instantiates a new illegal value exception.
+	 *
+	 * @param message the message
+	 */
 	public IllegalValueException(String message) {
 		super(message);
 	}

@@ -64,21 +64,47 @@ import com.slytechs.jnet.core.api.util.Registration;
  * }
  * </pre>
  *
+ * @param <T_BASE> the generic type
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 public class Settings<T_BASE extends Settings<T_BASE>> {
 
+	/**
+	 * The Interface CleanSettingsNotification.
+	 *
+	 * @param <T> the generic type
+	 */
 	interface CleanSettingsNotification<T extends Settings<T>> {
 
+		/**
+		 * On clear settings.
+		 *
+		 * @param settings the settings
+		 */
 		void onClearSettings(T settings);
 	}
 
+	/**
+	 * The Interface ResetSettingsNotification.
+	 *
+	 * @param <T> the generic type
+	 */
 	interface ResetSettingsNotification<T extends Settings<T>> {
 
+		/**
+		 * On reset settings.
+		 *
+		 * @param settings the settings
+		 */
 		void onResetSettings(T settings);
 	}
 
+	/**
+	 * The main method.
+	 *
+	 * @param __ the arguments
+	 */
 	// TODO: Remove after testing and validation period.
 	public static void main(String[] __) {
 
@@ -161,19 +187,33 @@ public class Settings<T_BASE extends Settings<T_BASE>> {
 		s1.reset();
 	}
 
+	/** The name. */
 	// Private fields
 	private String name = getClass().getSimpleName();
+	
+	/** The us. */
 	@SuppressWarnings("unchecked")
 	private final T_BASE us = (T_BASE) this;
+	
+	/** The settings support. */
 	private final SettingsSupport settingsSupport = new SettingsSupport();
+	
+	/** The properties. */
 	final List<Property<?, ?>> properties = new ArrayList<>();
+	
+	/** The clear actions. */
 	private final List<CleanSettingsNotification<T_BASE>> clearActions = new ArrayList<>();
+	
+	/** The reset actions. */
 	private final List<ResetSettingsNotification<T_BASE>> resetActions = new ArrayList<>();
 
+	/** The base name. */
 	private final String baseName;
 
 	/**
 	 * Creates a new Settings instance with updates disabled by default.
+	 *
+	 * @param baseName the base name
 	 */
 	public Settings(String baseName) {
 		this.baseName = baseName.endsWith(".") ? baseName : baseName + ".";
@@ -184,8 +224,9 @@ public class Settings<T_BASE extends Settings<T_BASE>> {
 	 * Creates a new Settings instance with the specified name and updates disabled
 	 * by default.
 	 *
-	 * @param name the name of this settings instance, used for identification and
-	 *             logging
+	 * @param baseName the base name
+	 * @param name     the name of this settings instance, used for identification
+	 *                 and logging
 	 */
 	public Settings(String baseName, String name) {
 		this.baseName = baseName.endsWith(".") ? baseName : baseName + ".";
@@ -193,6 +234,12 @@ public class Settings<T_BASE extends Settings<T_BASE>> {
 		settingsSupport.enableFireEvents = false;
 	}
 
+	/**
+	 * Creates the property name.
+	 *
+	 * @param name the name
+	 * @return the string
+	 */
 	protected String createPropertyName(String name) {
 		return baseName + name;
 	}
@@ -332,7 +379,9 @@ public class Settings<T_BASE extends Settings<T_BASE>> {
 	/**
 	 * Locates a property by its name in the properties collection.
 	 *
-	 * @param name the name of the property to find
+	 * @param <T>      the generic type
+	 * @param <P_BASE> the generic type
+	 * @param name     the name of the property to find
 	 * @return the found property or null if not found
 	 */
 	@SuppressWarnings("unchecked")
@@ -412,10 +461,23 @@ public class Settings<T_BASE extends Settings<T_BASE>> {
 		return name;
 	}
 
+	/**
+	 * New boolean property.
+	 *
+	 * @param name the name
+	 * @return the boolean property
+	 */
 	public BooleanProperty newBooleanProperty(String name) {
 		return newProperty(name, BooleanProperty::new);
 	}
 
+	/**
+	 * New boolean property.
+	 *
+	 * @param name         the name
+	 * @param defaultValue the default value
+	 * @return the boolean property
+	 */
 	public BooleanProperty newBooleanProperty(String name, boolean defaultValue) {
 		return newProperty(name, defaultValue);
 	}
@@ -585,21 +647,61 @@ public class Settings<T_BASE extends Settings<T_BASE>> {
 		return newProperty(name, (s, n) -> new ListProperty<E>(s, n, parser, defaultValue));
 	}
 
+	/**
+	 * New object property.
+	 *
+	 * @param <E>          the element type
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 * @return the object property
+	 */
 	public <E> ObjectProperty<E> newObjectProperty(String name, Deserializer<E> deserializer,
 			Serializer<E> serializer) {
 		return newProperty(name, (s, n) -> new ObjectProperty<E>(s, n, deserializer, serializer));
 	}
 
+	/**
+	 * New object property.
+	 *
+	 * @param <E>          the element type
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 * @param value        the value
+	 * @return the object property
+	 */
 	public <E> ObjectProperty<E> newObjectProperty(String name, Deserializer<E> deserializer,
 			Serializer<E> serializer, E value) {
 		return newProperty(name, (s, n) -> new ObjectProperty<E>(s, n, deserializer, serializer, value));
 	}
 
+	/**
+	 * New array property.
+	 *
+	 * @param <E>          the element type
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 * @param arrayFactory the array factory
+	 * @return the array property
+	 */
 	public <E> ArrayProperty<E> newArrayProperty(String name, Deserializer<E> deserializer,
 			Serializer<E> serializer, IntFunction<E[]> arrayFactory) {
 		return newProperty(name, (s, n) -> new ArrayProperty<E>(s, n, deserializer, serializer, arrayFactory));
 	}
 
+	/**
+	 * New array property.
+	 *
+	 * @param <E>          the element type
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 * @param arrayFactory the array factory
+	 * @param value        the value
+	 * @return the array property
+	 */
 	@SuppressWarnings("unchecked")
 	public <E> ArrayProperty<E> newArrayProperty(String name, Deserializer<E> deserializer,
 			Serializer<E> serializer, IntFunction<E[]> arrayFactory, E... value) {
@@ -674,13 +776,12 @@ public class Settings<T_BASE extends Settings<T_BASE>> {
 	/**
 	 * Creates or retrieves a property with the specified name, default value, and
 	 * factory.
-	 * 
+	 *
+	 * @param <T>          the type of the property value
+	 * @param <P_BASE>     the type of the property
 	 * @param name         the name of the property
 	 * @param defaultValue the default value for the property
 	 * @param factory      the factory function to create the property
-	 * 
-	 * @param <T>          the type of the property value
-	 * @param <P_BASE>     the type of the property
 	 * @return the existing or newly created property
 	 */
 	public <T, P_BASE extends Property<T, P_BASE>> P_BASE newProperty(String name,

@@ -22,21 +22,41 @@ import java.io.OutputStream;
 import java.util.Properties;
 
 /**
+ * The Class SettingsWriter.
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 class SettingsWriter {
 
+	/**
+	 * Format section header.
+	 *
+	 * @param sectionName the section name
+	 * @return the string
+	 */
 	public static String formatSectionHeader(String sectionName) {
 		return "[%s]".formatted(sectionName);
 	}
 
+	/** The output. */
 	private final OutputStream output;
 
+	/**
+	 * Instantiates a new settings writer.
+	 *
+	 * @param output the output
+	 */
 	public SettingsWriter(OutputStream output) {
 		this.output = output;
 	}
 
+	/**
+	 * Write.
+	 *
+	 * @param settings the settings
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	public void write(Settings<?> settings) throws IOException {
 		Properties properties = new Properties();
 

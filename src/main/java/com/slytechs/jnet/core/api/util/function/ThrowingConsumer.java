@@ -33,8 +33,8 @@ public interface ThrowingConsumer<T> {
 	 * Drops a throwing consumer into a safe consumer that converts all exceptions
 	 * to runtime.
 	 *
-	 * @param <T> the input type
-	 * @param c   the consumer that may throw
+	 * @param <T>      the input type
+	 * @param consumer the consumer
 	 * @return a safe consumer
 	 */
 	static <T> Consumer<T> lift(ThrowingConsumer<T> consumer) {
@@ -47,6 +47,13 @@ public interface ThrowingConsumer<T> {
 		};
 	}
 
+	/**
+	 * Of.
+	 *
+	 * @param <T>      the generic type
+	 * @param consumer the consumer
+	 * @return the throwing consumer
+	 */
 	static <T> ThrowingConsumer<T> of(ThrowingConsumer<T> consumer) {
 		return consumer;
 	}

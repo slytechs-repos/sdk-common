@@ -1,20 +1,20 @@
 /*
-* Sly Technologies Free License
-* 
-* Copyright 2025 Sly Technologies Inc.
-*
-* Licensed under the Sly Technologies Free License (the "License"); you may not
-* use this file except in compliance with the License. You may obtain a copy of
-* the License at
-* 
-* http://www.slytechs.com/free-license-text
-* 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-* License for the specific language governing permissions and limitations under
-* the License.
-*/
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.MemorySegment;
@@ -37,37 +37,37 @@ import java.nio.ByteBuffer;
  * <h3>Single Segment Structure</h3>
  * 
  * <pre>{@code
-* Memory Segment Region:
-* ┌─────────────────────────────────────────────────────┐
-* │                  segmentSize()                      │
-* │  ┌──────────┬─────────────────────┬──────────┐      │
-* │  │ headroom │ activeBytesLength() │ tailroom │      │
-* │  └──────────┴─────────────────────┴──────────┘      │
-* └─────────────────────────────────────────────────────┘
-*    ↑          ↑                     ↑          ↑
-* segmentOffset activeBytesStart activeBytesEnd segmentEnd
-* 
-* Relationships:
-* • segmentSize() = segmentEnd() - segmentOffset()
-* • activeBytesLength() = activeBytesEnd() - activeBytesStart()
-* • headroom() + activeBytesLength() + tailroom() = segmentSize()
-* }</pre>
+ * Memory Segment Region:
+ * ┌─────────────────────────────────────────────────────┐
+ * │                  segmentSize()                      │
+ * │  ┌──────────┬─────────────────────┬──────────┐      │
+ * │  │ headroom │ activeBytesLength() │ tailroom │      │
+ * │  └──────────┴─────────────────────┴──────────┘      │
+ * └─────────────────────────────────────────────────────┘
+ *    ↑          ↑                     ↑          ↑
+ * segmentOffset activeBytesStart activeBytesEnd segmentEnd
+ * 
+ * Relationships:
+ * • segmentSize() = segmentEnd() - segmentOffset()
+ * • activeBytesLength() = activeBytesEnd() - activeBytesStart()
+ * • headroom() + activeBytesLength() + tailroom() = segmentSize()
+ * }</pre>
  * 
  * <h3>Chained Memory Structure</h3>
  * 
  * <pre>{@code
-* Memory Chain:
-* ┌─────────┐      ┌─────────┐      ┌─────────┐
-* │ Memory  │ next │ Memory  │ next │ Memory  │ next
-* │ Seg #1  │ ───> │ Seg #2  │ ───> │ Seg #3  │ ───> null
-* └─────────┘      └─────────┘      └─────────┘
-*     1KB             2KB              512B
-* 
-* Chain Projections:
-* • totalSegmentSize() = 1KB + 2KB + 512B = 3.5KB
-* • totalActiveBytes() = sum of all activeBytesLength()
-* • segmentCount() = 3
-* }</pre>
+ * Memory Chain:
+ * ┌─────────┐      ┌─────────┐      ┌─────────┐
+ * │ Memory  │ next │ Memory  │ next │ Memory  │ next
+ * │ Seg #1  │ ───> │ Seg #2  │ ───> │ Seg #3  │ ───> null
+ * └─────────┘      └─────────┘      └─────────┘
+ *     1KB             2KB              512B
+ * 
+ * Chain Projections:
+ * • totalSegmentSize() = 1KB + 2KB + 512B = 3.5KB
+ * • totalActiveBytes() = sum of all activeBytesLength()
+ * • segmentCount() = 3
+ * }</pre>
  * 
  * <h2>Design Philosophy</h2>
  * 
@@ -187,13 +187,13 @@ import java.nio.ByteBuffer;
  * <li><strong>Resource Cleanup:</strong> Proper resource release when refcount
  * reaches zero</li>
  * </ul>
- * 
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @since 1.0
  * @see MemoryView for content access and chain navigation
  * @see MemoryWindow for boundary management and projections
  * @see MemoryRef for lifecycle and reference counting
+ * @since 1.0
  */
 public interface Memory extends MemoryView, MemoryWindow, MemoryRef {
 
@@ -487,4 +487,37 @@ public interface Memory extends MemoryView, MemoryWindow, MemoryRef {
 		}
 		return total;
 	}
+
+	/**
+	 * Sets the next Memory object in a chain structure.
+	 * 
+	 * <p>
+	 * This method establishes or modifies chain linkage between memory objects,
+	 * enabling the creation of complex memory structures such as scatter-gather
+	 * lists or segmented buffers. Chain management is considered part of reference
+	 * management because it affects memory lifecycle and ownership relationships.
+	 * </p>
+	 * 
+	 * <p>
+	 * <strong>Reference Implications:</strong> Setting a next memory may affect
+	 * reference counting if the implementation maintains references to chained
+	 * objects. Consult specific implementation documentation for reference handling
+	 * details.
+	 * </p>
+	 * 
+	 * <p>
+	 * <strong>Thread Safety:</strong> Chain modification operations should be
+	 * performed with appropriate synchronization if the memory chain is accessed
+	 * concurrently from multiple threads.
+	 * </p>
+	 * 
+	 * @param next the next Memory object in the chain, or {@code null} to terminate
+	 *             the chain
+	 * @throws IllegalStateException if this memory is closed or in an invalid state
+	 * 
+	 * @see MemoryView#nextSegment() to traverse chains
+	 * @see MemoryView#hasNextSegment() to check for chain continuation
+	 */
+	void setNextMemory(Memory next);
+
 }

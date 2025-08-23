@@ -28,11 +28,25 @@ import java.util.Map;
 import com.slytechs.jnet.core.api.settings.Property.Action;
 import com.slytechs.jnet.core.api.util.Registration;
 
+/**
+ * The Class SettingsSupport.
+ */
 public class SettingsSupport {
+	
+	/** The actions. */
 	Map<String, List<Reference<Property.Action<?>>>> actions = new HashMap<>();
 
+	/** The enable fire events. */
 	boolean enableFireEvents = true;
 
+	/**
+	 * Adds the action.
+	 *
+	 * @param <T>    the generic type
+	 * @param name   the name
+	 * @param action the action
+	 * @return the registration
+	 */
 	public synchronized <T> Registration addAction(String name, Property.Action<T> action) {
 		List<Reference<Property.Action<?>>> list = actions.computeIfAbsent(name,
 				_ -> new ArrayList<Reference<Property.Action<?>>>());
@@ -44,17 +58,23 @@ public class SettingsSupport {
 	}
 
 	/**
-	 * @param b
+	 * Enable event dispatching.
+	 *
+	 * @param b the b
 	 */
 	public void enableEventDispatching(boolean b) {
 		this.enableFireEvents = b;
 	}
 
 	/**
-	 * @param <T>
-	 * @param name
-	 * @param value
-	 * @param object
+	 * Fire value change.
+	 *
+	 * @param <T>      the generic type
+	 * @param action   the action
+	 * @param name     the name
+	 * @param oldValue the old value
+	 * @param newValue the new value
+	 * @param source   the source
 	 */
 	public synchronized <T> void fireValueChange(Action<T> action, String name, T oldValue, T newValue,
 			Object source) {
@@ -66,20 +86,25 @@ public class SettingsSupport {
 	}
 
 	/**
-	 * @param <T>
-	 * @param name
-	 * @param value
-	 * @param object
+	 * Fire value change.
+	 *
+	 * @param <T>      the generic type
+	 * @param name     the name
+	 * @param oldValue the old value
+	 * @param newValue the new value
 	 */
 	public synchronized <T> void fireValueChange(String name, T oldValue, T newValue) {
 		fireValueChange(name, oldValue, newValue, null);
 	}
 
 	/**
-	 * @param <T>
-	 * @param name
-	 * @param value
-	 * @param object
+	 * Fire value change.
+	 *
+	 * @param <T>      the generic type
+	 * @param name     the name
+	 * @param oldValue the old value
+	 * @param newValue the new value
+	 * @param source   the source
 	 */
 	public synchronized <T> void fireValueChange(String name, T oldValue, T newValue, Object source) {
 		if (!actions.containsKey(name) || !enableFireEvents)
@@ -104,12 +129,20 @@ public class SettingsSupport {
 			pruneUnreferencedActions();
 	}
 
+	/**
+	 * Prune unreferenced actions.
+	 */
 	private synchronized void pruneUnreferencedActions() {
 		for (Iterator<String> iterator = actions.keySet().iterator(); iterator.hasNext();) {
 			pruneUnreferencedActions(iterator.next());
 		}
 	}
 
+	/**
+	 * Prune unreferenced actions.
+	 *
+	 * @param key the key
+	 */
 	private synchronized void pruneUnreferencedActions(String key) {
 		List<Reference<Property.Action<?>>> list = actions.get(key);
 		if (list == null || list.isEmpty())
@@ -126,6 +159,12 @@ public class SettingsSupport {
 
 	}
 
+	/**
+	 * Removes the.
+	 *
+	 * @param key   the key
+	 * @param value the value
+	 */
 	private synchronized void remove(String key, Reference<Property.Action<?>> value) {
 		List<Reference<Property.Action<?>>> list = actions.get(key);
 		if (list == null || list.isEmpty())

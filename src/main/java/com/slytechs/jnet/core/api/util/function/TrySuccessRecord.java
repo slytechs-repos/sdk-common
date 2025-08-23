@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -19,15 +19,24 @@ package com.slytechs.jnet.core.api.util.function;
 
 /**
  * Record implementation of Try that stores a success value.
+ *
+ * @param <T>     the generic type
+ * @param success the success
  */
 record TrySuccessRecord<T>(@Nullable T success) implements Try<T> {
 
+	/**
+	 * @see java.lang.Record#toString()
+	 */
 	@Override
 	public String toString() {
 		return "Success[" + String.valueOf(success) + "]";
 	}
 
 	/**
+	 * Checks if is failure.
+	 *
+	 * @return true, if is failure
 	 * @see com.slytechs.jnet.platform.api.util.function.Try#isFailure()
 	 */
 	@Override
@@ -36,6 +45,9 @@ record TrySuccessRecord<T>(@Nullable T success) implements Try<T> {
 	}
 
 	/**
+	 * Checks if is success.
+	 *
+	 * @return true, if is success
 	 * @see com.slytechs.jnet.platform.api.util.function.Try#isSuccess()
 	 */
 	@Override
@@ -44,6 +56,9 @@ record TrySuccessRecord<T>(@Nullable T success) implements Try<T> {
 	}
 
 	/**
+	 * Failure.
+	 *
+	 * @return the exception
 	 * @see com.slytechs.jnet.platform.api.util.function.Try#failure()
 	 */
 	@Override
@@ -52,6 +67,10 @@ record TrySuccessRecord<T>(@Nullable T success) implements Try<T> {
 	}
 
 	/**
+	 * Gets the.
+	 *
+	 * @return the t
+	 * @throws Exception the exception
 	 * @see com.slytechs.jnet.platform.api.util.function.Try#get()
 	 */
 	@Override

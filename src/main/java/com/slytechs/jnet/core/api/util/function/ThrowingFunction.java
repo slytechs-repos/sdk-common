@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -30,6 +30,14 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface ThrowingFunction<T, R> {
 
+	/**
+	 * Lift.
+	 *
+	 * @param <T>      the generic type
+	 * @param <R>      the generic type
+	 * @param function the function
+	 * @return the function
+	 */
 	static <T, R> Function<T, R> lift(ThrowingFunction<T, R> function) {
 		return t -> {
 			try {
@@ -40,6 +48,14 @@ public interface ThrowingFunction<T, R> {
 		};
 	}
 
+	/**
+	 * Of.
+	 *
+	 * @param <T>      the generic type
+	 * @param <R>      the generic type
+	 * @param function the function
+	 * @return the throwing function
+	 */
 	static <T, R> ThrowingFunction<T, R> of(ThrowingFunction<T, R> function) {
 		return function;
 	}

@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -77,6 +77,9 @@ public interface FloatTuple {
 			return new Tuple2f(value1, value2);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 2;
@@ -100,11 +103,17 @@ public interface FloatTuple {
 			return new Tuple3f(value1, value2, value3);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 3;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#value3()
+		 */
 		@Override
 		float value3();
 	}
@@ -127,14 +136,23 @@ public interface FloatTuple {
 			return new Tuple4f(value1, value2, value3, value4);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 4;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#value3()
+		 */
 		@Override
 		float value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#value4()
+		 */
 		@Override
 		float value4();
 	}
@@ -158,25 +176,44 @@ public interface FloatTuple {
 			return new Tuple5f(value1, value2, value3, value4, value5);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 5;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#value3()
+		 */
 		@Override
 		float value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#value4()
+		 */
 		@Override
 		float value4();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#value5()
+		 */
 		@Override
 		float value5();
 	}
 
 	/**
 	 * Record implementation of FloatTuple2.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
 	 */
 	record Tuple2f(float value1, float value2) implements FloatTuple2 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#values()
+		 */
 		@Override
 		public float[] values() {
 			return new float[] {
@@ -185,6 +222,9 @@ public interface FloatTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "FloatTuple2 [" + value1 + ", " + value2 + "]";
@@ -193,8 +233,16 @@ public interface FloatTuple {
 
 	/**
 	 * Record implementation of FloatTuple3.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
 	 */
 	record Tuple3f(float value1, float value2, float value3) implements FloatTuple3 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#values()
+		 */
 		@Override
 		public float[] values() {
 			return new float[] {
@@ -204,6 +252,9 @@ public interface FloatTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "FloatTuple3 [" + value1 + ", " + value2 + ", " + value3 + "]";
@@ -212,9 +263,18 @@ public interface FloatTuple {
 
 	/**
 	 * Record implementation of FloatTuple4.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
 	 */
 	record Tuple4f(float value1, float value2, float value3, float value4)
 			implements FloatTuple4 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#values()
+		 */
 		@Override
 		public float[] values() {
 			return new float[] {
@@ -225,6 +285,9 @@ public interface FloatTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "FloatTuple4 [" + value1 + ", " + value2 + ", " + value3 + ", " + value4 + "]";
@@ -233,9 +296,19 @@ public interface FloatTuple {
 
 	/**
 	 * Record implementation of FloatTuple5.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
+	 * @param value5 the value 5
 	 */
 	record Tuple5f(float value1, float value2, float value3, float value4, float value5)
 			implements FloatTuple5 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.FloatTuple#values()
+		 */
 		@Override
 		public float[] values() {
 			return new float[] {
@@ -247,6 +320,9 @@ public interface FloatTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "FloatTuple5 [" + value1 + ", " + value2 + ", " + value3 + ", " +

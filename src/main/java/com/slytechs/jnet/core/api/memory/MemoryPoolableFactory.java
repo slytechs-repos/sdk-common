@@ -1,3 +1,20 @@
+/*
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.MemorySegment;
@@ -15,7 +32,7 @@ import java.lang.foreign.MemorySegment;
  * <h2>Implementation Guidelines</h2>
  * <ul>
  * <li>Always set the owning pool reference in created objects</li>
- * <li>Ensure created objects start with reference count = 1</li>
+ * <li>Ensure created objects start with reference {@code count = 1}</li>
  * <li>Handle any custom initialization required by the memory type</li>
  * <li>Validate parameters and throw appropriate exceptions for invalid
  * input</li>
@@ -23,8 +40,10 @@ import java.lang.foreign.MemorySegment;
  * 
  * <h2>Example Implementation</h2>
  * 
- * <pre>{@code
+ * <pre>
+ * {@code
  * public class MemoryByteBufferFactory implements MemoryPoolableFactory<MemoryByteBuffer> {
+ * 
  * 	@Override
  * 	public MemoryByteBuffer newInstance(MemoryPool<MemoryByteBuffer> owningPool,
  * 			MemorySegment memorySegment,
@@ -35,9 +54,11 @@ import java.lang.foreign.MemorySegment;
  * 				memoryDataOffset, memoryDataEnd);
  * 	}
  * }
- * }</pre>
+ * }
+ * </pre>
  * 
  * @param <T> the type of memory objects created by this factory
+ * 
  */
 public interface MemoryPoolableFactory<T extends AbstractMemory & MemoryPoolable> {
 	/**

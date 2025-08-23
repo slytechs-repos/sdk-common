@@ -72,6 +72,8 @@ public final class ArrayProperty<E> extends Property<E[], ArrayProperty<E>> {
 	 *                     string representation. This function should convert a
 	 *                     string to an element of type E or throw an appropriate
 	 *                     exception if parsing fails
+	 * @param serializer   the serializer
+	 * @param arrayFactory the array factory
 	 */
 	public ArrayProperty(String name,
 			Deserializer<E> deserializer,
@@ -95,6 +97,8 @@ public final class ArrayProperty<E> extends Property<E[], ArrayProperty<E>> {
 	 * @param name         the name of the property, used for identification
 	 * @param deserializer the function used to parse individual elements from their
 	 *                     string representation
+	 * @param serializer   the serializer
+	 * @param arrayFactory the array factory
 	 * @param value        the initial list value for this property
 	 */
 	public ArrayProperty(String name,
@@ -124,6 +128,8 @@ public final class ArrayProperty<E> extends Property<E[], ArrayProperty<E>> {
 	 *                     string representation. This function should convert a
 	 *                     string to an element of type E or throw an appropriate
 	 *                     exception if parsing fails
+	 * @param serializer   the serializer
+	 * @param arrayFactory the array factory
 	 */
 	ArrayProperty(SettingsSupport support, String name,
 			Deserializer<E> deserializer,
@@ -149,6 +155,8 @@ public final class ArrayProperty<E> extends Property<E[], ArrayProperty<E>> {
 	 * @param name         the name of the property, used for identification
 	 * @param deserializer the function used to parse individual elements from their
 	 *                     string representation
+	 * @param serializer   the serializer
+	 * @param arrayFactory the array factory
 	 * @param value        the initial list value for this property
 	 */
 	ArrayProperty(SettingsSupport support, String name,

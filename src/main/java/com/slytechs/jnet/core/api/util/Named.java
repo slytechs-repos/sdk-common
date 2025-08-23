@@ -24,16 +24,17 @@ package com.slytechs.jnet.core.api.util;
  * 
  * <p>
  * The name returned by {@link #name()} should:
+ * </p>
  * <ul>
  * <li>Be immutable for the lifetime of the object
  * <li>Never return null
  * <li>Be unique within its context if used as an identifier
  * <li>Be consistent with equals() and hashCode() if used in collections
  * </ul>
- * </p>
  * 
  * <p>
  * Example usage:
+ * </p>
  * 
  * <pre>
  * public class NetworkAdapter implements Named {
@@ -49,23 +50,28 @@ package com.slytechs.jnet.core.api.util;
  *     }
  * }
  * </pre>
- * </p>
  * 
  * <p>
  * Implementations should consider documenting:
+ * </p>
  * <ul>
  * <li>The format and constraints of valid names
  * <li>Whether names are case-sensitive
  * <li>Any uniqueness guarantees
  * <li>Whether names can contain special characters
  * </ul>
- * </p>
  *
  * @author Mark Bednarczyk
  * @see java.util.Objects#requireNonNull(Object)
  */
 public interface Named {
 
+	/**
+	 * To name.
+	 *
+	 * @param id the id
+	 * @return the string
+	 */
 	static String toName(Object id) {
 		if (id instanceof Enum<?> e)
 			return e.name();

@@ -58,10 +58,10 @@ import java.util.OptionalInt;
  */
 public final class UnsignedByteProperty extends Property<Integer, UnsignedByteProperty> {
 
-	/** The minimum value (0) that this unsigned byte property can hold */
+	/** The minimum value (0) that this unsigned byte property can hold. */
 	public static final int MIN_VALUE = 0;
 
-	/** The maximum value (255) that this unsigned byte property can hold */
+	/** The maximum value (255) that this unsigned byte property can hold. */
 	public static final int MAX_VALUE = (1 << 8) - 1;
 
 	/**

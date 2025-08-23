@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,6 +20,9 @@ package com.slytechs.jnet.core.api.util.function;
 /**
  * Record implementation of IntTry that stores either an int value or failure
  * exception.
+ *
+ * @param value   the value
+ * @param failure the failure
  */
 public record IntTryRecord(int value, @Nullable Exception failure) implements IntTry {
 
@@ -27,6 +30,8 @@ public record IntTryRecord(int value, @Nullable Exception failure) implements In
 	 * Constructs an IntTry instance, ensuring either value is valid or failure is
 	 * present.
 	 *
+	 * @param value   the value
+	 * @param failure the failure
 	 * @throws IllegalArgumentException if failure is null when isSuccess is false
 	 */
 	public IntTryRecord {
@@ -35,11 +40,17 @@ public record IntTryRecord(int value, @Nullable Exception failure) implements In
 		}
 	}
 
+	/**
+	 * @see com.slytechs.jnet.core.api.util.function.IntTry#isSuccess()
+	 */
 	@Override
 	public boolean isSuccess() {
 		return failure == null;
 	}
 
+	/**
+	 * @see java.lang.Record#toString()
+	 */
 	@Override
 	public String toString() {
 		return isSuccess()

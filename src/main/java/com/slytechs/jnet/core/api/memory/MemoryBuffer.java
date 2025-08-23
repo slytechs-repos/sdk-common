@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -74,29 +74,45 @@ import java.util.function.Consumer;
  */
 public abstract class MemoryBuffer extends AbstractMemory implements MemoryEditable, MemoryPoolable {
 	// Developer Note: Buffer state management - similar to java.nio.Buffer
+	/** The position. */
 	// These track our position within the buffer for sequential operations
 	private long position = 0; // Current position in buffer
 
+	/** The limit. */
 	private long limit; // Upper bound for operations
 
+	/** The mark. */
 	private long mark = -1; // Saved position for reset()
 
 	// Developer Note: Error state management for non-throwing operations
+	/** The has error. */
 	// This enables fluent chains to continue even when errors occur
 	private volatile boolean hasError = false;
 
+	/** The pending error. */
 	private volatile BufferOperationException pendingError = null;
 
 	// Developer Note: Multi-segment chain navigation cache
 	// We cache the current segment to avoid repeated lookups during sequential
+	/** The current segment. */
 	// access
 	protected Memory currentSegment; // Current segment in chain
+	
+	/** The current segment offset. */
 	protected long currentSegmentOffset = 0; // Offset of current segment in chain
 	// Developer Note: Performance metrics for monitoring
+	/** The metrics. */
 	// These help track error patterns in production without logs
 	protected final BufferMetrics metrics;
+	
+	/** The owning pool. */
 	private final MemoryPool<? extends MemoryBuffer> owningPool;
 
+	/**
+	 * Instantiates a new memory buffer.
+	 *
+	 * @param owningPool the owning pool
+	 */
 	protected MemoryBuffer(MemoryPool<? extends MemoryBuffer> owningPool) {
 		this.owningPool = owningPool;
 		this.metrics = (owningPool != null)
@@ -106,10 +122,13 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 
 	/**
 	 * Constructs a MemoryBuffer with specified bounds.
-	 * 
-	 * @param memorySegment the backing memory segment
-	 * @param memoryOffset  starting offset within segment
-	 * @param memoryEnd     ending offset within segment (exclusive)
+	 *
+	 * @param owningPool       the owning pool
+	 * @param memorySegment    the backing memory segment
+	 * @param memoryOffset     starting offset within segment
+	 * @param memoryEnd        ending offset within segment (exclusive)
+	 * @param memoryDataOffset the memory data offset
+	 * @param memoryDataEnd    the memory data end
 	 */
 	protected MemoryBuffer(MemoryPool<? extends MemoryBuffer> owningPool,
 			MemorySegment memorySegment,
@@ -135,6 +154,10 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 	}
 
 	/**
+	 * Active bytes end.
+	 *
+	 * @param newEnd the new end
+	 * @return the long
 	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#activeBytesEnd(long)
 	 */
 	@Override
@@ -145,6 +168,10 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 	}
 
 	/**
+	 * Active bytes start.
+	 *
+	 * @param newOffset the new offset
+	 * @return the long
 	 * @see com.slytechs.jnet.core.api.memory.MemoryWindow#activeBytesStart(long)
 	 */
 	@Override
@@ -478,6 +505,9 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 	}
 
 	/**
+	 * Gets the owning pool.
+	 *
+	 * @return the owning pool
 	 * @see com.slytechs.jnet.core.api.memory.MemoryPoolable#getOwningPool()
 	 */
 	@Override
@@ -603,10 +633,20 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 		return position - currentSegmentOffset;
 	}
 
+	/**
+	 * Local memory segment.
+	 *
+	 * @return the memory segment
+	 */
 	protected MemorySegment localMemorySegment() {
 		return currentSegment.asMemorySegment();
 	}
 
+	/**
+	 * Local segment.
+	 *
+	 * @return the memory
+	 */
 	protected Memory localSegment() {
 		return currentSegment;
 	}
@@ -692,6 +732,11 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 		return (T) this;
 	}
 
+	/**
+	 * On ref count zero.
+	 *
+	 * @see com.slytechs.jnet.core.api.memory.AbstractMemory#onRefCountZero()
+	 */
 	@Override
 	protected void onRefCountZero() {
 		if (owningPool != null) {
@@ -857,6 +902,9 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 		currentSegmentOffset = 0;
 	}
 
+	/**
+	 * Return to pool.
+	 */
 	private void returnToPool() {
 		// Reset state for reuse
 		resetForReuse();
@@ -942,6 +990,11 @@ public abstract class MemoryBuffer extends AbstractMemory implements MemoryEdita
 					toStringChain());
 	}
 
+	/**
+	 * To string chain.
+	 *
+	 * @return the string
+	 */
 	public String toStringChain() {
 		StringBuilder sb = new StringBuilder();
 

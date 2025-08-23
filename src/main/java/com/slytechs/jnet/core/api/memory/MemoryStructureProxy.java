@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -25,51 +25,111 @@ import static java.lang.foreign.MemoryLayout.*;
 import static java.lang.foreign.ValueLayout.*;
 
 /**
+ * The Class MemoryStructureProxy.
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 public class MemoryStructureProxy extends MemoryProxy {
 
+	/** The layout. */
 	private final MemoryLayout layout;
 
+	/**
+	 * Instantiates a new memory structure proxy.
+	 *
+	 * @param byteSize the byte size
+	 * @param arena    the arena
+	 */
 	public MemoryStructureProxy(long byteSize, Arena arena) {
 		this(sequenceLayout(byteSize, JAVA_BYTE), arena);
 	}
 
+	/**
+	 * Instantiates a new memory structure proxy.
+	 *
+	 * @param layout the layout
+	 */
 	public MemoryStructureProxy(MemoryLayout layout) {
 		this.layout = layout;
 	}
 
+	/**
+	 * Instantiates a new memory structure proxy.
+	 *
+	 * @param layout the layout
+	 * @param arena  the arena
+	 */
 	public MemoryStructureProxy(MemoryLayout layout, Arena arena) {
 		this(layout, arena.allocate(layout), 0);
 	}
 
+	/**
+	 * Instantiates a new memory structure proxy.
+	 *
+	 * @param layout  the layout
+	 * @param pointer the pointer
+	 */
 	public MemoryStructureProxy(MemoryLayout layout, MemorySegment pointer) {
 		this(layout, pointer.reinterpret(layout.byteSize()), 0);
 	}
 
+	/**
+	 * Instantiates a new memory structure proxy.
+	 *
+	 * @param layout  the layout
+	 * @param pointer the pointer
+	 * @param arena   the arena
+	 */
 	public MemoryStructureProxy(MemoryLayout layout, MemorySegment pointer, Arena arena) {
 		this(layout, pointer.reinterpret(layout.byteSize(), arena, null), 0);
 	}
 
+	/**
+	 * Instantiates a new memory structure proxy.
+	 *
+	 * @param layout  the layout
+	 * @param segment the segment
+	 * @param offset  the offset
+	 */
 	public MemoryStructureProxy(MemoryLayout layout, MemorySegment segment, long offset) {
 		this.layout = layout;
 
 		assert segment.byteSize() > 0;
 	}
 
+	/**
+	 * Size of.
+	 *
+	 * @return the long
+	 */
 	public long sizeOf() {
 		return layout.byteSize();
 	}
 
+	/**
+	 * Gets the compact memory layout.
+	 *
+	 * @return the compact memory layout
+	 */
 	public MemoryLayout getCompactMemoryLayout() {
 		return layout;
 	}
 
+	/**
+	 * Gets the memory layout.
+	 *
+	 * @return the memory layout
+	 */
 	public final MemoryLayout getMemoryLayout() {
 		return layout;
 	}
 
+	/**
+	 * Gets the padded memory layout.
+	 *
+	 * @return the padded memory layout
+	 */
 	public MemoryLayout getPaddedMemoryLayout() {
 		return layout;
 	}

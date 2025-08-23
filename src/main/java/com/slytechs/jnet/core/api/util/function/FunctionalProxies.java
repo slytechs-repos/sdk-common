@@ -1,3 +1,20 @@
+/*
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.util.function;
 
 import java.lang.reflect.Array;
@@ -29,6 +46,13 @@ import java.util.function.Supplier;
  */
 public final class FunctionalProxies {
 
+	/**
+	 * Creates the array allocator.
+	 *
+	 * @param <T>      the generic type
+	 * @param dataType the data type
+	 * @return the int function
+	 */
 	@SuppressWarnings("unchecked")
 	public static <T> IntFunction<T[]> createArrayAllocator(Class<T> dataType) {
 		return size -> (T[]) Array.newInstance(dataType, size);
@@ -181,6 +205,7 @@ public final class FunctionalProxies {
 	 * @param functionalInterface the functional interface class
 	 * @param target              the target instance to forward calls to
 	 * @param lock                the lock to use for synchronization
+	 * @param errorHandler        the error handler
 	 * @return a proxy that forwards calls while holding the lock
 	 * @throws IllegalArgumentException if the class is not a functional interface
 	 */
@@ -503,6 +528,11 @@ public final class FunctionalProxies {
 				.count() == 1;
 	}
 
+	/**
+	 * The main method.
+	 *
+	 * @param args the arguments
+	 */
 	// Example usage:
 	public static void main(String[] args) {
 		// Create wrapper function for IntConsumer

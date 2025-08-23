@@ -26,5 +26,13 @@ package com.slytechs.jnet.core.api.util.function;
  */
 @FunctionalInterface
 public interface ThrowingToLongFunction<T> {
+	
+	/**
+	 * Apply as long.
+	 *
+	 * @param value the value
+	 * @return the long
+	 * @throws Exception the exception
+	 */
 	long applyAsLong(T value) throws Exception;
 }

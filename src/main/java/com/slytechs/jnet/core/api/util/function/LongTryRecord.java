@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,6 +20,9 @@ package com.slytechs.jnet.core.api.util.function;
 /**
  * Record implementation of LongTry that stores either an long value or failure
  * exception.
+ *
+ * @param value   the value
+ * @param failure the failure
  */
 public record LongTryRecord(long value, @Nullable Exception failure) implements LongTry {
 
@@ -27,6 +30,8 @@ public record LongTryRecord(long value, @Nullable Exception failure) implements 
 	 * Constructs an LongTry instance, ensuring either value is valid or failure is
 	 * present.
 	 *
+	 * @param value   the value
+	 * @param failure the failure
 	 * @throws IllegalArgumentException if failure is null when isSuccess is false
 	 */
 	public LongTryRecord {
@@ -35,11 +40,17 @@ public record LongTryRecord(long value, @Nullable Exception failure) implements 
 		}
 	}
 
+	/**
+	 * @see com.slytechs.jnet.core.api.util.function.LongTry#isSuccess()
+	 */
 	@Override
 	public boolean isSuccess() {
 		return failure == null;
 	}
 
+	/**
+	 * @see java.lang.Record#toString()
+	 */
 	@Override
 	public String toString() {
 		return isSuccess()

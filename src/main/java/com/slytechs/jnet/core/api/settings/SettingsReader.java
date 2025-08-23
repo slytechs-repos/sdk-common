@@ -29,31 +29,56 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 /**
+ * The Class SettingsReader.
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 class SettingsReader {
 
+	/** The Constant DEFAULT_SECTION. */
 	private static final String DEFAULT_SECTION = "<__default__>";
 
+	/** The Constant HEADER_REGEX. */
 	private static final Pattern HEADER_REGEX = Pattern.compile(""
 			+ "[#\\!]\\s+\\[([_-+:;\\w\\d]+)\\]"
 
 	);
 
+	/** The input. */
 	private final InputStream input;
+	
+	/** The sections. */
 	private final Map<String, Properties> sections = new HashMap<>();
 
+	/**
+	 * Format section header.
+	 *
+	 * @param sectionName the section name
+	 * @return the string
+	 */
 	public static String formatSectionHeader(String sectionName) {
 		return SettingsWriter.formatSectionHeader(sectionName);
 	}
 
+	/**
+	 * Checks if is section start.
+	 *
+	 * @param line the line
+	 * @return true, if is section start
+	 */
 	public static boolean isSectionStart(String line) {
 		var matcher = HEADER_REGEX.matcher(line);
 
 		return matcher.find();
 	}
 
+	/**
+	 * Gets the section name.
+	 *
+	 * @param line the line
+	 * @return the section name
+	 */
 	public static String getSectionName(String line) {
 		var matcher = HEADER_REGEX.matcher(line);
 
@@ -63,12 +88,25 @@ class SettingsReader {
 		return null;
 	}
 
+	/**
+	 * Instantiates a new settings reader.
+	 *
+	 * @param input the input
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	public SettingsReader(InputStream input) throws IOException {
 		this.input = input;
 
 		readAllSections();
 	}
 
+	/**
+	 * Read.
+	 *
+	 * @param settings the settings
+	 * @return true, if successful
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	public boolean read(Settings<?> settings) throws IOException {
 		Properties savedProperties = sections.get(settings.name());
 		if (savedProperties == null)
@@ -91,6 +129,11 @@ class SettingsReader {
 		return true;
 	}
 
+	/**
+	 * Read all sections.
+	 *
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	private void readAllSections() throws IOException {
 
 		BufferedReader reader = new BufferedReader(new InputStreamReader(input));
@@ -117,6 +160,14 @@ class SettingsReader {
 
 	}
 
+	/**
+	 * Read section.
+	 *
+	 * @param sectionName the section name
+	 * @param sectionText the section text
+	 * @return the properties
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	private Properties readSection(String sectionName, String sectionText) throws IOException {
 		try (Reader textReader = new StringReader(sectionText)) {
 

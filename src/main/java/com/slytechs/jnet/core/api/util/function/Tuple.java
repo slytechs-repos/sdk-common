@@ -1,14 +1,14 @@
 /*
  * Sly Technologies Free License
- *
- * Copyright 2025 Sly Technologies Inc.
+ * 
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
- *
+ * 
  * http://www.slytechs.com/free-license-text
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -77,8 +77,18 @@ public interface Tuple {
 
 		/**
 		 * Record implementation of Tuple2.
+		 *
+		 * @param <T1>   the generic type
+		 * @param <T2>   the generic type
+		 * @param size   the size
+		 * @param value1 the value 1
+		 * @param value2 the value 2
 		 */
 		record Tuple2Record<T1, T2>(int size, T1 value1, T2 value2) implements Tuple2<T1, T2> {
+			
+			/**
+			 * @see com.slytechs.jnet.core.api.util.function.Tuple#values()
+			 */
 			@Override
 			public Object[] values() {
 				return new Object[] {
@@ -87,6 +97,9 @@ public interface Tuple {
 				};
 			}
 
+			/**
+			 * @see java.lang.Record#toString()
+			 */
 			@Override
 			public String toString() {
 				return "Tuple2 [" + String.valueOf(value1) + ", " + String.valueOf(value2) + "]";
@@ -136,9 +149,21 @@ public interface Tuple {
 
 		/**
 		 * Record implementation of Tuple3.
+		 *
+		 * @param <T1>   the generic type
+		 * @param <T2>   the generic type
+		 * @param <T3>   the generic type
+		 * @param size   the size
+		 * @param value1 the value 1
+		 * @param value2 the value 2
+		 * @param value3 the value 3
 		 */
 		record Tuple3Record<T1, T2, T3>(int size, T1 value1, T2 value2, T3 value3)
 				implements Tuple3<T1, T2, T3> {
+			
+			/**
+			 * @see com.slytechs.jnet.core.api.util.function.Tuple#values()
+			 */
 			@Override
 			public Object[] values() {
 				return new Object[] {
@@ -148,6 +173,9 @@ public interface Tuple {
 				};
 			}
 
+			/**
+			 * @see java.lang.Record#toString()
+			 */
 			@Override
 			public String toString() {
 				return "Tuple3 [" + String.valueOf(value1) + ", " + String.valueOf(value2) + ", " +
@@ -213,6 +241,16 @@ public interface Tuple {
 
 		/**
 		 * Record implementation of Tuple4.
+		 *
+		 * @param <T1>   the generic type
+		 * @param <T2>   the generic type
+		 * @param <T3>   the generic type
+		 * @param <T4>   the generic type
+		 * @param size   the size
+		 * @param value1 the value 1
+		 * @param value2 the value 2
+		 * @param value3 the value 3
+		 * @param value4 the value 4
 		 */
 		record Tuple4Record<T1, T2, T3, T4>(
 				int size,
@@ -221,6 +259,9 @@ public interface Tuple {
 				T3 value3,
 				T4 value4) implements Tuple4<T1, T2, T3, T4> {
 
+			/**
+			 * @see com.slytechs.jnet.core.api.util.function.Tuple#values()
+			 */
 			@Override
 			public Object[] values() {
 				return new Object[] {
@@ -231,6 +272,9 @@ public interface Tuple {
 				};
 			}
 
+			/**
+			 * @see java.lang.Record#toString()
+			 */
 			@Override
 			public String toString() {
 				return "Tuple4 [" +
@@ -312,6 +356,18 @@ public interface Tuple {
 
 		/**
 		 * Record implementation of Tuple5.
+		 *
+		 * @param <T1>   the generic type
+		 * @param <T2>   the generic type
+		 * @param <T3>   the generic type
+		 * @param <T4>   the generic type
+		 * @param <T5>   the generic type
+		 * @param size   the size
+		 * @param value1 the value 1
+		 * @param value2 the value 2
+		 * @param value3 the value 3
+		 * @param value4 the value 4
+		 * @param value5 the value 5
 		 */
 		record Tuple5Record<T1, T2, T3, T4, T5>(
 				int size,
@@ -321,6 +377,9 @@ public interface Tuple {
 				T4 value4,
 				T5 value5) implements Tuple5<T1, T2, T3, T4, T5> {
 
+			/**
+			 * @see com.slytechs.jnet.core.api.util.function.Tuple#values()
+			 */
 			@Override
 			public Object[] values() {
 				return new Object[] {
@@ -332,6 +391,9 @@ public interface Tuple {
 				};
 			}
 
+			/**
+			 * @see java.lang.Record#toString()
+			 */
 			@Override
 			public String toString() {
 				return "Tuple5 [" +

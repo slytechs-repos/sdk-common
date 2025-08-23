@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -77,6 +77,9 @@ public interface LongTuple {
 			return new Tuple2l(value1, value2);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 2;
@@ -100,11 +103,17 @@ public interface LongTuple {
 			return new Tuple3l(value1, value2, value3);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 3;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#value3()
+		 */
 		@Override
 		long value3();
 	}
@@ -127,14 +136,23 @@ public interface LongTuple {
 			return new Tuple4l(value1, value2, value3, value4);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 4;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#value3()
+		 */
 		@Override
 		long value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#value4()
+		 */
 		@Override
 		long value4();
 	}
@@ -158,25 +176,44 @@ public interface LongTuple {
 			return new Tuple5l(value1, value2, value3, value4, value5);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 5;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#value3()
+		 */
 		@Override
 		long value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#value4()
+		 */
 		@Override
 		long value4();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#value5()
+		 */
 		@Override
 		long value5();
 	}
 
 	/**
 	 * Record implementation of LongTuple2.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
 	 */
 	record Tuple2l(long value1, long value2) implements LongTuple2 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#values()
+		 */
 		@Override
 		public long[] values() {
 			return new long[] {
@@ -185,6 +222,9 @@ public interface LongTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "LongTuple2 [" + value1 + ", " + value2 + "]";
@@ -193,8 +233,16 @@ public interface LongTuple {
 
 	/**
 	 * Record implementation of LongTuple3.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
 	 */
 	record Tuple3l(long value1, long value2, long value3) implements LongTuple3 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#values()
+		 */
 		@Override
 		public long[] values() {
 			return new long[] {
@@ -204,6 +252,9 @@ public interface LongTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "LongTuple3 [" + value1 + ", " + value2 + ", " + value3 + "]";
@@ -212,8 +263,17 @@ public interface LongTuple {
 
 	/**
 	 * Record implementation of LongTuple4.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
 	 */
 	record Tuple4l(long value1, long value2, long value3, long value4) implements LongTuple4 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#values()
+		 */
 		@Override
 		public long[] values() {
 			return new long[] {
@@ -224,6 +284,9 @@ public interface LongTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "LongTuple4 [" + value1 + ", " + value2 + ", " + value3 + ", " + value4 + "]";
@@ -232,9 +295,19 @@ public interface LongTuple {
 
 	/**
 	 * Record implementation of LongTuple5.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
+	 * @param value5 the value 5
 	 */
 	record Tuple5l(long value1, long value2, long value3, long value4, long value5)
 			implements LongTuple5 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.LongTuple#values()
+		 */
 		@Override
 		public long[] values() {
 			return new long[] {
@@ -246,6 +319,9 @@ public interface LongTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "LongTuple5 [" + value1 + ", " + value2 + ", " + value3 + ", " +

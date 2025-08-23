@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -77,6 +77,9 @@ public interface DoubleTuple {
 			return new Tuple2d(value1, value2);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 2;
@@ -100,11 +103,17 @@ public interface DoubleTuple {
 			return new Tuple3d(value1, value2, value3);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 3;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#value3()
+		 */
 		@Override
 		double value3();
 	}
@@ -127,14 +136,23 @@ public interface DoubleTuple {
 			return new Tuple4d(value1, value2, value3, value4);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 4;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#value3()
+		 */
 		@Override
 		double value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#value4()
+		 */
 		@Override
 		double value4();
 	}
@@ -158,25 +176,44 @@ public interface DoubleTuple {
 			return new Tuple5d(value1, value2, value3, value4, value5);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 5;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#value3()
+		 */
 		@Override
 		double value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#value4()
+		 */
 		@Override
 		double value4();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#value5()
+		 */
 		@Override
 		double value5();
 	}
 
 	/**
 	 * Record implementation of DoubleTuple2.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
 	 */
 	record Tuple2d(double value1, double value2) implements DoubleTuple2 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#values()
+		 */
 		@Override
 		public double[] values() {
 			return new double[] {
@@ -185,6 +222,9 @@ public interface DoubleTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "DoubleTuple2 [" + value1 + ", " + value2 + "]";
@@ -193,8 +233,16 @@ public interface DoubleTuple {
 
 	/**
 	 * Record implementation of DoubleTuple3.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
 	 */
 	record Tuple3d(double value1, double value2, double value3) implements DoubleTuple3 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#values()
+		 */
 		@Override
 		public double[] values() {
 			return new double[] {
@@ -204,6 +252,9 @@ public interface DoubleTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "DoubleTuple3 [" + value1 + ", " + value2 + ", " + value3 + "]";
@@ -212,9 +263,18 @@ public interface DoubleTuple {
 
 	/**
 	 * Record implementation of DoubleTuple4.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
 	 */
 	record Tuple4d(double value1, double value2, double value3, double value4)
 			implements DoubleTuple4 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#values()
+		 */
 		@Override
 		public double[] values() {
 			return new double[] {
@@ -225,6 +285,9 @@ public interface DoubleTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "DoubleTuple4 [" + value1 + ", " + value2 + ", " + value3 + ", " + value4 + "]";
@@ -233,9 +296,19 @@ public interface DoubleTuple {
 
 	/**
 	 * Record implementation of DoubleTuple5.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
+	 * @param value5 the value 5
 	 */
 	record Tuple5d(double value1, double value2, double value3, double value4, double value5)
 			implements DoubleTuple5 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.DoubleTuple#values()
+		 */
 		@Override
 		public double[] values() {
 			return new double[] {
@@ -247,6 +320,9 @@ public interface DoubleTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "DoubleTuple5 [" + value1 + ", " + value2 + ", " + value3 + ", " +

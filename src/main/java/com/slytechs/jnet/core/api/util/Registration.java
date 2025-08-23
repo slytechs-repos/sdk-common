@@ -40,8 +40,14 @@ import java.util.function.Consumer;
  */
 public interface Registration {
 
+	/**
+	 * The Interface AutoRegistration.
+	 */
 	interface AutoRegistration extends Registration, AutoCloseable {
 
+		/**
+		 * @see java.lang.AutoCloseable#close()
+		 */
 		@Override
 		default void close() {
 			unregister();
@@ -75,19 +81,35 @@ public interface Registration {
 		void unregister() throws Throwable;
 	}
 
+	/**
+	 * The Class Cleanup.
+	 */
 	public final class Cleanup implements AutoRegistration, Consumer<Registration> {
 
+		/** The list. */
 		final List<Registration> list = new ArrayList<>();
 
+		/**
+		 * Adds the.
+		 *
+		 * @param toCleanup the to cleanup
+		 */
 		public void add(Registration toCleanup) {
 			list.add(wrapRegistration(toCleanup));
 		}
 
+		/**
+		 * Adds the auto closeable.
+		 *
+		 * @param autoClose the auto close
+		 */
 		public void addAutoCloseable(AutoCloseable autoClose) {
 			list.add(wrapAutoCloseable(autoClose));
 		}
 
 		/**
+		 * Unregister.
+		 *
 		 * @see com.slytechs.jnet.platform.api.util.Registration#unregister()
 		 */
 		@Override
@@ -97,6 +119,9 @@ public interface Registration {
 		}
 
 		/**
+		 * Accept.
+		 *
+		 * @param t the t
 		 * @see java.util.function.Consumer#accept(java.lang.Object)
 		 */
 		@Override
@@ -180,6 +205,12 @@ public interface Registration {
 		};
 	}
 
+	/**
+	 * On registration.
+	 *
+	 * @param action the action
+	 * @return the registration
+	 */
 	default Registration onRegistration(Consumer<Registration> action) {
 		if (this instanceof AutoCloseable autoClose) {
 			action.accept(wrapAutoCloseable(autoClose));
@@ -192,6 +223,12 @@ public interface Registration {
 		return this;
 	}
 
+	/**
+	 * Wrap registration.
+	 *
+	 * @param registration the registration
+	 * @return the registration
+	 */
 	static Registration wrapRegistration(Registration registration) {
 		if (registration instanceof AutoCloseable autoClose)
 			return wrapAutoCloseable(autoClose);
@@ -199,6 +236,12 @@ public interface Registration {
 		return registration;
 	}
 
+	/**
+	 * Wrap auto closeable.
+	 *
+	 * @param autoClose the auto close
+	 * @return the registration
+	 */
 	static Registration wrapAutoCloseable(AutoCloseable autoClose) {
 
 		// If registration already support auto close

@@ -83,20 +83,38 @@ public class MemoryByteBuffer extends MemoryBuffer {
 	// near-native speed.
 	// Using UNALIGNED variants handles any memory alignment automatically.
 
+	/** The Constant BYTE_HANDLE. */
 	// Little-endian handles (platform native for most systems)
 	private static final VarHandle BYTE_HANDLE = ValueLayout.JAVA_BYTE.varHandle();
+
+	/** The Constant SHORT_HANDLE. */
 	private static final VarHandle SHORT_HANDLE = ValueLayout.JAVA_SHORT_UNALIGNED.varHandle();
+
+	/** The Constant INT_HANDLE. */
 	private static final VarHandle INT_HANDLE = ValueLayout.JAVA_INT_UNALIGNED.varHandle();
+
+	/** The Constant LONG_HANDLE. */
 	private static final VarHandle LONG_HANDLE = ValueLayout.JAVA_LONG_UNALIGNED.varHandle();
+
+	/** The Constant FLOAT_HANDLE. */
 	private static final VarHandle FLOAT_HANDLE = ValueLayout.JAVA_FLOAT_UNALIGNED.varHandle();
+
+	/** The Constant DOUBLE_HANDLE. */
 	private static final VarHandle DOUBLE_HANDLE = ValueLayout.JAVA_DOUBLE_UNALIGNED.varHandle();
+
+	/** The Constant CHAR_HANDLE. */
 	private static final VarHandle CHAR_HANDLE = ValueLayout.JAVA_CHAR_UNALIGNED.varHandle();
 
+	/** The Constant SHORT_BE_HANDLE. */
 	// Big-endian handles for network byte order
 	private static final VarHandle SHORT_BE_HANDLE = ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.BIG_ENDIAN)
 			.varHandle();
+
+	/** The Constant INT_BE_HANDLE. */
 	private static final VarHandle INT_BE_HANDLE = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.BIG_ENDIAN)
 			.varHandle();
+
+	/** The Constant LONG_BE_HANDLE. */
 	private static final VarHandle LONG_BE_HANDLE = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.BIG_ENDIAN)
 			.varHandle();
 
@@ -116,6 +134,9 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		return memory.asMemorySegment(); // Fallback
 	}
 
+	/**
+	 * Instantiates a new memory byte buffer.
+	 */
 	public MemoryByteBuffer() {
 		super(null);
 
@@ -160,9 +181,12 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		super(null, memorySegment, memoryOffset, memoryEnd, memoryOffset, memoryEnd);
 	}
 
-	// ==================== Relative Get Operations (advance position)
-	// ====================
-
+	/**
+	 * Allocate gap and overflow.
+	 *
+	 * @param gapRemaining the gap remaining
+	 * @param prevSegment  the prev segment
+	 */
 	private void allocateGapAndOverflow(long gapRemaining, MemoryByteBuffer prevSegment) {
 		if (gapRemaining <= 0)
 			return;
@@ -229,6 +253,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		}
 	}
 
+	/**
+	 * Allocate segment for overflow.
+	 *
+	 * @param totalSize the total size
+	 */
 	private void allocateSegmentForOverflow(long totalSize) {
 		// Check pool availability before attempting allocation
 		if (getOwningPool() == null) {
@@ -266,6 +295,12 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		return offset;
 	}
 
+	/**
+	 * Can fit in current segment.
+	 *
+	 * @param size the size
+	 * @return true, if successful
+	 */
 	private boolean canFitInCurrentSegment(long size) {
 		return (headroom() >= size) || (tailroom() >= size);
 	}
@@ -920,6 +955,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 
 	/**
 	 * Reads data that spans segments.
+	 *
+	 * @param dst    the dst
+	 * @param offset the offset
+	 * @param length the length
+	 * @return the spanning
 	 */
 	private void getSpanning(byte[] dst, int offset, int length) {
 		int read = 0;
@@ -947,6 +987,8 @@ public class MemoryByteBuffer extends MemoryBuffer {
 
 	/**
 	 * Reads an int that spans segments.
+	 *
+	 * @return the spanning int
 	 */
 	private int getSpanningInt() {
 		int b1 = get() & 0xFF;
@@ -958,6 +1000,8 @@ public class MemoryByteBuffer extends MemoryBuffer {
 
 	/**
 	 * Reads a long that spans segments.
+	 *
+	 * @return the spanning long
 	 */
 	private long getSpanningLong() {
 		long high = getSpanningInt() & 0xFFFFFFFFL;
@@ -967,6 +1011,8 @@ public class MemoryByteBuffer extends MemoryBuffer {
 
 	/**
 	 * Reads a short that spans segments.
+	 *
+	 * @return the spanning short
 	 */
 	private short getSpanningShort() {
 		int b1 = get() & 0xFF;
@@ -1024,6 +1070,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		return this;
 	}
 
+	/**
+	 * Insert space by moving left.
+	 *
+	 * @param gapSize the gap size
+	 */
 	private void insertSpaceByMovingLeft(long gapSize) {
 		long dataSize = position();
 		if (dataSize > 0) {
@@ -1037,6 +1088,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		metrics.recordBoundsExpanded();
 	}
 
+	/**
+	 * Insert space by moving right.
+	 *
+	 * @param gapSize the gap size
+	 */
 	private void insertSpaceByMovingRight(long gapSize) {
 		long dataStart = activeBytesStart() + position();
 		long dataSize = remaining();
@@ -1051,6 +1107,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		metrics.recordBoundsExpanded();
 	}
 
+	/**
+	 * Insert space in current segment.
+	 *
+	 * @param size the size
+	 */
 	private void insertSpaceInCurrentSegment(long size) {
 		long dataBeforePos = position();
 		long dataAfterPos = remaining();
@@ -1097,10 +1158,18 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		return false;
 	}
 
+	/**
+	 * Optimize empty segment bounds.
+	 */
 	private void optimizeEmptySegmentBounds() {
 		optimizeEmptySegmentBounds(this);
 	}
 
+	/**
+	 * Optimize empty segment bounds.
+	 *
+	 * @param segment the segment
+	 */
 	private void optimizeEmptySegmentBounds(Memory segment) {
 		// When segment becomes empty, reset to optimal headroom/tailroom distribution
 		long defaultHeadroom = getOwningPool() != null ? ((MemoryPool<?>) getOwningPool()).getDefaultHeadroom() : 128;
@@ -1109,6 +1178,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		metrics.recordBoundsExpanded(); // Counts as optimization
 	}
 
+	/**
+	 * Push overflow to next.
+	 *
+	 * @param spaceNeeded the space needed
+	 */
 	private void pushOverflowToNext(long spaceNeeded) {
 		// We're trying to insert 'spaceNeeded' bytes but don't have room
 		// Move data after position to next segment to make room
@@ -1808,6 +1882,8 @@ public class MemoryByteBuffer extends MemoryBuffer {
 
 	/**
 	 * Writes an int that spans segments.
+	 *
+	 * @param value the value
 	 */
 	private void putSpanningInt(int value) {
 		put((byte) (value >>> 24));
@@ -1818,6 +1894,8 @@ public class MemoryByteBuffer extends MemoryBuffer {
 
 	/**
 	 * Writes a long that spans segments.
+	 *
+	 * @param value the value
 	 */
 	private void putSpanningLong(long value) {
 		putSpanningInt((int) (value >>> 32));
@@ -1826,12 +1904,17 @@ public class MemoryByteBuffer extends MemoryBuffer {
 
 	/**
 	 * Writes a short that spans segments.
+	 *
+	 * @param value the value
 	 */
 	private void putSpanningShort(short value) {
 		put((byte) (value >>> 8));
 		put((byte) value);
 	}
 
+	/**
+	 * Record allocation failure.
+	 */
 	private void recordAllocationFailure() {
 		// Record in pool metrics if available
 		if (getOwningPool() != null) {
@@ -1841,6 +1924,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		}
 	}
 
+	/**
+	 * Removes the cross segment.
+	 *
+	 * @param size the size
+	 */
 	private void removeCrossSegment(long size) {
 		long remainingInCurrent = activeBytesLength() - position();
 
@@ -1871,6 +1959,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		}
 	}
 
+	/**
+	 * Removes the from beginning.
+	 *
+	 * @param size the size
+	 */
 	private void removeFromBeginning(long size) {
 		// Special optimization: just adjust bounds, no data movement
 		long toRemove = Math.min(size, activeBytesLength());
@@ -1893,6 +1986,11 @@ public class MemoryByteBuffer extends MemoryBuffer {
 		}
 	}
 
+	/**
+	 * Removes the in current segment.
+	 *
+	 * @param size the size
+	 */
 	private void removeInCurrentSegment(long size) {
 		long dataBeforePos = position();
 		long dataAfterRemoval = activeBytesLength() - position() - size;

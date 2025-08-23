@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -77,6 +77,9 @@ public interface IntTuple {
 			return new Tuple2i(value1, value2);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 2;
@@ -100,11 +103,17 @@ public interface IntTuple {
 			return new Tuple3i(value1, value2, value3);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 3;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#value3()
+		 */
 		@Override
 		int value3();
 	}
@@ -127,14 +136,23 @@ public interface IntTuple {
 			return new Tuple4i(value1, value2, value3, value4);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 4;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#value3()
+		 */
 		@Override
 		int value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#value4()
+		 */
 		@Override
 		int value4();
 	}
@@ -158,25 +176,44 @@ public interface IntTuple {
 			return new Tuple5i(value1, value2, value3, value4, value5);
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#size()
+		 */
 		@Override
 		default int size() {
 			return 5;
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#value3()
+		 */
 		@Override
 		int value3();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#value4()
+		 */
 		@Override
 		int value4();
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#value5()
+		 */
 		@Override
 		int value5();
 	}
 
 	/**
 	 * Record implementation of IntTuple2.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
 	 */
 	record Tuple2i(int value1, int value2) implements IntTuple2 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#values()
+		 */
 		@Override
 		public int[] values() {
 			return new int[] {
@@ -185,6 +222,9 @@ public interface IntTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "IntTuple2 [" + value1 + ", " + value2 + "]";
@@ -194,8 +234,16 @@ public interface IntTuple {
 
 	/**
 	 * Record implementation of IntTuple3.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
 	 */
 	record Tuple3i(int value1, int value2, int value3) implements IntTuple3 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#values()
+		 */
 		@Override
 		public int[] values() {
 			return new int[] {
@@ -205,6 +253,9 @@ public interface IntTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "IntTuple3 [" + value1 + ", " + value2 + ", " + value3 + "]";
@@ -213,8 +264,17 @@ public interface IntTuple {
 
 	/**
 	 * Record implementation of IntTuple4.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
 	 */
 	record Tuple4i(int value1, int value2, int value3, int value4) implements IntTuple4 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#values()
+		 */
 		@Override
 		public int[] values() {
 			return new int[] {
@@ -225,6 +285,9 @@ public interface IntTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "IntTuple4 [" + value1 + ", " + value2 + ", " + value3 + ", " + value4 + "]";
@@ -233,9 +296,19 @@ public interface IntTuple {
 
 	/**
 	 * Record implementation of IntTuple5.
+	 *
+	 * @param value1 the value 1
+	 * @param value2 the value 2
+	 * @param value3 the value 3
+	 * @param value4 the value 4
+	 * @param value5 the value 5
 	 */
 	record Tuple5i(int value1, int value2, int value3, int value4, int value5)
 			implements IntTuple5 {
+		
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.IntTuple#values()
+		 */
 		@Override
 		public int[] values() {
 			return new int[] {
@@ -247,6 +320,9 @@ public interface IntTuple {
 			};
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return "IntTuple5 [" + value1 + ", " + value2 + ", " + value3 + ", " +

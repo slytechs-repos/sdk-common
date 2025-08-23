@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -27,6 +27,13 @@ import java.util.function.Supplier;
 @FunctionalInterface
 public interface ThrowingSupplier<T> {
 
+	/**
+	 * Lift.
+	 *
+	 * @param <T>      the generic type
+	 * @param supplier the supplier
+	 * @return the supplier
+	 */
 	static <T> Supplier<T> lift(ThrowingSupplier<T> supplier) {
 		return () -> {
 			try {
@@ -37,10 +44,23 @@ public interface ThrowingSupplier<T> {
 		};
 	}
 
+	/**
+	 * Of.
+	 *
+	 * @param <T>      the generic type
+	 * @param supplier the supplier
+	 * @return the throwing supplier
+	 */
 	static <T> ThrowingSupplier<T> of(ThrowingSupplier<T> supplier) {
 		return supplier;
 	}
 
+	/**
+	 * Gets the.
+	 *
+	 * @return the t
+	 * @throws Exception the exception
+	 */
 	T get() throws Exception;
 
 }

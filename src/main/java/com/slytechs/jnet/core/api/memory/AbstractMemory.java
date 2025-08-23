@@ -555,6 +555,10 @@ public abstract class AbstractMemory implements Memory {
 		return target.asMemorySegment().asSlice(localOffset);
 	}
 
+	public void bindMemorySegment(MemorySegment segment, long start, long stop) {
+		bindMemorySegment(segment, start, stop, start, stop);
+	}
+
 	/**
 	 * Bind memory segment.
 	 *

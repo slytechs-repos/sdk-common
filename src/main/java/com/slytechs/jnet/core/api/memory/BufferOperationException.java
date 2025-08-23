@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,24 +18,27 @@
 package com.slytechs.jnet.core.api.memory;
 
 /**
- * 
+ * The Class BufferOperationException.
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 public class BufferOperationException extends RuntimeException {
 
+	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1991127839049446974L;
 
 	/**
-	 * 
+	 * Instantiates a new buffer operation exception.
 	 */
 	public BufferOperationException() {
 		// TODO Auto-generated constructor stub
 	}
 
 	/**
-	 * @param message
+	 * Instantiates a new buffer operation exception.
+	 *
+	 * @param message the message
 	 */
 	public BufferOperationException(String message) {
 		super(message);
@@ -43,7 +46,9 @@ public class BufferOperationException extends RuntimeException {
 	}
 
 	/**
-	 * @param cause
+	 * Instantiates a new buffer operation exception.
+	 *
+	 * @param cause the cause
 	 */
 	public BufferOperationException(Throwable cause) {
 		super(cause);
@@ -51,8 +56,10 @@ public class BufferOperationException extends RuntimeException {
 	}
 
 	/**
-	 * @param message
-	 * @param cause
+	 * Instantiates a new buffer operation exception.
+	 *
+	 * @param message the message
+	 * @param cause   the cause
 	 */
 	public BufferOperationException(String message, Throwable cause) {
 		super(message, cause);
@@ -60,10 +67,12 @@ public class BufferOperationException extends RuntimeException {
 	}
 
 	/**
-	 * @param message
-	 * @param cause
-	 * @param enableSuppression
-	 * @param writableStackTrace
+	 * Instantiates a new buffer operation exception.
+	 *
+	 * @param message            the message
+	 * @param cause              the cause
+	 * @param enableSuppression  the enable suppression
+	 * @param writableStackTrace the writable stack trace
 	 */
 	public BufferOperationException(String message, Throwable cause, boolean enableSuppression,
 			boolean writableStackTrace) {

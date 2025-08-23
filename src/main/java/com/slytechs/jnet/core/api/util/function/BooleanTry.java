@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -52,6 +52,13 @@ public interface BooleanTry {
 	 */
 	@FunctionalInterface
 	interface ThrowingBooleanSupplier {
+		
+		/**
+		 * Gets the as boolean.
+		 *
+		 * @return the as boolean
+		 * @throws Exception the exception
+		 */
 		boolean getAsBoolean() throws Exception;
 	}
 
@@ -60,6 +67,13 @@ public interface BooleanTry {
 	 */
 	@FunctionalInterface
 	interface ThrowingBooleanConsumer {
+		
+		/**
+		 * Accept.
+		 *
+		 * @param value the value
+		 * @throws Exception the exception
+		 */
 		void accept(boolean value) throws Exception;
 	}
 
@@ -68,26 +82,49 @@ public interface BooleanTry {
 	 */
 	@FunctionalInterface
 	interface ThrowingBooleanUnaryOperator {
+		
+		/**
+		 * Apply as boolean.
+		 *
+		 * @param value the value
+		 * @return true, if successful
+		 * @throws Exception the exception
+		 */
 		boolean applyAsBoolean(boolean value) throws Exception;
 	}
 
 	/**
 	 * Record implementation for BooleanTry that stores either a boolean value or
 	 * failure.
+	 *
+	 * @param value   the value
+	 * @param failure the failure
 	 */
 	record BooleanTryRecord(boolean value, @Nullable Exception failure) implements BooleanTry {
 
+		/**
+		 * Instantiates a new boolean try record.
+		 *
+		 * @param value   the value
+		 * @param failure the failure
+		 */
 		public BooleanTryRecord {
 			if (!isSuccess() && failure == null) {
 				throw new IllegalArgumentException("Failure case requires non-null exception");
 			}
 		}
 
+		/**
+		 * @see com.slytechs.jnet.core.api.util.function.BooleanTry#isSuccess()
+		 */
 		@Override
 		public boolean isSuccess() {
 			return failure == null;
 		}
 
+		/**
+		 * @see java.lang.Record#toString()
+		 */
 		@Override
 		public String toString() {
 			return isSuccess()

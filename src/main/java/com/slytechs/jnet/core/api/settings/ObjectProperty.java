@@ -17,26 +17,63 @@
  */
 package com.slytechs.jnet.core.api.settings;
 
+/**
+ * The Class ObjectProperty.
+ *
+ * @param <E> the element type
+ */
 public final class ObjectProperty<E> extends Property<E, ObjectProperty<E>> {
 
+	/**
+	 * Instantiates a new object property.
+	 *
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 */
 	public ObjectProperty(String name, Deserializer<E> deserializer, Serializer<E> serializer) {
 		super(name);
 		super.setDeserializer(deserializer);
 		super.setSerializer(serializer);
 	}
 
+	/**
+	 * Instantiates a new object property.
+	 *
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 * @param value        the value
+	 */
 	public ObjectProperty(String name, Deserializer<E> deserializer, Serializer<E> serializer, E value) {
 		super(name, value);
 		super.setDeserializer(deserializer);
 		super.setSerializer(serializer);
 	}
 
+	/**
+	 * Instantiates a new object property.
+	 *
+	 * @param support      the support
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 */
 	ObjectProperty(SettingsSupport support, String name, Deserializer<E> deserializer, Serializer<E> serializer) {
 		super(support, name);
 		super.setDeserializer(deserializer);
 		super.setSerializer(serializer);
 	}
 
+	/**
+	 * Instantiates a new object property.
+	 *
+	 * @param support      the support
+	 * @param name         the name
+	 * @param deserializer the deserializer
+	 * @param serializer   the serializer
+	 * @param value        the value
+	 */
 	ObjectProperty(SettingsSupport support, String name, Deserializer<E> deserializer, Serializer<E> serializer,
 			E value) {
 		super(support, name, value);
@@ -44,6 +81,11 @@ public final class ObjectProperty<E> extends Property<E, ObjectProperty<E>> {
 		super.setSerializer(serializer);
 	}
 
+	/**
+	 * Gets the object.
+	 *
+	 * @return the object
+	 */
 	public E getObject() {
 		return getValue();
 	}

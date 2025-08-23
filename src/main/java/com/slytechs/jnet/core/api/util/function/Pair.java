@@ -1,14 +1,14 @@
 /*
  * Sly Technologies Free License
- *
- * Copyright 2024-2025 Sly Technologies Inc.
+ * 
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
- *
+ * 
  * http://www.slytechs.com/free-license-text
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -58,6 +58,12 @@ public interface Pair<T1, T2> extends Tuple2<T1, T2> {
 
 	/**
 	 * A record implementation of the {@code Pair} interface that stores two values.
+	 *
+	 * @param <T1>   the generic type
+	 * @param <T2>   the generic type
+	 * @param size   the size
+	 * @param value1 the value 1
+	 * @param value2 the value 2
 	 */
 	record PairRecord<T1, T2>(int size, T1 value1, T2 value2) implements Pair<T1, T2> {
 

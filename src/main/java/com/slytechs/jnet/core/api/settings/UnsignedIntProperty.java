@@ -58,12 +58,12 @@ import java.util.OptionalLong;
  */
 public final class UnsignedIntProperty extends Property<Long, UnsignedIntProperty> {
 
-	/** The minimum value (0) that this unsigned int property can hold */
+	/** The minimum value (0) that this unsigned int property can hold. */
 	public static final long MIN_VALUE = 0;
 
 	/**
 	 * The maximum value (2^32 - 1 = 4,294,967,295) that this unsigned int property
-	 * can hold
+	 * can hold.
 	 */
 	public static final long MAX_VALUE = (1L << 32) - 1L;
 

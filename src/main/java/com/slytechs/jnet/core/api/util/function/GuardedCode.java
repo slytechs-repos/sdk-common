@@ -37,10 +37,17 @@ import java.util.function.Consumer;
  */
 public class GuardedCode {
 
+	/** The rw lock. */
 	@SuppressWarnings("unused")
 	private final ReadWriteLock rwLock;
+	
+	/** The read lock. */
 	private final Lock readLock;
+	
+	/** The write lock. */
 	private final Lock writeLock;
+	
+	/** The exception handler. */
 	private final Consumer<Throwable> exceptionHandler;
 
 	/**

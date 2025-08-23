@@ -18,11 +18,20 @@
 package com.slytechs.jnet.core.api.util.function;
 
 /**
- * @author Mark Bednarczyk
+ * The Class ThrowableUtils.
  *
+ * @author Mark Bednarczyk
  */
 final class ThrowableUtils {
 
+	/**
+	 * Cast as checked or throw runtime.
+	 *
+	 * @param <E>          the element type
+	 * @param e            the e
+	 * @param checkedClass the checked class
+	 * @return the e
+	 */
 	@SuppressWarnings("unchecked")
 	public static <E extends Throwable> E castAsCheckedOrThrowRuntime(Throwable e, Class<E> checkedClass) {
 		if (e.getClass().isAssignableFrom(checkedClass))
@@ -31,6 +40,12 @@ final class ThrowableUtils {
 		throw new RuntimeException(e);
 	}
 
+	/**
+	 * Unwrap exception.
+	 *
+	 * @param e the e
+	 * @return the exception
+	 */
 	public static Exception unwrapException(RuntimeException e) {
 		Throwable r = e;
 
@@ -43,6 +58,12 @@ final class ThrowableUtils {
 		return (Exception) r;
 	}
 
+	/**
+	 * Unwrap exception or throw runtime.
+	 *
+	 * @param e the e
+	 * @return the exception
+	 */
 	public static Exception unwrapExceptionOrThrowRuntime(RuntimeException e) {
 		if (e.getCause() == null)
 			throw e;
@@ -53,6 +74,14 @@ final class ThrowableUtils {
 		return (Exception) e.getCause();
 	}
 
+	/**
+	 * Unwrap checked or throw runtime.
+	 *
+	 * @param <E>          the element type
+	 * @param e            the e
+	 * @param checkedClass the checked class
+	 * @return the e
+	 */
 	public static <E extends Throwable> E unwrapCheckedOrThrowRuntime(RuntimeException e, Class<E> checkedClass) {
 		if (e.getCause() == null)
 			throw e;
@@ -63,6 +92,9 @@ final class ThrowableUtils {
 		return castAsCheckedOrThrowRuntime(e.getCause(), checkedClass);
 	}
 
+	/**
+	 * Instantiates a new throwable utils.
+	 */
 	private ThrowableUtils() {
 	}
 

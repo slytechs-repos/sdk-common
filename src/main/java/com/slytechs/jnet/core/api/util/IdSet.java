@@ -35,9 +35,19 @@ import java.util.stream.Stream;
  * set operations. This interface provides methods to create and manipulate
  * collections of port IDs and supports operations such as union, intersection,
  * difference, and symmetric difference.
+ *
+ * @param <T_BASE> the generic type
  */
 public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, IntPredicate {
 
+	/**
+	 * Deserialize.
+	 *
+	 * @param <T>     the generic type
+	 * @param line    the line
+	 * @param factory the factory
+	 * @return the t
+	 */
 	static <T extends IdSet<T>> T deserialize(String line, Function<int[], T> factory) {
 		int[] ids = Arrays.stream(line.split(","))
 				.map(String::trim)
@@ -47,14 +57,27 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return factory.apply(ids);
 	}
 
+	/**
+	 * Serialize.
+	 *
+	 * @param ids the ids
+	 * @return the string
+	 */
 	static String serialize(IdSet<?> ids) {
 		return ids.stream()
 				.mapToObj(Integer::toString)
 				.collect(Collectors.joining(","));
 	}
 
+	/** The empty array. */
 	int[] EMPTY_ARRAY = { };
 
+	/**
+	 * At.
+	 *
+	 * @param index the index
+	 * @return the int
+	 */
 	default int at(int index) {
 		var array = toArray();
 		Objects.checkIndex(index, array.length);
@@ -62,10 +85,21 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return array[index];
 	}
 
+	/**
+	 * Clear.
+	 *
+	 * @return the t base
+	 */
 	default T_BASE clear() {
 		return fromArray(EMPTY_ARRAY);
 	}
 
+	/**
+	 * Contains.
+	 *
+	 * @param id the id
+	 * @return true, if successful
+	 */
 	default boolean contains(int id) {
 		for (int i : toArray())
 			if (i == id)
@@ -99,6 +133,12 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 	 */
 	T_BASE fromArray(int... ids);
 
+	/**
+	 * Id at hash index.
+	 *
+	 * @param hashValue the hash value
+	 * @return the int
+	 */
 	default int idAtHashIndex(int hashValue) {
 		var array = toArray();
 		int indx = hashValue % array.length;
@@ -123,6 +163,11 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return fromArray(intersectionSet.stream().mapToInt(Integer::intValue).toArray());
 	}
 
+	/**
+	 * Checks if is empty.
+	 *
+	 * @return true, if is empty
+	 */
 	default boolean isEmpty() {
 		return toArray().length == 0;
 	}
@@ -151,10 +196,20 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		};
 	}
 
+	/**
+	 * Length.
+	 *
+	 * @return the int
+	 */
 	default int length() {
 		return toArray().length;
 	}
 
+	/**
+	 * List.
+	 *
+	 * @return the list
+	 */
 	default List<Integer> list() {
 		List<Integer> list = new ArrayList<>(length());
 
@@ -164,6 +219,13 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return list;
 	}
 
+	/**
+	 * Map.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the iterable
+	 */
 	default <T> Iterable<T> map(List<T> from) {
 		var it = iterator();
 
@@ -181,6 +243,13 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		};
 	}
 
+	/**
+	 * Map.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the iterable
+	 */
 	default <T> Iterable<T> map(T[] from) {
 		var it = iterator();
 
@@ -198,6 +267,13 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		};
 	}
 
+	/**
+	 * Map to list.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the list
+	 */
 	default <T> List<T> mapToList(List<T> from) {
 		List<T> newList = new ArrayList<>(length());
 
@@ -207,14 +283,33 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return newList;
 	}
 
+	/**
+	 * Map to list.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the list
+	 */
 	default <T> List<T> mapToList(T[] from) {
 		return Arrays.asList(toArray(from));
 	}
 
+	/**
+	 * Map to set.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the sets the
+	 */
 	default <T> Set<T> mapToSet(T[] from) {
 		return new HashSet<T>(mapToList(from));
 	}
 
+	/**
+	 * Sets the.
+	 *
+	 * @return the sets the
+	 */
 	default Set<Integer> set() {
 		Set<Integer> set = new HashSet<>(length());
 
@@ -224,6 +319,13 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return set;
 	}
 
+	/**
+	 * Sets the.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the sets the
+	 */
 	default <T> Set<T> set(List<T> from) {
 		Set<T> newSet = new HashSet<>(length());
 
@@ -233,14 +335,33 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return newSet;
 	}
 
+	/**
+	 * Stream.
+	 *
+	 * @return the int stream
+	 */
 	default IntStream stream() {
 		return IntStream.of(toArray());
 	}
 
+	/**
+	 * Stream.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the stream
+	 */
 	default <T> Stream<T> stream(List<T> from) {
 		return mapToList(from).stream();
 	}
 
+	/**
+	 * Stream.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the stream
+	 */
 	default <T> Stream<T> stream(T[] from) {
 		return Stream.of(toArray(from));
 	}
@@ -277,6 +398,13 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 	 */
 	int[] toArray();
 
+	/**
+	 * To array.
+	 *
+	 * @param <T>  the generic type
+	 * @param from the from
+	 * @return the t[]
+	 */
 	default <T> T[] toArray(T[] from) {
 		var newArray = Arrays.copyOf(from, length());
 
@@ -287,6 +415,11 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 		return newArray;
 	}
 
+	/**
+	 * To long.
+	 *
+	 * @return the long
+	 */
 	default long toLong() {
 		long bitmask = 0;
 
@@ -315,6 +448,10 @@ public interface IdSet<T_BASE extends IdSet<T_BASE>> extends Iterable<Integer>, 
 	}
 
 	/**
+	 * Test.
+	 *
+	 * @param value the value
+	 * @return true, if successful
 	 * @see java.util.function.IntPredicate#test(int)
 	 */
 	@Override

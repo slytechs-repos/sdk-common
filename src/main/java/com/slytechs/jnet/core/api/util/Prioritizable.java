@@ -26,6 +26,8 @@ import java.util.Comparator;
  * 
  * <p>
  * The priority system uses an integer-based scale where:
+ * </p>
+ * 
  * <ul>
  * <li>Lower numerical values indicate higher priority
  * <li>0 represents the highest possible priority ({@link #MIN_PRIORITY_VALUE})
@@ -33,10 +35,10 @@ import java.util.Comparator;
  * ({@link #MAX_PRIORITY_VALUE})
  * <li>The default priority is 0 ({@link #DEFAULT_PRIORITY_VALUE})
  * </ul>
- * </p>
  * 
  * <p>
  * Example usage for sorting prioritizable objects:
+ * </p>
  * 
  * <pre>
  * List&lt;Prioritizable&gt; items = ...;
@@ -45,10 +47,11 @@ import java.util.Comparator;
  * // Or sort from lowest to highest priority
  * items.sort((a, b) -> Prioritizable.compareLowToHigh(a, b));
  * </pre>
- * </p>
  * 
  * <p>
  * Important notes:
+ * </p>
+ * 
  * <ul>
  * <li>Objects with equal priority values have undefined relative ordering
  * <li>Priority values outside the valid range will cause
@@ -56,7 +59,6 @@ import java.util.Comparator;
  * <li>Implementations should ensure thread-safety if used in concurrent
  * contexts
  * </ul>
- * </p>
  *
  * @author Mark Bednarczyk
  * @see #priority()
@@ -65,8 +67,16 @@ import java.util.Comparator;
  */
 public interface Prioritizable {
 
+	/**
+	 * The Interface LowToHigh.
+	 */
 	interface LowToHigh extends Prioritizable, Comparable<Prioritizable> {
+
 		/**
+		 * Compare to.
+		 *
+		 * @param o the o
+		 * @return the int
 		 * @see java.lang.Comparable#compareTo(java.lang.Object)
 		 */
 		@Override
@@ -75,8 +85,16 @@ public interface Prioritizable {
 		}
 	}
 
+	/**
+	 * The Interface HighToLow.
+	 */
 	interface HighToLow extends Prioritizable, Comparable<Prioritizable> {
+
 		/**
+		 * Compare to.
+		 *
+		 * @param o the o
+		 * @return the int
 		 * @see java.lang.Comparable#compareTo(java.lang.Object)
 		 */
 		@Override
@@ -113,12 +131,14 @@ public interface Prioritizable {
 	 */
 	Comparator<Prioritizable> LOW_HIGH_COMPARATOR = Prioritizable::compareLowToHigh;
 
+	/** The default. */
 	Comparator<Prioritizable> DEFAULT = LOW_HIGH_COMPARATOR;
 
 	/**
 	 * Validates that a priority value is within the allowed range.
 	 *
 	 * @param value the priority value to validate
+	 * @return the int
 	 * @throws IllegalArgumentException if value is less than
 	 *                                  {@link #MIN_PRIORITY_VALUE} or greater than
 	 *                                  {@link #MAX_PRIORITY_VALUE}

@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,60 +18,78 @@
 package com.slytechs.jnet.core.api.memory;
 
 /**
- * Interface providing reference counting and lifecycle management for memory objects.
+ * Interface providing reference counting and lifecycle management for memory
+ * objects.
  * 
- * <p>MemoryRef implements a reference counting mechanism that enables safe, deterministic
- * memory management in multi-threaded environments. This pattern is essential for memory
- * pooling, resource sharing, and preventing memory leaks in high-performance applications
- * such as network packet processing and streaming data systems.</p>
+ * <p>
+ * MemoryRef implements a reference counting mechanism that enables safe,
+ * deterministic memory management in multi-threaded environments. This pattern
+ * is essential for memory pooling, resource sharing, and preventing memory
+ * leaks in high-performance applications such as network packet processing and
+ * streaming data systems.
+ * </p>
  * 
  * <h2>Reference Counting Lifecycle</h2>
- * <p>Memory objects follow a strict reference counting protocol:</p>
+ * <p>
+ * Memory objects follow a strict reference counting protocol:
+ * </p>
  * <ol>
- *   <li><strong>Creation:</strong> New memory starts with reference count = 1</li>
- *   <li><strong>Sharing:</strong> Each additional reference calls {@link #incrementRef()}</li>
- *   <li><strong>Release:</strong> Each reference release calls {@link #decrementRef()}</li>
- *   <li><strong>Cleanup:</strong> When count reaches 0, memory is automatically closed</li>
+ * <li><strong>Creation:</strong> New memory starts with reference count =
+ * 1</li>
+ * <li><strong>Sharing:</strong> Each additional reference calls
+ * {@link #incrementRef()}</li>
+ * <li><strong>Release:</strong> Each reference release calls
+ * {@link #decrementRef()}</li>
+ * <li><strong>Cleanup:</strong> When count reaches 0, memory is automatically
+ * closed</li>
  * </ol>
  * 
  * <h2>Usage Patterns</h2>
+ * 
  * <pre>{@code
  * // Safe sharing pattern
  * Memory shared = original.incrementRef(); // Now ref count = 2
  * try {
- *     // Use shared reference
- *     processMemory(shared);
+ * 	// Use shared reference
+ * 	processMemory(shared);
  * } finally {
- *     shared.decrementRef(); // Back to ref count = 1
+ * 	shared.decrementRef(); // Back to ref count = 1
  * }
  * 
  * // Pool return pattern
  * Memory pooled = pool.allocate(); // ref count = 1
  * try {
- *     // Use pooled memory
- *     fillBuffer(pooled);
+ * 	// Use pooled memory
+ * 	fillBuffer(pooled);
  * } finally {
- *     pooled.decrementRef(); // ref count = 0, returns to pool
+ * 	pooled.decrementRef(); // ref count = 0, returns to pool
  * }
  * }</pre>
  * 
  * <h2>Thread Safety</h2>
- * <p>Reference counting operations are atomic and thread-safe, enabling safe sharing
- * of memory objects across multiple threads without external synchronization.</p>
+ * <p>
+ * Reference counting operations are atomic and thread-safe, enabling safe
+ * sharing of memory objects across multiple threads without external
+ * synchronization.
+ * </p>
  * 
  * <h2>Best Practices</h2>
  * <ul>
- *   <li><strong>Always pair increment/decrement:</strong> Every incrementRef() must have a corresponding decrementRef()</li>
- *   <li><strong>Use try-finally blocks:</strong> Ensure cleanup occurs even during exceptions</li>
- *   <li><strong>Check refcount before operations:</strong> Avoid operations on closed memory</li>
- *   <li><strong>Document ownership:</strong> Clearly specify who owns references in APIs</li>
+ * <li><strong>Always pair increment/decrement:</strong> Every incrementRef()
+ * must have a corresponding decrementRef()</li>
+ * <li><strong>Use try-finally blocks:</strong> Ensure cleanup occurs even
+ * during exceptions</li>
+ * <li><strong>Check refcount before operations:</strong> Avoid operations on
+ * closed memory</li>
+ * <li><strong>Document ownership:</strong> Clearly specify who owns references
+ * in APIs</li>
  * </ul>
- * 
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @since 1.0
  * @see MemoryView for content access
  * @see MemoryWindow for bounds management
+ * @since 1.0
  */
 public interface MemoryRef {
 
@@ -144,28 +162,4 @@ public interface MemoryRef {
      * @see #close() for explicit cleanup
      */
     int decrementRef();
-
-    /**
-     * Sets the next Memory object in a chain structure.
-     * 
-     * <p>This method establishes or modifies chain linkage between memory objects,
-     * enabling the creation of complex memory structures such as scatter-gather lists
-     * or segmented buffers. Chain management is considered part of reference management
-     * because it affects memory lifecycle and ownership relationships.</p>
-     * 
-     * <p><strong>Reference Implications:</strong> Setting a next memory may affect
-     * reference counting if the implementation maintains references to chained objects.
-     * Consult specific implementation documentation for reference handling details.</p>
-     * 
-     * <p><strong>Thread Safety:</strong> Chain modification operations should be
-     * performed with appropriate synchronization if the memory chain is accessed
-     * concurrently from multiple threads.</p>
-     * 
-     * @param next the next Memory object in the chain, or {@code null} to terminate the chain
-     * @throws IllegalStateException if this memory is closed or in an invalid state
-     * 
-     * @see MemoryView#nextSegment() to traverse chains
-     * @see MemoryView#hasNextSegment() to check for chain continuation
-     */
-    void setNextMemory(Memory next);
 }

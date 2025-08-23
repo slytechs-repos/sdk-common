@@ -1,14 +1,14 @@
 /*
  * Sly Technologies Free License
- *
- * Copyright 2025 Sly Technologies Inc.
+ * 
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
- *
+ * 
  * http://www.slytechs.com/free-license-text
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -148,10 +148,13 @@ public interface Try<T> {
 	 */
 	public class UncheckedException extends Exception {
 
+		/** The Constant serialVersionUID. */
 		private static final long serialVersionUID = 3007861571844188541L;
 
 		/**
-		 * @param cause
+		 * Instantiates a new unchecked exception.
+		 *
+		 * @param cause the cause
 		 */
 		public UncheckedException(Throwable cause) {
 			super(cause);
@@ -812,6 +815,14 @@ public interface Try<T> {
 		throw exceptionSupplier.get();
 	}
 
+	/**
+	 * If failure throw.
+	 *
+	 * @param <X>            the generic type
+	 * @param exceptionClass the exception class
+	 * @return the try
+	 * @throws X the x
+	 */
 	@SuppressWarnings("unchecked")
 	default <X extends Throwable> Try<T> ifFailureThrow(Class<X> exceptionClass) throws X {
 		if (isSuccess()) {
@@ -830,6 +841,14 @@ public interface Try<T> {
 		return this;
 	}
 
+	/**
+	 * Or else throw.
+	 *
+	 * @param <X>            the generic type
+	 * @param exceptionClass the exception class
+	 * @return the t
+	 * @throws X the x
+	 */
 	@SuppressWarnings("unchecked")
 	default <X extends Throwable> T orElseThrow(Class<X> exceptionClass) throws X {
 		if (isSuccess()) {

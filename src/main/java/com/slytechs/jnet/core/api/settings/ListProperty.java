@@ -61,6 +61,7 @@ import java.util.function.Function;
  */
 public final class ListProperty<E> extends Property<List<E>, ListProperty<E>> {
 
+	/** The component parser. */
 	private final Function<String, E> componentParser;
 
 	/**

@@ -19,13 +19,27 @@ package com.slytechs.jnet.core.api.settings;
 
 import java.util.function.Function;
 
+/**
+ * The Class EmptyProperty.
+ *
+ * @param <T>      the generic type
+ * @param <T_BASE> the generic type
+ */
 final class EmptyProperty<T, T_BASE extends Property<T, T_BASE>> extends Property<T, T_BASE> {
 
+	/**
+	 * Instantiates a new empty property.
+	 *
+	 * @param name the name
+	 */
 	EmptyProperty(String name) {
 		super(name);
 	}
 
 	/**
+	 * Gets the value.
+	 *
+	 * @return the value
 	 * @see com.slytechs.jnet.platform.api.common.settings.Property#getValue()
 	 */
 	@Override
@@ -34,6 +48,12 @@ final class EmptyProperty<T, T_BASE extends Property<T, T_BASE>> extends Propert
 	}
 
 	/**
+	 * Map.
+	 *
+	 * @param <U>      the generic type
+	 * @param <P_BASE> the generic type
+	 * @param action   the action
+	 * @return the p base
 	 * @see com.slytechs.jnet.platform.api.common.settings.Property#map(java.util.function.Function)
 	 */
 	@Override
@@ -42,6 +62,10 @@ final class EmptyProperty<T, T_BASE extends Property<T, T_BASE>> extends Propert
 	}
 
 	/**
+	 * Deserialize value.
+	 *
+	 * @param newValue the new value
+	 * @return the t base
 	 * @see com.slytechs.jnet.platform.api.common.settings.Property#deserializeValue(java.lang.String)
 	 */
 	@Override
@@ -50,6 +74,10 @@ final class EmptyProperty<T, T_BASE extends Property<T, T_BASE>> extends Propert
 	}
 
 	/**
+	 * Sets the value.
+	 *
+	 * @param newValue the new value
+	 * @return the t base
 	 * @see com.slytechs.jnet.platform.api.common.settings.Property#setValue(java.lang.Object)
 	 */
 	@Override

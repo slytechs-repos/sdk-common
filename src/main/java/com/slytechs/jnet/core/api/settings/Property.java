@@ -94,11 +94,35 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 		ArrayProperty,
 		ObjectProperty {
 
+	/**
+	 * The Interface Serializer.
+	 *
+	 * @param <T> the generic type
+	 */
 	public interface Serializer<T> {
+		
+		/**
+		 * Serialize object.
+		 *
+		 * @param object the object
+		 * @return the string
+		 */
 		String serializeObject(T object);
 	}
 
+	/**
+	 * The Interface Deserializer.
+	 *
+	 * @param <T> the generic type
+	 */
 	public interface Deserializer<T> {
+		
+		/**
+		 * Deserialize object.
+		 *
+		 * @param serializedObject the serialized object
+		 * @return the t
+		 */
 		T deserializeObject(String serializedObject);
 	}
 
@@ -336,11 +360,39 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 		void onPropertyClear(String name, T oldValue);
 	}
 
+	/**
+	 * A factory for creating Property objects.
+	 *
+	 * @param <T_BASE> the generic type
+	 */
 	public interface PropertyFactory<T_BASE extends Property<?, T_BASE>> {
+		
+		/**
+		 * New instance.
+		 *
+		 * @param support the support
+		 * @param name    the name
+		 * @return the t base
+		 */
 		T_BASE newInstance(SettingsSupport support, String name);
 	}
 
+	/**
+	 * The Interface PropertyFactoryWithValue.
+	 *
+	 * @param <T>      the generic type
+	 * @param <T_BASE> the generic type
+	 */
 	public interface PropertyFactoryWithValue<T, T_BASE extends Property<T, T_BASE>> {
+		
+		/**
+		 * New instance.
+		 *
+		 * @param support the support
+		 * @param name    the name
+		 * @param value   the value
+		 * @return the t base
+		 */
 		T_BASE newInstance(SettingsSupport support, String name, T value);
 	}
 
@@ -354,11 +406,13 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 	 * @see Property#onReset(ResetAction)
 	 */
 	interface ResetAction<T> {
+		
 		/**
 		 * Called when a property is reset.
 		 *
 		 * @param name     the name of the property that was cleared
 		 * @param oldValue the value that was cleared from the property
+		 * @param newValue the new value
 		 */
 		void onPropertyReset(String name, T oldValue, T newValue);
 	}
@@ -382,6 +436,7 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 	 *
 	 * @param <T>      the type of value the property will hold
 	 * @param <T_BASE> the specific property type
+	 * @param support  the support
 	 * @param name     the name for the property
 	 * @param factory  the factory function to create the property
 	 * @return a new property instance
@@ -397,6 +452,7 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 	 *
 	 * @param <T>      the type of value the property will hold
 	 * @param <T_BASE> the specific property type
+	 * @param support  the support
 	 * @param name     the name for the property
 	 * @param value    the initial value for the property
 	 * @return a new property instance of the appropriate type
@@ -426,6 +482,7 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 	 *
 	 * @param <T>      the type of value the property will hold
 	 * @param <T_BASE> the specific property type
+	 * @param support  the support
 	 * @param name     the name for the property
 	 * @param value    the initial value for the property
 	 * @param factory  the factory function to create the property
@@ -436,33 +493,43 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 		return factory.newInstance(support, name, value);
 	}
 
-	/** Support class for managing property change notifications */
+	/** Support class for managing property change notifications. */
 	private final SettingsSupport settingsSupport;
 
-	/** Reference to this property instance cast to its specific type */
+	/** Reference to this property instance cast to its specific type. */
 	@SuppressWarnings("unchecked")
 	private final T_BASE us = (T_BASE) this;
 
-	/** The current value of the property */
+	/** The current value of the property. */
 	private T value;
+	
+	/** The initial value. */
 	private final T initialValue;
 
-	/** Format string for value representation */
+	/** Format string for value representation. */
 	private String formatString = "%s";
 
-	/** The name of the property */
+	/** The name of the property. */
 	private final String name;
 
+	/** The clear actions. */
 	private final List<ClearAction<T>> clearActions = new ArrayList<>(1);
+	
+	/** The reset actions. */
 	private final List<ResetAction<T>> resetActions = new ArrayList<>(1);
 
+	/** The serializer. */
 	private Serializer<T> serializer = String::valueOf;
+	
+	/** The deserializer. */
 	private Deserializer<T> deserializer;
 
 	/**
 	 * Creates a new Property with the specified name and no initial value.
 	 *
-	 * @param name the name of the property (must not be null)
+	 * @param settingsSupport support class for managing property change
+	 *                        notifications
+	 * @param name            the name of the property (must not be null)
 	 * @throws NullPointerException if name is null
 	 */
 	protected Property(SettingsSupport settingsSupport, String name) {
@@ -474,8 +541,10 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 	/**
 	 * Creates a new Property with the specified name and initial value.
 	 *
-	 * @param name  the name of the property (must not be null)
-	 * @param value the initial value for the property
+	 * @param settingsSupport support class for managing property change
+	 *                        notifications
+	 * @param name            the name of the property (must not be null)
+	 * @param value           the initial value for the property
 	 * @throws NullPointerException if name is null
 	 */
 	protected Property(SettingsSupport settingsSupport, String name, T value) {
@@ -511,22 +580,47 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 		this.initialValue = value;
 	}
 
+	/**
+	 * Sets the serializer.
+	 *
+	 * @param newSerializer the new serializer
+	 */
 	protected void setSerializer(Serializer<T> newSerializer) {
 		this.serializer = newSerializer;
 	}
 
+	/**
+	 * Sets the deserializer.
+	 *
+	 * @param newDeserializer the new deserializer
+	 */
 	protected void setDeserializer(Deserializer<T> newDeserializer) {
 		this.deserializer = newDeserializer;
 	}
 
+	/**
+	 * Gets the serializer.
+	 *
+	 * @return the serializer
+	 */
 	protected Serializer<T> getSerializer() {
 		return serializer;
 	}
 
+	/**
+	 * No deserializer exception.
+	 *
+	 * @return the illegal state exception
+	 */
 	protected IllegalStateException noDeserializerException() {
 		return new IllegalStateException("property deserializer is not set [%s]".formatted(name()));
 	}
 
+	/**
+	 * Gets the deserializer.
+	 *
+	 * @return the deserializer
+	 */
 	protected Deserializer<T> getDeserializer() {
 		if (deserializer == null)
 			throw noDeserializerException();
@@ -594,7 +688,6 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 	 * Gets the current value of the property.
 	 *
 	 * @return the current value
-	 * @throws IllegalStateException if the property has no value
 	 */
 	public T getValue() {
 		if (isEmpty())
@@ -750,6 +843,14 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 		return on(Action.withSource(before, source));
 	}
 
+	/**
+	 * On.
+	 *
+	 * @param <R>    the generic type
+	 * @param before the before
+	 * @param source the source
+	 * @return the t base
+	 */
 	public <R> T_BASE on(Function<T, R> before, Object source) {
 		return on((T t) -> before.apply(t));
 	}
@@ -901,6 +1002,11 @@ public sealed abstract class Property<T, T_BASE extends Property<T, T_BASE>>
 		return us;
 	}
 
+	/**
+	 * Serialize value.
+	 *
+	 * @return the string
+	 */
 	public String serializeValue() {
 		if (isEmpty())
 			throw noValueException();

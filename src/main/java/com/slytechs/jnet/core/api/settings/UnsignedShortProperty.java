@@ -58,10 +58,10 @@ import java.util.OptionalInt;
  */
 public final class UnsignedShortProperty extends Property<Integer, UnsignedShortProperty> {
 
-	/** The minimum value (0) that this unsigned short property can hold */
+	/** The minimum value (0) that this unsigned short property can hold. */
 	public static final int MIN_VALUE = 0;
 
-	/** The maximum value (65,535) that this unsigned short property can hold */
+	/** The maximum value (65,535) that this unsigned short property can hold. */
 	public static final int MAX_VALUE = (1 << 16) - 1;
 
 	/**

@@ -62,6 +62,7 @@ import com.slytechs.jnet.core.api.util.Enums;
  */
 public final class EnumProperty<E extends Enum<E>> extends Property<E, EnumProperty<E>> {
 
+	/** The enum type. */
 	private final Class<E> enumType;
 
 	/**

@@ -45,10 +45,22 @@ public interface ThrowingRunnable {
 		};
 	}
 
+	/**
+	 * Of.
+	 *
+	 * @param runnable the runnable
+	 * @return the throwing runnable
+	 */
 	static ThrowingRunnable of(ThrowingRunnable runnable) {
 		return runnable::run;
 	}
 
+	/**
+	 * Lift.
+	 *
+	 * @param runnable the runnable
+	 * @return the throwing runnable
+	 */
 	static ThrowingRunnable lift(Runnable runnable) {
 		return runnable::run;
 	}

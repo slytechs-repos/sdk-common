@@ -1,139 +1,149 @@
 /*
-* Sly Technologies Free License
-* 
-* Copyright 2025 Sly Technologies Inc.
-*
-* Licensed under the Sly Technologies Free License (the "License"); you may not
-* use this file except in compliance with the License. You may obtain a copy of
-* the License at
-* 
-* http://www.slytechs.com/free-license-text
-* 
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-* License for the specific language governing permissions and limitations under
-* the License.
-*/
+ * Sly Technologies Free License
+ * 
+ * Copyright 2024 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.core.api.memory;
 
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 
 /**
-* Core interface providing read-only view capabilities for memory access and chain navigation.
-* 
-* <p>
-* MemoryView defines the fundamental contract for accessing memory content through
-* various representations (ByteBuffer, MemorySegment) and provides navigation capabilities
-* for chained memory structures. This interface serves as the foundation for all memory
-* access operations, focusing on content retrieval and chain traversal without modification
-* capabilities.
-* </p>
-* 
-* <h2>Memory Organization</h2>
-* <p>
-* MemoryView operates on two levels of memory organization:
-* </p>
-* 
-* <h3>Segment Level (Local)</h3>
-* <p>
-* Individual memory segments that can be accessed through various views:
-* </p>
-* <pre>{@code
-* Single Segment:
-* ┌────────────────────────────────────┐
-* │     Memory Segment (Region)        │
-* │  ┌──────────────────────────────┐  │
-* │  │    Active Bytes (Data)       │  │
-* │  └──────────────────────────────┘  │
-* └────────────────────────────────────┘
-*    ↑                              ↑
-* segmentOffset()              segmentEnd()
-* }</pre>
-* 
-* <h3>Chain Level (Global)</h3>
-* <p>
-* Multiple segments linked to form a continuous logical memory space:
-* </p>
-* <pre>{@code
-* Memory Chain:
-* [Segment 1] ──next──> [Segment 2] ──next──> [Segment 3] ──null
-*      ↑                     ↑                     ↑
-*   offset=0            offset=1024           offset=2048
-* 
-* Chain navigation: nextSegment(), hasNextSegment(), seekSegment(offset)
-* }</pre>
-* 
-* <h2>Key Capabilities</h2>
-* <ul>
-* <li><strong>Content Access:</strong> Convert memory to ByteBuffer or MemorySegment views
-* for direct data access</li>
-* <li><strong>Chain Navigation:</strong> Traverse linked memory segments using 
-* {@link #nextSegment()} iteration</li>
-* <li><strong>Position-Based Access:</strong> Access specific positions within the chain
-* using {@link #asMemorySegmentAt(long)}</li>
-* <li><strong>State Inspection:</strong> Check for null pointers and zero-sized segments
-* using {@link #isNull()} and {@link #isPointer()}</li>
-* </ul>
-* 
-* <h2>Usage Patterns</h2>
-* 
-* <h3>Sequential Chain Processing</h3>
-* <pre>{@code
-* // Process all segments in a chain
-* Memory current = memoryView.asMemory();
-* while (current != null) {
-*     ByteBuffer buffer = current.asByteBuffer();
-*     processBuffer(buffer);
-*     current = current.nextSegment();
-* }
-* }</pre>
-* 
-* <h3>Random Access Within Chain</h3>
-* <pre>{@code
-* // Access data at specific position in chain
-* long targetPosition = 1500;  // Byte position from chain start
-* 
-* // Direct segment access
-* MemorySegment segment = memoryView.asMemorySegmentAt(targetPosition);
-* 
-* // Or navigate to containing Memory object
-* Memory containing = memoryView.seekSegment(targetPosition);
-* }</pre>
-* 
-* <h3>Active Bytes Access</h3>
-* <pre>{@code
-* // Access only the active bytes within a segment
-* MemorySegment activeData = memoryView.asMemorySegment();
-* // Segment is already sliced to activeBytesStart/End boundaries
-* 
-* ByteBuffer activeBuffer = memoryView.asByteBuffer();
-* // Buffer position and limit reflect active bytes region
-* }</pre>
-* 
-* <h2>Performance Characteristics</h2>
-* <ul>
-* <li><strong>Zero-allocation:</strong> Navigation operations create no new objects</li>
-* <li><strong>Lazy evaluation:</strong> Chain properties computed only when accessed</li>
-* <li><strong>O(1) local access:</strong> Segment-level operations are constant time</li>
-* <li><strong>O(n) chain traversal:</strong> Finding segments by position requires traversal</li>
-* </ul>
-* 
-* <h2>Thread Safety</h2>
-* <p>
-* MemoryView operations are generally thread-safe for reading if the underlying
-* memory is not being modified. However, chain structure modifications (adding/removing
-* segments) require external synchronization.
-* </p>
-* 
-* @author Mark Bednarczyk [mark@slytechs.com]
-* @author Sly Technologies Inc.
-* @since 1.0
-* @see MemoryWindow for segment boundaries and active bytes management
-* @see MemoryRef for lifecycle and reference counting
-* @see Memory for the complete memory abstraction
-*/
+ * Core interface providing read-only view capabilities for memory access and
+ * chain navigation.
+ * 
+ * <p>
+ * MemoryView defines the fundamental contract for accessing memory content
+ * through various representations (ByteBuffer, MemorySegment) and provides
+ * navigation capabilities for chained memory structures. This interface serves
+ * as the foundation for all memory access operations, focusing on content
+ * retrieval and chain traversal without modification capabilities.
+ * </p>
+ * 
+ * <h2>Memory Organization</h2>
+ * <p>
+ * MemoryView operates on two levels of memory organization:
+ * </p>
+ * 
+ * <h3>Segment Level (Local)</h3>
+ * <p>
+ * Individual memory segments that can be accessed through various views:
+ * </p>
+ * 
+ * <pre>{@code
+ * Single Segment:
+ * ┌────────────────────────────────────┐
+ * │     Memory Segment (Region)        │
+ * │  ┌──────────────────────────────┐  │
+ * │  │    Active Bytes (Data)       │  │
+ * │  └──────────────────────────────┘  │
+ * └────────────────────────────────────┘
+ *    ↑                              ↑
+ * segmentOffset()              segmentEnd()
+ * }</pre>
+ * 
+ * <h3>Chain Level (Global)</h3>
+ * <p>
+ * Multiple segments linked to form a continuous logical memory space:
+ * </p>
+ * 
+ * <pre>{@code
+ * Memory Chain:
+ * [Segment 1] ──next──> [Segment 2] ──next──> [Segment 3] ──null
+ *      ↑                     ↑                     ↑
+ *   offset=0            offset=1024           offset=2048
+ * 
+ * Chain navigation: nextSegment(), hasNextSegment(), seekSegment(offset)
+ * }</pre>
+ * 
+ * <h2>Key Capabilities</h2>
+ * <ul>
+ * <li><strong>Content Access:</strong> Convert memory to ByteBuffer or
+ * MemorySegment views for direct data access</li>
+ * <li><strong>Chain Navigation:</strong> Traverse linked memory segments using
+ * {@link #nextSegment()} iteration</li>
+ * <li><strong>Position-Based Access:</strong> Access specific positions within
+ * the chain using {@link #asMemorySegmentAt(long)}</li>
+ * <li><strong>State Inspection:</strong> Check for null pointers and zero-sized
+ * segments using {@link #isNull()} and {@link #isPointer()}</li>
+ * </ul>
+ * 
+ * <h2>Usage Patterns</h2>
+ * 
+ * <h3>Sequential Chain Processing</h3>
+ * 
+ * <pre>{@code
+ * // Process all segments in a chain
+ * Memory current = memoryView.asMemory();
+ * while (current != null) {
+ * 	ByteBuffer buffer = current.asByteBuffer();
+ * 	processBuffer(buffer);
+ * 	current = current.nextSegment();
+ * }
+ * }</pre>
+ * 
+ * <h3>Random Access Within Chain</h3>
+ * 
+ * <pre>{@code
+ * // Access data at specific position in chain
+ * long targetPosition = 1500; // Byte position from chain start
+ * 
+ * // Direct segment access
+ * MemorySegment segment = memoryView.asMemorySegmentAt(targetPosition);
+ * 
+ * // Or navigate to containing Memory object
+ * Memory containing = memoryView.seekSegment(targetPosition);
+ * }</pre>
+ * 
+ * <h3>Active Bytes Access</h3>
+ * 
+ * <pre>{@code
+ * // Access only the active bytes within a segment
+ * MemorySegment activeData = memoryView.asMemorySegment();
+ * // Segment is already sliced to activeBytesStart/End boundaries
+ * 
+ * ByteBuffer activeBuffer = memoryView.asByteBuffer();
+ * // Buffer position and limit reflect active bytes region
+ * }</pre>
+ * 
+ * <h2>Performance Characteristics</h2>
+ * <ul>
+ * <li><strong>Zero-allocation:</strong> Navigation operations create no new
+ * objects</li>
+ * <li><strong>Lazy evaluation:</strong> Chain properties computed only when
+ * accessed</li>
+ * <li><strong>O(1) local access:</strong> Segment-level operations are constant
+ * time</li>
+ * <li><strong>O(n) chain traversal:</strong> Finding segments by position
+ * requires traversal</li>
+ * </ul>
+ * 
+ * <h2>Thread Safety</h2>
+ * <p>
+ * MemoryView operations are generally thread-safe for reading if the underlying
+ * memory is not being modified. However, chain structure modifications
+ * (adding/removing segments) require external synchronization.
+ * </p>
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ * @see MemoryWindow for segment boundaries and active bytes management
+ * @see MemoryRef for lifecycle and reference counting
+ * @see Memory for the complete memory abstraction
+ * @since 1.0
+ */
 public interface MemoryView {
 
    /**
