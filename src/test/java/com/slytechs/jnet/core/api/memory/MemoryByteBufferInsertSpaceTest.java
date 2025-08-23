@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for MemoryByteBuffer insertSpace operation. Tests single-segment and
+ * Tests for MemoryBuffer insertSpace operation. Tests single-segment and
  * multi-segment scenarios with proper reference counting.
  */
 class MemoryByteBufferInsertSpaceTest {
@@ -20,7 +20,7 @@ class MemoryByteBufferInsertSpaceTest {
 	private static final int DATA_SIZE = SEGMENT_SIZE - 2 * DEFAULT_HEADROOM; // 192 bytes for data
 
 	private Arena arena;
-	private MemoryPool<MemoryByteBuffer> pool;
+	private MemoryPool<MemoryBuffer> pool;
 	private BufferMetrics metrics;
 
 	@BeforeEach
@@ -31,7 +31,7 @@ class MemoryByteBufferInsertSpaceTest {
 				SEGMENT_SIZE, SEGMENT_COUNT,
 				DEFAULT_HEADROOM, DEFAULT_HEADROOM,
 				Arena.ofAuto(),
-				MemoryByteBuffer::new);
+				MemoryBuffer::new);
 		metrics = pool.getBufferMetrics();
 		metrics.reset();
 	}
@@ -45,7 +45,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceAtBeginningWithHeadroom() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Fill with test data
@@ -82,7 +82,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceAtBeginningWithoutHeadroom() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Expand to use all headroom
@@ -123,7 +123,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceInMiddleOptimalLeft() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Fill with test data
@@ -170,7 +170,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceInMiddleOptimalRight() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Fill with test data
@@ -217,7 +217,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceAtEnd() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Fill with test data
@@ -256,7 +256,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceWithOverflowToNewSegment() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Fill buffer near capacity
@@ -305,7 +305,7 @@ class MemoryByteBufferInsertSpaceTest {
 		}
 
 		// Release buffer and linked segment
-		MemoryByteBuffer nextSeg = (MemoryByteBuffer) buffer.nextSegment();
+		MemoryBuffer nextSeg = (MemoryBuffer) buffer.nextSegment();
 		assertEquals(1, buffer.refCount());
 		buffer.decrementRef();
 		assertEquals(2, nextSeg.refCount());
@@ -314,8 +314,8 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceWithPushToNextSegmentHeadroom() {
-	    MemoryByteBuffer buffer1 = pool.allocate();
-	    MemoryByteBuffer buffer2 = pool.allocate();
+	    MemoryBuffer buffer1 = pool.allocate();
+	    MemoryBuffer buffer2 = pool.allocate();
 	    assertNotNull(buffer1);
 	    assertNotNull(buffer2);
 
@@ -372,9 +372,9 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceChainedSegments() {
-		MemoryByteBuffer buffer1 = pool.allocate();
-		MemoryByteBuffer buffer2 = pool.allocate();
-		MemoryByteBuffer buffer3 = pool.allocate();
+		MemoryBuffer buffer1 = pool.allocate();
+		MemoryBuffer buffer2 = pool.allocate();
+		MemoryBuffer buffer3 = pool.allocate();
 		assertNotNull(buffer1);
 		assertNotNull(buffer2);
 		assertNotNull(buffer3);
@@ -414,7 +414,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceLargeGapRequiringMultipleSegments() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Fill buffer
@@ -447,15 +447,15 @@ class MemoryByteBufferInsertSpaceTest {
 		Memory current = buffer;
 		while (current != null) {
 			Memory next = current.nextSegment();
-			assertEquals(current == buffer ? 1 : 2, ((MemoryByteBuffer) current).refCount());
-			((MemoryByteBuffer) current).decrementRef();
+			assertEquals(current == buffer ? 1 : 2, ((MemoryBuffer) current).refCount());
+			((MemoryBuffer) current).decrementRef();
 			current = next;
 		}
 	}
 
 	@Test
 	void testInsertSpaceErrorHandling() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 
 		// Test negative size
@@ -472,7 +472,7 @@ class MemoryByteBufferInsertSpaceTest {
 		buffer.clear();
 
 		// Try to insert when no room and no pool
-		MemoryByteBuffer standaloneBuffer = new MemoryByteBuffer(
+		MemoryBuffer standaloneBuffer = new MemoryBuffer(
 				arena.allocate(100), 0, 100);
 		standaloneBuffer.activeBytesStart(0);
 		standaloneBuffer.activeBytesEnd(100);
@@ -488,7 +488,7 @@ class MemoryByteBufferInsertSpaceTest {
 
 	@Test
 	void testInsertSpaceMetricsTracking() {
-		MemoryByteBuffer buffer = pool.allocate();
+		MemoryBuffer buffer = pool.allocate();
 		assertNotNull(buffer);
 		metrics.reset();
 

@@ -35,7 +35,7 @@ package com.slytechs.jnet.core.api.memory;
  * </ul>
  * 
  * @see MemoryPool for pool management
- * @see MemoryBuffer for example implementation
+ * @see MemoryBufferView for example implementation
  */
 public interface MemoryPoolable {
     /**

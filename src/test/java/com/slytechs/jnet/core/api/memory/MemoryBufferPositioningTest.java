@@ -30,7 +30,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Comprehensive test suite for MemoryBuffer positioning functions.
+ * Comprehensive test suite for MemoryBufferView positioning functions.
  * 
  * <p>
  * This test class validates all positioning operations including: position,
@@ -40,11 +40,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  */
-@DisplayName("MemoryBuffer Positioning Tests")
+@DisplayName("MemoryBufferView Positioning Tests")
 class MemoryBufferPositioningTest {
 
 	private static final long BUFFER_SIZE = 1024;
-	private MemoryByteBuffer buffer;
+	private MemoryBuffer buffer;
 	private Arena arena;
 
 	@BeforeEach
@@ -53,7 +53,7 @@ class MemoryBufferPositioningTest {
 		MemorySegment segment = arena.allocate(BUFFER_SIZE);
 
 		// Create buffer without pool - data bounds match memory bounds
-		buffer = new MemoryByteBuffer(segment); // Uses entire segment
+		buffer = new MemoryBuffer(segment); // Uses entire segment
 	}
 
 	// ==================== Position Tests ====================
@@ -931,7 +931,7 @@ class MemoryBufferPositioningTest {
 		@Test
 		@DisplayName("Chain all positioning operations")
 		void testChainAllOperations() {
-			MemoryBuffer result = buffer
+			MemoryBufferView result = buffer
 					.clear() // pos=0, limit=capacity
 					.position(100) // pos=100
 					.mark() // mark=100

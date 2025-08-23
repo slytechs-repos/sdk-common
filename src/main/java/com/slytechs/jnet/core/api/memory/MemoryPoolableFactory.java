@@ -42,14 +42,14 @@ import java.lang.foreign.MemorySegment;
  * 
  * <pre>
  * {@code
- * public class MemoryByteBufferFactory implements MemoryPoolableFactory<MemoryByteBuffer> {
+ * public class MemoryByteBufferFactory implements MemoryPoolableFactory<MemoryBuffer> {
  * 
  * 	@Override
- * 	public MemoryByteBuffer newInstance(MemoryPool<MemoryByteBuffer> owningPool,
+ * 	public MemoryBuffer newInstance(MemoryPool<MemoryBuffer> owningPool,
  * 			MemorySegment memorySegment,
  * 			long memoryOffset, long memoryEnd,
  * 			long memoryDataOffset, long memoryDataEnd) {
- * 		return new MemoryByteBuffer(owningPool, memorySegment,
+ * 		return new MemoryBuffer(owningPool, memorySegment,
  * 				memoryOffset, memoryEnd,
  * 				memoryDataOffset, memoryDataEnd);
  * 	}

@@ -11,8 +11,8 @@
  * <p>The simplest way to begin using the Memory API is with the factory methods:
  * 
  * <pre>{@code
- * // Allocate a new MemoryByteBuffer
- * MemoryByteBuffer buffer = Memory.of(2048);  // Allocates 2KB buffer
+ * // Allocate a new MemoryBuffer
+ * MemoryBuffer buffer = Memory.of(2048);  // Allocates 2KB buffer
  * 
  * // Use buffer for data operations
  * buffer.put("Hello World".getBytes());
@@ -30,18 +30,18 @@
  * 
  * <pre>{@code
  * // Create a memory pool for sustained allocation
- * MemoryPool<MemoryByteBuffer> pool = new MemoryPool<>(
+ * MemoryPool<MemoryBuffer> pool = new MemoryPool<>(
  *     "packet-processing-pool",    // Named resource for monitoring
  *     2048,                        // Segment size (typical packet size)
  *     1000,                        // Number of pre-allocated segments
  *     128,                         // Default headroom
  *     128,                         // Default tailroom
  *     Arena.global(),              // Memory arena
- *     MemoryByteBuffer::new        // Factory method
+ *     MemoryBuffer::new        // Factory method
  * );
  * 
  * // Allocate from pool - O(1) operation
- * MemoryByteBuffer buffer = pool.allocate();
+ * MemoryBuffer buffer = pool.allocate();
  * try {
  *     // Use buffer for packet processing...
  *     buffer.put(packetData);
@@ -82,7 +82,7 @@
  * <p>All memory objects use atomic reference counting for safe resource management:
  * 
  * <pre>{@code
- * MemoryByteBuffer original = Memory.of(2048);    // refcount = 1
+ * MemoryBuffer original = Memory.of(2048);    // refcount = 1
  * Memory shared = original.incrementRef();        // refcount = 2
  * 
  * // When refcount reaches 0, memory is automatically released to pool
@@ -94,8 +94,8 @@
  * <p>Memory objects can be linked together to handle fragmented data without copying:
  * 
  * <pre>{@code
- * MemoryByteBuffer segment1 = Memory.of(1500);
- * MemoryByteBuffer segment2 = Memory.of(1500);
+ * MemoryBuffer segment1 = Memory.of(1500);
+ * MemoryBuffer segment2 = Memory.of(1500);
  * segment1.setNextMemory(segment2);  // Create chain
  * 
  * // Segment chain operations work across all segments
@@ -120,15 +120,15 @@
  * <p>{@link MemoryProxy} provides flexible, efficient access to chained segments without
  * buffer-style positioning, ideal for protocol parsing across segment boundaries.
  * 
- * <h2>MemoryByteBuffer - Buffer-Style Operations</h2>
+ * <h2>MemoryBuffer - Buffer-Style Operations</h2>
  * 
- * <p>{@link MemoryByteBuffer} provides efficient buffer manipulation with get/put accessors
+ * <p>{@link MemoryBuffer} provides efficient buffer manipulation with get/put accessors
  * mimicking java.nio.ByteBuffer operations, but with multi-segment support:
  * 
  * <h3>Position, Limit, and Capacity</h3>
  * 
  * <pre>{@code
- * MemoryByteBuffer buffer = pool.allocate();
+ * MemoryBuffer buffer = pool.allocate();
  * 
  * // Position/limit/capacity operate within totalActiveBytes region
  * buffer.position(100)     // Set position within active bytes
@@ -289,24 +289,24 @@
  * 
  * <pre>{@code
  * // Standard pool with Arena allocator
- * MemoryPool<MemoryByteBuffer> standardPool = new MemoryPool<>(
+ * MemoryPool<MemoryBuffer> standardPool = new MemoryPool<>(
  *     "ingress-packet-pool",
  *     2048,                        // Segment size
  *     10000,                       // Segment count
  *     128,                         // Default headroom
  *     128,                         // Default tailroom
  *     Arena.global(),              // Arena for allocation
- *     MemoryByteBuffer::new        // Factory method
+ *     MemoryBuffer::new        // Factory method
  * );
  * 
  * // Pool with custom backend allocator
  * MemoryAllocator dpdkAllocator = new DpdkMemoryAllocator("dpdk-pool", rteMempool);
- * MemoryPool<MemoryByteBuffer> dpdkPool = new MemoryPool<>(
+ * MemoryPool<MemoryBuffer> dpdkPool = new MemoryPool<>(
  *     "dpdk-packet-pool",
  *     2048, 10000,
  *     128, 128,                    // Headroom/tailroom
  *     dpdkAllocator,               // Backend-specific allocator
- *     MemoryByteBuffer::new
+ *     MemoryBuffer::new
  * );
  * }</pre>
  * 
@@ -378,11 +378,11 @@
  * 
  * <pre>{@code
  * // Create per-lcore wrapper pool (no thread contention)
- * MemoryPool<MemoryByteBuffer> editPool = new MemoryPool<>(
+ * MemoryPool<MemoryBuffer> editPool = new MemoryPool<>(
  *     "EditPool-lcore" + lcoreId,
  *     2048, 1000, 128, 128,
  *     hugepagesArena,
- *     MemoryByteBuffer::new);
+ *     MemoryBuffer::new);
  * 
  * WrapperBufferPool wrapperPool = new WrapperBufferPool(
  *     "WrapperPool-lcore" + lcoreId,
@@ -425,7 +425,7 @@
  * 
  * <pre>{@code
  * // Operations don't throw - they increment failure counters
- * MemoryByteBuffer buffer = pool.allocate();  // Returns null on exhaustion
+ * MemoryBuffer buffer = pool.allocate();  // Returns null on exhaustion
  * if (buffer == null) {
  *     // Check metrics to understand failure
  *     PoolMetrics metrics = pool.getPoolMetrics();
@@ -517,7 +517,7 @@
  * <ul>
  * <li>{@link Memory} - Main memory interface and factory methods</li>
  * <li>{@link MemoryPool} - High-performance memory pooling</li>
- * <li>{@link MemoryByteBuffer} - Buffer-style operations with editing</li>
+ * <li>{@link MemoryBuffer} - Buffer-style operations with editing</li>
  * <li>{@link MemoryProxy} - Flexible chain-aware access</li>
  * <li>{@link WrapperBufferPool} - Pool for wrapping external memory</li>
  * <li>{@link BufferMetrics} - Buffer operation metrics</li>

@@ -33,18 +33,18 @@ class MultiThreadedMemoryTest {
     /**
      * Creates a fresh pool with a new Arena for complete isolation.
      */
-    private MemoryPool<MemoryByteBuffer> createPool() {
+    private MemoryPool<MemoryBuffer> createPool() {
         Arena arena = Arena.ofConfined();
         return new MemoryPool<>("memory-pool", 64L, 10L,
                 arena, (owningPool, segment, offset, end, dataOffset, dataEnd) -> 
-                    new MemoryByteBuffer(owningPool, segment, offset, end, dataOffset, dataEnd));
+                    new MemoryBuffer(owningPool, segment, offset, end, dataOffset, dataEnd));
     }
 
     @Test
     void testSingleAllocation() {
-        MemoryPool<MemoryByteBuffer> pool = createPool();
+        MemoryPool<MemoryBuffer> pool = createPool();
 
-        MemoryByteBuffer buffer = pool.allocate();
+        MemoryBuffer buffer = pool.allocate();
 
         Assertions.assertNotNull(buffer, "Should allocate successfully");
         Assertions.assertEquals(1, buffer.refCount(), "Should have refcount=1");
@@ -61,7 +61,7 @@ class MultiThreadedMemoryTest {
             System.out.println("Starting concurrent allocation/release stress test...");
         }
         
-        MemoryPool<MemoryByteBuffer> pool = createPool();
+        MemoryPool<MemoryBuffer> pool = createPool();
         Assertions.assertEquals(10, pool.getFreeListSize());
 
         int threadCount = 5;
@@ -77,7 +77,7 @@ class MultiThreadedMemoryTest {
 
             for (int i = 0; i < threadCount; i++) {
                 executor.submit(() -> {
-                    MemoryByteBuffer buffer = null;
+                    MemoryBuffer buffer = null;
                     try {
                         startLatch.await();
                         
@@ -124,7 +124,7 @@ class MultiThreadedMemoryTest {
 
     @RepeatedTest(value = 5, name = "Pool exhaustion test {currentRepetition}/{totalRepetitions}")
     void testPoolExhaustionUnderContention(RepetitionInfo repetitionInfo) throws InterruptedException {
-        MemoryPool<MemoryByteBuffer> pool = createPool();
+        MemoryPool<MemoryBuffer> pool = createPool();
         int threadCount = 20;
         
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -139,7 +139,7 @@ class MultiThreadedMemoryTest {
                 executor.submit(() -> {
                     try {
                         startLatch.await();
-                        MemoryByteBuffer buffer = pool.allocate();
+                        MemoryBuffer buffer = pool.allocate();
 
                         if (buffer != null) {
                             successCount.incrementAndGet();
@@ -184,10 +184,10 @@ class MultiThreadedMemoryTest {
 
     @RepeatedTest(value = 5, name = "Chain operations test {currentRepetition}/{totalRepetitions}")
     void testConcurrentChainOperations() throws InterruptedException {
-        MemoryPool<MemoryByteBuffer> pool = createPool();
+        MemoryPool<MemoryBuffer> pool = createPool();
         
-        MemoryByteBuffer buf1 = pool.allocate();
-        MemoryByteBuffer buf2 = pool.allocate();
+        MemoryBuffer buf1 = pool.allocate();
+        MemoryBuffer buf2 = pool.allocate();
         Assertions.assertNotNull(buf1);
         Assertions.assertNotNull(buf2);
         
@@ -243,8 +243,8 @@ class MultiThreadedMemoryTest {
 
     @RepeatedTest(value = 10, name = "Reference counting test {currentRepetition}/{totalRepetitions}")
     void testConcurrentRefCount(RepetitionInfo repetitionInfo) throws InterruptedException {
-        MemoryPool<MemoryByteBuffer> pool = createPool();
-        MemoryByteBuffer buffer = pool.allocate();
+        MemoryPool<MemoryBuffer> pool = createPool();
+        MemoryBuffer buffer = pool.allocate();
         Assertions.assertNotNull(buffer);
 
         int threadCount = 5;

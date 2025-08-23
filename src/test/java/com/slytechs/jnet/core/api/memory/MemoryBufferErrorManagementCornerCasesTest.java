@@ -40,7 +40,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Test suite for MemoryBuffer error management corner cases and extreme
+ * Test suite for MemoryBufferView error management corner cases and extreme
  * scenarios.
  * 
  * <p>
@@ -51,18 +51,18 @@ import org.junit.jupiter.params.provider.ValueSource;
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  */
-@DisplayName("MemoryBuffer Error Management - Corner Cases")
+@DisplayName("MemoryBufferView Error Management - Corner Cases")
 class MemoryBufferErrorManagementCornerCasesTest {
 
 	private static final long BUFFER_SIZE = 1024;
-	private MemoryByteBuffer buffer;
+	private MemoryBuffer buffer;
 	private Arena arena;
 
 	@BeforeEach
 	void setUp() {
 		arena = Arena.ofConfined();
 		MemorySegment segment = arena.allocate(BUFFER_SIZE);
-		buffer = new MemoryByteBuffer(segment);
+		buffer = new MemoryBuffer(segment);
 	}
 
 	// ==================== Null and Empty Error Cases ====================
@@ -77,7 +77,7 @@ class MemoryBufferErrorManagementCornerCasesTest {
 			assertFalse(buffer.hasError());
 
 			// Should be safe to clear non-existent error
-			MemoryBuffer result = buffer.clearError();
+			MemoryBufferView result = buffer.clearError();
 
 			assertSame(buffer, result);
 			assertFalse(buffer.hasError());
@@ -213,8 +213,8 @@ class MemoryBufferErrorManagementCornerCasesTest {
 		@Test
 		@DisplayName("Circular error handler references")
 		void testCircularErrorHandlerReferences() {
-			AtomicReference<BufferErrorHandler<MemoryByteBuffer>> handler1 = new AtomicReference<>();
-			AtomicReference<BufferErrorHandler<MemoryByteBuffer>> handler2 = new AtomicReference<>();
+			AtomicReference<BufferErrorHandler<MemoryBuffer>> handler1 = new AtomicReference<>();
+			AtomicReference<BufferErrorHandler<MemoryBuffer>> handler2 = new AtomicReference<>();
 			AtomicInteger callCount = new AtomicInteger(0);
 
 			handler1.set((_, _) -> {
@@ -757,7 +757,7 @@ class MemoryBufferErrorManagementCornerCasesTest {
 			try {
 				buffer.onError(new BufferErrorHandler<>() {
 					@Override
-					public void handle(MemoryBuffer buf, BufferOperationException error) {
+					public void handle(MemoryBufferView buf, BufferOperationException error) {
 						depth.incrementAndGet();
 						if (depth.get() < 1000) { // Prevent actual stack overflow
 							// Recursive call through error handler

@@ -146,7 +146,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see Memory for the complete interface specification
- * @see MemoryBuffer for poolable buffer implementation
+ * @see MemoryBufferView for poolable buffer implementation
  * @see MemoryProxy for rebindable proxy implementation
  * @since 1.0
  */

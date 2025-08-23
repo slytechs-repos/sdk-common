@@ -190,7 +190,7 @@ import java.nio.ByteBuffer;
  * &#64;author Sly Technologies Inc.
  * &#64;see Memory for the complete memory interface
  * &#64;see AbstractMemory for base implementation
- * &#64;see MemoryBuffer for editable memory buffers
+ * &#64;see MemoryBufferView for editable memory buffers
  * &#64;since 1.0
  * &#64;Override     protected void onBindMemory() {
  *         // Cascade binding to sub-elements

@@ -23,7 +23,7 @@ package com.slytechs.jnet.core.api.memory;
  * @param <T> the specific buffer type being handled
  */
 @FunctionalInterface
-public interface BufferErrorHandler<T extends MemoryBuffer> {
+public interface BufferErrorHandler<T extends MemoryBufferView> {
 	/**
 	 * Handles a buffer operation error.
 	 * 

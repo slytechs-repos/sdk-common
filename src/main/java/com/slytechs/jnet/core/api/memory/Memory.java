@@ -260,7 +260,7 @@ public interface Memory extends MemoryView, MemoryWindow, MemoryRef {
 	static Memory of(MemorySegment segment, long offset) {
 		long start = offset, stop = segment.byteSize() - offset;
 
-		return new MemoryByteBuffer(null, segment, start, stop, start, stop);
+		return new MemoryBuffer(null, segment, start, stop, start, stop);
 	}
 
 	/**
@@ -301,7 +301,7 @@ public interface Memory extends MemoryView, MemoryWindow, MemoryRef {
 	static Memory of(MemorySegment segment, long offset, long size) {
 		long start = offset, stop = start + size;
 
-		return new MemoryByteBuffer(null, segment, start, stop, start, stop);
+		return new MemoryBuffer(null, segment, start, stop, start, stop);
 	}
 
 	/**

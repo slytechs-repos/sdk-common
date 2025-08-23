@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Corner case and extreme edge condition tests for MemoryBuffer positioning.
+ * Corner case and extreme edge condition tests for MemoryBufferView positioning.
  * 
  * <p>This test class explores rare, extreme, and potentially problematic scenarios
  * that might not occur in normal usage but could reveal subtle bugs or undefined
@@ -39,11 +39,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  */
-@DisplayName("MemoryBuffer Positioning Corner Cases")
+@DisplayName("MemoryBufferView Positioning Corner Cases")
 class MemoryBufferPositioningCornerCasesTest {
 
     private static final long BUFFER_SIZE = 1024;
-    private MemoryByteBuffer buffer;
+    private MemoryBuffer buffer;
     private Arena arena;
 
     @BeforeEach
@@ -52,7 +52,7 @@ class MemoryBufferPositioningCornerCasesTest {
         MemorySegment segment = arena.allocate(BUFFER_SIZE);
         
         // Create buffer without pool - data bounds match memory bounds
-        buffer = new MemoryByteBuffer(segment);  // Uses entire segment
+        buffer = new MemoryBuffer(segment);  // Uses entire segment
     }
 
     // ==================== Extreme Value Tests ====================
@@ -127,12 +127,12 @@ class MemoryBufferPositioningCornerCasesTest {
     @DisplayName("Zero-Size Buffer Corner Cases")
     class ZeroSizeBufferTests {
 
-        private MemoryByteBuffer zeroBuffer;
+        private MemoryBuffer zeroBuffer;
 
         @BeforeEach
         void setUpZeroBuffer() {
             MemorySegment segment = arena.allocate(1); // Minimum allocation
-            zeroBuffer = new MemoryByteBuffer(segment, 0, 0); // Zero-size buffer
+            zeroBuffer = new MemoryBuffer(segment, 0, 0); // Zero-size buffer
         }
 
         @Test
@@ -499,7 +499,7 @@ class MemoryBufferPositioningCornerCasesTest {
         @Test
         @DisplayName("Extremely long method chain")
         void testExtremelyLongChain() {
-            MemoryBuffer result = buffer;
+            MemoryBufferView result = buffer;
             for (int i = 0; i < 1000; i++) {
                 result = result.position(i % 100);
             }
@@ -523,7 +523,7 @@ class MemoryBufferPositioningCornerCasesTest {
         @Test
         @DisplayName("Null-safe chaining after error")
         void testNullSafeChaining() {
-            MemoryBuffer result = buffer
+            MemoryBufferView result = buffer
                 .position(-1)          // Cause error
                 .mark()               // No-op
                 .skip(100)            // No-op

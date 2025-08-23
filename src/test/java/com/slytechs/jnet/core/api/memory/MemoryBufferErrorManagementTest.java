@@ -35,7 +35,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Test suite for MemoryBuffer error management in normal operation scenarios.
+ * Test suite for MemoryBufferView error management in normal operation scenarios.
  * 
  * <p>
  * This test class validates the error handling mechanisms including error
@@ -45,11 +45,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  */
-@DisplayName("MemoryBuffer Error Management - Normal Operations")
+@DisplayName("MemoryBufferView Error Management - Normal Operations")
 class MemoryBufferErrorManagementTest {
 
 	private static final long BUFFER_SIZE = 1024;
-	private MemoryByteBuffer buffer;
+	private MemoryBuffer buffer;
 	private Arena arena;
 
 	@BeforeEach
@@ -58,7 +58,7 @@ class MemoryBufferErrorManagementTest {
 	    MemorySegment segment = arena.allocate(BUFFER_SIZE);
 	    
 	    // Create buffer without pool - data bounds match memory bounds
-	    buffer = new MemoryByteBuffer(segment);  // Uses entire segment
+	    buffer = new MemoryBuffer(segment);  // Uses entire segment
 	}
 
 	// ==================== Basic Error State Tests ====================
@@ -119,7 +119,7 @@ class MemoryBufferErrorManagementTest {
 		void testClearErrorChaining() {
 			buffer.position(-1);
 
-			MemoryBuffer result = buffer.clearError()
+			MemoryBufferView result = buffer.clearError()
 					.position(50)
 					.mark();
 
@@ -196,7 +196,7 @@ class MemoryBufferErrorManagementTest {
 		    assertEquals(100, buffer.position());
 		    
 		    // Cause error in chain
-		    MemoryBuffer result = buffer
+		    MemoryBufferView result = buffer
 		        .position(-1)      // Error here - position stays at 100
 		        .skip(50)          // No-op
 		        .limit(200)        // No-op
@@ -283,7 +283,7 @@ class MemoryBufferErrorManagementTest {
 		@Test
 		@DisplayName("orElseThrow returns buffer for chaining when no error")
 		void testOrElseThrowChaining() {
-			MemoryBuffer result = buffer
+			MemoryBufferView result = buffer
 					.position(100)
 					.orElseThrow()
 					.mark()
