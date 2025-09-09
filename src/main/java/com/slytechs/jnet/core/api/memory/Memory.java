@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -21,503 +21,264 @@ import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 
 /**
- * Comprehensive interface for high-performance memory management supporting
- * both single segments and chained structures.
+ * Core memory interface providing lifecycle management, segment access, and
+ * chaining support.
  * 
  * <p>
- * Memory provides a unified abstraction for memory operations, combining
- * content access, boundary management, and lifecycle control into a single
- * cohesive interface. This design enables zero-allocation, high-performance
- * memory operations essential for network packet processing, streaming data,
- * and other performance-critical applications.
+ * Memory represents owned memory segments with full lifecycle control through
+ * reference counting. This interface extends {@link MemoryWindow} for boundary
+ * management and adds ownership semantics, native segment access, and chain
+ * support for fragmented memory.
  * </p>
  * 
- * <h2>Memory Model Architecture</h2>
- * 
- * <h3>Single Segment Structure</h3>
- * 
- * <pre>{@code
- * Memory Segment Region:
- * ┌─────────────────────────────────────────────────────┐
- * │                  segmentSize()                      │
- * │  ┌──────────┬─────────────────────┬──────────┐      │
- * │  │ headroom │ activeBytesLength() │ tailroom │      │
- * │  └──────────┴─────────────────────┴──────────┘      │
- * └─────────────────────────────────────────────────────┘
- *    ↑          ↑                     ↑          ↑
- * segmentOffset activeBytesStart activeBytesEnd segmentEnd
- * 
- * Relationships:
- * • segmentSize() = segmentEnd() - segmentOffset()
- * • activeBytesLength() = activeBytesEnd() - activeBytesStart()
- * • headroom() + activeBytesLength() + tailroom() = segmentSize()
- * }</pre>
- * 
- * <h3>Chained Memory Structure</h3>
- * 
- * <pre>{@code
- * Memory Chain:
- * ┌─────────┐      ┌─────────┐      ┌─────────┐
- * │ Memory  │ next │ Memory  │ next │ Memory  │ next
- * │ Seg #1  │ ───> │ Seg #2  │ ───> │ Seg #3  │ ───> null
- * └─────────┘      └─────────┘      └─────────┘
- *     1KB             2KB              512B
- * 
- * Chain Projections:
- * • totalSegmentSize() = 1KB + 2KB + 512B = 3.5KB
- * • totalActiveBytes() = sum of all activeBytesLength()
- * • segmentCount() = 3
- * }</pre>
- * 
- * <h2>Design Philosophy</h2>
- * 
- * <h3>Zero-Allocation Operations</h3>
+ * <h2>Memory Ownership Model</h2>
  * <p>
- * All core operations are designed to avoid memory allocation, enabling
- * sustained high-performance operation without garbage collection pressure:
+ * Memory objects own their underlying segments and manage lifecycle through
+ * reference counting. Each Memory starts with a reference count of 1 and is
+ * released when the count reaches 0. This enables safe sharing across threads
+ * and prevents premature deallocation.
  * </p>
+ * 
+ * <h2>Memory Types</h2>
  * <ul>
- * <li>Navigation through chains creates no new objects</li>
- * <li>View conversions return shared references</li>
- * <li>Boundary adjustments modify existing state</li>
+ * <li><strong>FixedMemory:</strong> Pre-allocated segments from memory
+ * pools</li>
+ * <li><strong>ScopedMemory:</strong> Wraps native memory (DPDK mbufs, etc.)
+ * with scope-based lifecycle</li>
  * </ul>
  * 
- * <h3>Reference Counting</h3>
+ * <h2>Chaining Support</h2>
  * <p>
- * Thread-safe reference counting ensures proper lifecycle management:
+ * Memory segments can be linked to form chains, useful for:
  * </p>
  * <ul>
- * <li>Automatic cleanup when reference count reaches zero</li>
- * <li>Integration with memory pools for efficient reuse</li>
- * <li>Safe sharing across threads and components</li>
+ * <li>Scatter-gather I/O operations</li>
+ * <li>Fragmented packet reassembly</li>
+ * <li>Zero-copy buffer concatenation</li>
  * </ul>
  * 
- * <h3>Chain Support</h3>
- * <p>
- * Native support for fragmented memory without copying:
- * </p>
- * <ul>
- * <li>Efficient traversal through linked segments</li>
- * <li>Position-based access across entire chain</li>
- * <li>Aggregated metrics via projections</li>
- * </ul>
- * 
- * <h2>Common Usage Patterns</h2>
- * 
- * <h3>Network Packet Processing</h3>
- * 
- * <pre>{@code
- * // Zero-copy packet handling
- * Memory packet = receivePacket();
- * 
- * // Check for VLAN tag insertion capability
- * if (packet.headroom() >= 4) {
- * 	// Expand active bytes into headroom
- * 	packet.activeBytesStart(packet.activeBytesStart() - 4);
- * 	// Write VLAN tag
- * 	packet.asByteBuffer().putInt(0, vlanTag);
- * }
- * 
- * // Process entire packet chain
- * for (Memory seg = packet; seg != null; seg = seg.nextSegment()) {
- * 	processSegment(seg);
- * }
- * }</pre>
- * 
- * <h3>Memory Pool Integration</h3>
+ * <h2>Usage Example</h2>
  * 
  * <pre>{@code
  * // Allocate from pool
- * Memory buffer = pool.allocate();
- * try {
- * 	// Use buffer
- * 	fillBuffer(buffer);
- * 	processBuffer(buffer);
- * } finally {
- * 	// Automatic return to pool when refcount reaches 0
- * 	buffer.decrementRef();
- * }
+ * Memory memory = pool.allocate();
+ * 
+ * // Write data
+ * MemorySegment segment = memory.segment();
+ * segment.set(ValueLayout.JAVA_INT, memory.start(), value);
+ * 
+ * // Share with another component (increases refcount)
+ * memory.incrementRef();
+ * processor.process(memory);
+ * 
+ * // Release when done
+ * memory.decrementRef();
  * }</pre>
  * 
- * <h3>Streaming Data Processing</h3>
- * 
- * <pre>{@code
- * // Process streaming data with active bytes tracking
- * Memory stream = getStreamBuffer();
- * 
- * while (stream.hasActiveBytes()) {
- * 	long consumed = processData(stream);
- * 
- * 	// Advance active bytes start to mark consumed data
- * 	stream.activeBytesStart(stream.activeBytesStart() + consumed);
- * 
- * 	// Check if we need more data
- * 	if (stream.activeBytesLength() < MIN_THRESHOLD) {
- * 		refillBuffer(stream);
- * 	}
- * }
- * }</pre>
- * 
- * <h2>Factory Methods</h2>
- * <p>
- * The Memory interface provides static factory methods for creating Memory
- * instances from Java FFM MemorySegments:
- * </p>
- * 
- * <pre>{@code
- * // Wrap entire MemorySegment
- * MemorySegment segment = Arena.global().allocate(1024);
- * Memory memory = Memory.of(segment, 0);
- * 
- * // Wrap specific region
- * Memory slice = Memory.of(segment, 100, 500); // 500 bytes starting at offset 100
- * }</pre>
- * 
- * <h2>Implementation Requirements</h2>
- * <p>
- * Implementations must ensure:
- * </p>
- * <ul>
- * <li><strong>Thread Safety:</strong> Reference counting operations must be
- * atomic</li>
- * <li><strong>Boundary Invariants:</strong> segmentOffset ≤ activeBytesStart ≤
- * activeBytesEnd ≤ segmentEnd</li>
- * <li><strong>Chain Integrity:</strong> Chain structure must remain valid
- * during traversal</li>
- * <li><strong>Resource Cleanup:</strong> Proper resource release when refcount
- * reaches zero</li>
- * </ul>
- *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see MemoryView for content access and chain navigation
- * @see MemoryWindow for boundary management and projections
- * @see MemoryRef for lifecycle and reference counting
  * @since 1.0
  */
-public interface Memory extends MemoryView, MemoryWindow, MemoryRef {
+public interface Memory extends MemoryWindow {
 
 	/**
-	 * Checks if a MemorySegment represents null memory.
+	 * Checks if a Memory or MemorySegment is null.
 	 * 
-	 * <p>
-	 * This utility method provides consistent null checking across the Memory API,
-	 * testing for both Java null references and native NULL pointers (address = 0).
-	 * This dual check is essential when working with native memory allocations or
-	 * pointers returned from foreign functions.
-	 * </p>
-	 * 
-	 * <pre>{@code
-	 * MemorySegment nativePtr = getNativePointer();
-	 * if (Memory.isNull(nativePtr)) {
-	 * 	// Handle null pointer case
-	 * 	return Memory.NULL;
-	 * }
-	 * // Safe to wrap in Memory
-	 * Memory memory = Memory.of(nativePtr, 0);
-	 * }</pre>
-	 * 
-	 * @param segment the MemorySegment to test, may be {@code null}
-	 * @return {@code true} if segment is {@code null} or has address 0,
-	 *         {@code false} otherwise
+	 * @param obj the object to check
+	 * @return true if null or null pointer
 	 */
-	static boolean isNull(MemorySegment segment) {
-		return segment == null || segment.address() == 0;
+	static boolean isNull(Object obj) {
+		if (obj == null) {
+			return true;
+		}
+		if (obj instanceof MemorySegment segment) {
+			return segment.address() == 0;
+		}
+		if (obj instanceof Memory memory) {
+			return memory.isNull();
+		}
+		return false;
 	}
 
 	/**
-	 * Creates a Memory wrapper for a MemorySegment starting at the specified
-	 * offset.
+	 * Creates a Memory instance from a MemorySegment.
 	 * 
-	 * <p>
-	 * This factory method creates a Memory view that spans from the specified
-	 * offset to the end of the MemorySegment. The segment boundaries are set to the
-	 * specified region, with active bytes initially matching the segment boundaries
-	 * (no headroom or tailroom).
-	 * </p>
-	 * 
-	 * <pre>{@code
-	 * MemorySegment segment = arena.allocate(1024);
-	 * 
-	 * // Wrap entire segment
-	 * Memory full = Memory.of(segment, 0);
-	 * // segmentSize() = 1024, activeBytesLength() = 1024
-	 * 
-	 * // Wrap from offset 256 to end
-	 * Memory partial = Memory.of(segment, 256);
-	 * // segmentSize() = 768, activeBytesLength() = 768
-	 * }</pre>
-	 * 
-	 * @param segment the backing MemorySegment, must not be null
-	 * @param offset  the starting offset within the segment, must be ≥ 0
-	 * @return a new Memory object wrapping the specified region
-	 * @throws NullPointerException     if segment is {@code null}
-	 * @throws IllegalArgumentException if offset is negative or exceeds segment
-	 *                                  size
-	 * 
-	 * @see #of(MemorySegment, long, long) for explicit size specification
+	 * @param segment the memory segment
+	 * @param offset  the offset within segment
+	 * @return a new Memory instance
 	 */
 	static Memory of(MemorySegment segment, long offset) {
-		long start = offset, stop = segment.byteSize() - offset;
-
-		return new MemoryBuffer(null, segment, start, stop, start, stop);
+		return of(segment, offset, segment.byteSize() - offset);
 	}
 
 	/**
-	 * Creates a Memory wrapper for a specific region of a MemorySegment.
+	 * Creates a Memory instance from a MemorySegment with bounds.
 	 * 
-	 * <p>
-	 * This factory method creates a Memory view with explicit bounds, providing
-	 * precise control over the accessible memory region. The segment boundaries are
-	 * set to [offset, offset+size), with active bytes initially matching these
-	 * boundaries.
-	 * </p>
-	 * 
-	 * <pre>{@code
-	 * MemorySegment segment = arena.allocate(2048);
-	 * 
-	 * // Wrap middle 1024 bytes (offset 512, size 1024)
-	 * Memory middle = Memory.of(segment, 512, 1024);
-	 * // segmentOffset() = 512
-	 * // segmentEnd() = 1536
-	 * // segmentSize() = 1024
-	 * // activeBytesLength() = 1024 (initially)
-	 * 
-	 * // Later can adjust active bytes within segment bounds
-	 * middle.activeBytesStart(600); // Create 88 bytes of headroom
-	 * middle.activeBytesEnd(1400); // Create 136 bytes of tailroom
-	 * }</pre>
-	 * 
-	 * @param segment the backing MemorySegment, must not be null
-	 * @param offset  the starting offset within the segment, must be ≥ 0
-	 * @param size    the size of the accessible region, must be ≥ 0
-	 * @return a new Memory object wrapping the specified region
-	 * @throws NullPointerException     if segment is {@code null}
-	 * @throws IllegalArgumentException if offset is negative, size is negative, or
-	 *                                  offset+size exceeds segment bounds
-	 * 
-	 * @see #of(MemorySegment, long) for offset-to-end wrapping
+	 * @param segment the memory segment
+	 * @param offset  the offset within segment
+	 * @param length  the length of the memory region
+	 * @return a new Memory instance
 	 */
-	static Memory of(MemorySegment segment, long offset, long size) {
-		long start = offset, stop = start + size;
-
-		return new MemoryBuffer(null, segment, start, stop, start, stop);
+	static Memory of(MemorySegment segment, long offset, long length) {
+		return new FixedMemory(segment, offset, length);
 	}
 
 	/**
-	 * Returns a ByteBuffer view of this segment's active bytes.
+	 * Returns this memory as a ByteBuffer.
 	 * 
 	 * <p>
-	 * Creates a ByteBuffer that provides access to the currently active data within
-	 * this memory segment. The buffer's position is set to 0 and its limit
-	 * corresponds to {@link #activeBytesLength()}. The returned buffer shares the
-	 * underlying memory with this Memory object.
+	 * Creates a ByteBuffer view of the active data region. Changes to the buffer
+	 * will be reflected in the underlying memory segment.
 	 * </p>
 	 * 
-	 * <p>
-	 * The default implementation creates an appropriate slice of the underlying
-	 * MemorySegment. Implementations may override this for optimized buffer
-	 * creation or to handle special cases.
-	 * </p>
-	 * 
-	 * @return a ByteBuffer view of the active bytes region
-	 * @throws UnsupportedOperationException if ByteBuffer access is not supported
-	 * @throws IllegalStateException         if this memory is closed or invalid
-	 * 
-	 * @see #asMemorySegment() for MemorySegment view
+	 * @return ByteBuffer view of active data
 	 */
-	@Override
 	default ByteBuffer asByteBuffer() {
-		return asMemorySegment().asSlice(segmentOffset(), segmentSize()).asByteBuffer();
+		return segment().asSlice(start(), length()).asByteBuffer();
 	}
 
 	/**
-	 * Returns the MemorySegment at the specified position within the memory chain.
+	 * Returns the underlying memory segment.
 	 * 
-	 * <p>
-	 * Provides position-based random access across the entire memory chain,
-	 * automatically locating and returning the segment containing the specified
-	 * byte position. The position is relative to the start of the chain's active
-	 * bytes (position 0 = first byte of first segment's active region).
-	 * </p>
-	 * 
-	 * <pre>{@code
-	 * // Access data at position 1500 in a 3-segment chain
-	 * MemorySegment target = memory.asMemorySegmentAt(1500);
-	 * 
-	 * // Read value at that position
-	 * int value = target.get(ValueLayout.JAVA_INT, 0);
-	 * }</pre>
-	 * 
-	 * <p>
-	 * The default implementation optimizes for single-segment memories and
-	 * delegates to {@link #seekSegment(long)} for multi-segment chains.
-	 * </p>
-	 * 
-	 * @param position the byte position from chain start (0-based)
-	 * @return the MemorySegment containing the specified position
-	 * @throws IllegalArgumentException if position is negative or exceeds
-	 *                                  {@link #totalActiveBytes()}
-	 * @throws IllegalStateException    if this memory is closed or invalid
-	 * 
-	 * @see #seekSegment(long) to get the containing Memory object
-	 * @see #totalActiveBytes() for valid position range
+	 * @return the memory segment
+	 * @deprecated Use {@link #segment()} instead
 	 */
-	@Override
-	default MemorySegment asMemorySegmentAt(long position) {
-		if (position < 0 || position >= totalActiveBytes())
-			throw new IllegalArgumentException("position out of bounds: " + position);
-
-		if (segmentCount() == 1) {
-			return asMemorySegment();
-		}
-		Memory sought = seekSegment(position);
-		return sought.asMemorySegment();
+	@Deprecated
+	default MemorySegment asMemorySegment() {
+		return segment();
 	}
 
 	/**
-	 * Checks if this memory represents a null or invalid reference.
+	 * Decrements the reference count.
 	 * 
 	 * <p>
-	 * Delegates to the static {@link #isNull(MemorySegment)} method to check the
-	 * underlying MemorySegment. This method is essential for safe operations when
-	 * working with memory that may be uninitialized or deallocated.
+	 * Call this method when done using the memory. When the count reaches 0, the
+	 * memory is automatically released back to its pool or freed.
 	 * </p>
 	 * 
-	 * <pre>{@code
-	 * Memory memory = getMemoryFromNative();
-	 * if (!memory.isNull()) {
-	 * 	// Safe to use memory
-	 * 	processMemory(memory);
-	 * }
-	 * }</pre>
-	 * 
-	 * @return {@code true} if this represents null or invalid memory, {@code false}
-	 *         if the memory is valid and accessible
-	 * 
-	 * @see #isPointer() for checking zero-sized memory
-	 * @see #isNull(MemorySegment) for static null checking
+	 * @return the new reference count
+	 * @throws IllegalStateException if decrement would cause underflow
 	 */
-	@Override
+	int decrementRef();
+
+	/**
+	 * Checks if this memory has a next segment.
+	 * 
+	 * @return true if chained to another segment
+	 */
+	default boolean hasNextSegment() {
+		return nextSegment() != null;
+	}
+
+	/**
+	 * Increments the reference count.
+	 * 
+	 * <p>
+	 * Call this method when sharing memory with another component to prevent
+	 * premature release. Each increment must be paired with a corresponding
+	 * {@link #decrementRef()}.
+	 * </p>
+	 * 
+	 * @return the new reference count
+	 * @throws IllegalStateException if memory is already released (refCount == 0)
+	 */
+	int incrementRef();
+
+	/**
+	 * Checks if this memory is null.
+	 * 
+	 * @return true if the underlying segment is null or has address 0
+	 */
 	default boolean isNull() {
-		return isNull(asMemorySegment());
+		return segment() != null && segment().address() == 0;
 	}
 
 	/**
-	 * Returns the total active bytes across all segments in the memory chain.
+	 * Checks if this memory is a pointer (no size).
 	 * 
-	 * <p>
-	 * This projection aggregates the {@link #activeBytesLength()} of each segment
-	 * in the chain, providing the total amount of currently utilized data. This is
-	 * the key metric for understanding actual content size in fragmented memory
-	 * structures and determines valid positions for chain-relative operations.
-	 * </p>
-	 * 
-	 * <pre>{@code
-	 * Memory Chain with different utilization:
-	 * Segment 1: [headroom:100][active:500][tailroom:424]  = 1024 total
-	 * Segment 2: [active:1500][tailroom:548]               = 2048 total
-	 * Segment 3: [headroom:50][active:200][tailroom:262]   = 512 total
-	 * 
-	 * totalActiveBytes() = 500 + 1500 + 200 = 2200 bytes
-	 * totalSegmentSize() = 1024 + 2048 + 512 = 3584 bytes
-	 * 
-	 * Utilization = 2200 / 3584 = 61.4%
-	 * }</pre>
-	 * 
-	 * <p>
-	 * This value defines the valid range [0, totalActiveBytes()) for position-based
-	 * operations like {@link #asMemorySegmentAt(long)} and
-	 * {@link #seekSegment(long)}.
-	 * </p>
-	 * 
-	 * @return the sum of all active byte lengths in the chain
-	 * @throws IllegalStateException if this memory is closed or invalid
-	 * 
-	 * @see #activeBytesLength() for single segment active data
-	 * @see #totalSegmentSize() for total allocated capacity
+	 * @return true if byteSize() == 0
 	 */
-	@Override
-	default long totalActiveBytes() {
-		long total = 0;
-		for (Memory mem = this; mem != null; mem = mem.nextSegment()) {
-			total += mem.activeBytesLength();
-		}
-		return total;
+	default boolean isPointer() {
+		return byteSize() == 0;
 	}
 
-	/**
-	 * Returns the total segment size across all segments in the memory chain.
-	 * 
-	 * <p>
-	 * This projection aggregates the {@link #segmentSize()} of each segment in the
-	 * chain, providing the total allocated memory regardless of current
-	 * utilization. This represents the maximum possible data capacity across the
-	 * entire chain structure.
-	 * </p>
-	 * 
-	 * <pre>{@code
-	 * Memory Chain:
-	 * [Segment1: 1KB] → [Segment2: 2KB] → [Segment3: 512B]
-	 * 
-	 * totalSegmentSize() = 1024 + 2048 + 512 = 3584 bytes
-	 * 
-	 * Even if active bytes are less:
-	 * [Active: 500B]  → [Active: 1KB]  → [Active: 200B]
-	 * totalSegmentSize() still = 3584 bytes (unchanged)
-	 * }</pre>
-	 * 
-	 * <p>
-	 * <strong>Performance Note:</strong> This operation requires traversing the
-	 * entire chain with O(n) complexity. Consider caching the result if accessed
-	 * frequently.
-	 * </p>
-	 * 
-	 * @return the sum of all segment sizes in the chain (in bytes)
-	 * @throws IllegalStateException if this memory is closed or invalid
-	 * 
-	 * @see #segmentSize() for single segment capacity
-	 * @see #totalActiveBytes() for actual data across chain
-	 */
-	@Override
-	default long totalSegmentSize() {
-		long total = 0;
-		for (Memory mem = this; mem != null; mem = mem.nextSegment()) {
-			total += mem.segmentSize();
-		}
-		return total;
-	}
+	// ==================== Lifecycle Management ====================
 
 	/**
-	 * Sets the next Memory object in a chain structure.
+	 * Returns the next segment in the chain.
 	 * 
 	 * <p>
-	 * This method establishes or modifies chain linkage between memory objects,
-	 * enabling the creation of complex memory structures such as scatter-gather
-	 * lists or segmented buffers. Chain management is considered part of reference
-	 * management because it affects memory lifecycle and ownership relationships.
+	 * Memory segments can be linked to form chains for scatter-gather operations or
+	 * fragmented data. Returns null if this is the last segment.
 	 * </p>
 	 * 
-	 * <p>
-	 * <strong>Reference Implications:</strong> Setting a next memory may affect
-	 * reference counting if the implementation maintains references to chained
-	 * objects. Consult specific implementation documentation for reference handling
-	 * details.
-	 * </p>
-	 * 
-	 * <p>
-	 * <strong>Thread Safety:</strong> Chain modification operations should be
-	 * performed with appropriate synchronization if the memory chain is accessed
-	 * concurrently from multiple threads.
-	 * </p>
-	 * 
-	 * @param next the next Memory object in the chain, or {@code null} to terminate
-	 *             the chain
-	 * @throws IllegalStateException if this memory is closed or in an invalid state
-	 * 
-	 * @see MemoryView#nextSegment() to traverse chains
-	 * @see MemoryView#hasNextSegment() to check for chain continuation
+	 * @return the next segment or null
 	 */
-	void setNextMemory(Memory next);
+	Memory nextSegment();
 
+	/**
+	 * Returns the current reference count.
+	 * 
+	 * <p>
+	 * The reference count tracks the number of active references to this memory.
+	 * When the count reaches 0, the memory is automatically released.
+	 * </p>
+	 * 
+	 * @return the reference count (always ≥ 0)
+	 */
+	int refCount();
+
+	/**
+	 * Seeks to a specific offset within the chain.
+	 * 
+	 * <p>
+	 * Navigates through the segment chain to find the segment containing the
+	 * specified offset. The offset is relative to the start of this segment's data
+	 * region.
+	 * </p>
+	 * 
+	 * @param offset the offset to seek to
+	 * @return the Memory containing the offset, or null if beyond chain
+	 */
+	Memory seekSegment(long offset);
+
+	// ==================== Chain Support ====================
+
+	/**
+	 * Returns the underlying memory segment.
+	 * 
+	 * <p>
+	 * Provides direct access to the native memory segment for low-level operations.
+	 * The segment remains valid as long as the Memory object has a non-zero
+	 * reference count.
+	 * </p>
+	 * 
+	 * @return the memory segment
+	 */
+	MemorySegment segment();
+
+	/**
+	 * Sets the next segment in the chain.
+	 * 
+	 * <p>
+	 * Links this memory to another segment, forming or extending a chain. The
+	 * implementation should handle reference counting appropriately.
+	 * </p>
+	 * 
+	 * @param next the next segment or null to terminate the chain
+	 */
+	void nextSegment(Memory next);
+
+	/**
+	 * Returns this memory's view for binding operations.
+	 * 
+	 * <p>
+	 * The view provides positioning information (segment, start, length) that can
+	 * be used by BindableView implementations for efficient binding without data
+	 * copying.
+	 * </p>
+	 * 
+	 * @return the memory view
+	 */
+	MemoryView view();
 }

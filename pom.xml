@@ -12,7 +12,7 @@
     
     <groupId>com.slytechs.jnet.core</groupId>
     <artifactId>core-api</artifactId>
-    <name>jNet SDK - Core API</name>
+    <name>Core SDK - Core API</name>
     <description>Core network utilities and packages</description>
 
     <dependencies>

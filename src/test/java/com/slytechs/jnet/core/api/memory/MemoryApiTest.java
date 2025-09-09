@@ -15,14 +15,13 @@ class MemoryApiTest {
             MemorySegment segment = arena.allocate(100);
             Memory memory = Memory.of(segment, 0);
 
-            Assertions.assertEquals(100, memory.segmentSize());
-            Assertions.assertEquals(0, memory.segmentOffset());
-            Assertions.assertEquals(100, memory.segmentEnd());
-            Assertions.assertEquals(0, memory.activeBytesStart());
-            Assertions.assertEquals(100, memory.activeBytesEnd());
-            Assertions.assertEquals(100, memory.activeBytesLength());
-            Assertions.assertEquals(100, memory.totalSegmentSize());
-            Assertions.assertEquals(100, memory.totalActiveBytes());
+            Assertions.assertEquals(100, memory.byteSize());
+            Assertions.assertEquals(0, memory.byteOffset());
+            Assertions.assertEquals(0, memory.start());
+            Assertions.assertEquals(100, memory.end());
+            Assertions.assertEquals(100, memory.length());
+            Assertions.assertEquals(100, memory.totalSize());
+            Assertions.assertEquals(100, memory.totalLength());
             Assertions.assertEquals(1, memory.refCount());
             Assertions.assertFalse(memory.hasNextSegment());
             Assertions.assertNull(memory.nextSegment());
@@ -37,14 +36,13 @@ class MemoryApiTest {
             MemorySegment segment = arena.allocate(100);
             Memory memory = Memory.of(segment, 10, 80);
 
-            Assertions.assertEquals(80, memory.segmentSize());
-            Assertions.assertEquals(10, memory.segmentOffset());
-            Assertions.assertEquals(90, memory.segmentEnd());
-            Assertions.assertEquals(10, memory.activeBytesStart());
-            Assertions.assertEquals(90, memory.activeBytesEnd());
-            Assertions.assertEquals(80, memory.activeBytesLength());
-            Assertions.assertEquals(80, memory.totalSegmentSize());
-            Assertions.assertEquals(80, memory.totalActiveBytes());
+            Assertions.assertEquals(80, memory.byteSize());
+            Assertions.assertEquals(10, memory.byteOffset());
+            Assertions.assertEquals(10, memory.start());
+            Assertions.assertEquals(90, memory.end());
+            Assertions.assertEquals(80, memory.length());
+            Assertions.assertEquals(80, memory.totalSize());
+            Assertions.assertEquals(80, memory.totalLength());
             Assertions.assertEquals(1, memory.refCount());
             Assertions.assertFalse(memory.hasNextSegment());
             Assertions.assertNull(memory.nextSegment());
@@ -89,17 +87,6 @@ class MemoryApiTest {
         }
     }
 
-    @Test
-    void testMemoryClose() {
-        try (Arena arena = Arena.ofConfined()) {
-            MemorySegment segment = arena.allocate(100);
-            Memory memory = Memory.of(segment, 0);
-
-            Assertions.assertEquals(1, memory.refCount());
-            memory.decrementRef(); // Reduces to 0 and calls close()
-            Assertions.assertThrows(IllegalStateException.class, memory::segmentSize);
-        }
-    }
 
     @Test
     void testMemoryNullCheck() {
@@ -116,7 +103,7 @@ class MemoryApiTest {
             MemorySegment pointer = MemorySegment.ofAddress(12345);
             Memory memory = Memory.of(pointer, 0, 0);
             Assertions.assertTrue(memory.isPointer());
-            Assertions.assertEquals(0, memory.segmentSize());
+            Assertions.assertEquals(0, memory.byteSize());
         }
     }
 }

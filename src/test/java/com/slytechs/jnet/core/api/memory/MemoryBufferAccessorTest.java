@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
  * No cross-boundary or spanning scenarios - just single segment access patterns.
  * Uses the new nomenclature (activeBytes*, segment*, headroom/tailroom).
  */
-class MemoryByteBufferAccessorTest {
+class MemoryBufferAccessorTest {
     
     private MemoryBuffer buffer;
     private static final int SEGMENT_SIZE = 1024;

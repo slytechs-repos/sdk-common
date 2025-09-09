@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
  * Comprehensive corner case tests for MemoryBuffer. Tests boundary
  * conditions, error handling, and edge cases.
  */
-class MemoryByteBufferCornerCaseTest {
+class MemoryBufferCornerCaseTest {
 
 	private MemoryBuffer buffer;
 	private static final int BUFFER_SIZE = 100;

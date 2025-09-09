@@ -931,7 +931,7 @@ class MemoryBufferPositioningTest {
 		@Test
 		@DisplayName("Chain all positioning operations")
 		void testChainAllOperations() {
-			MemoryBufferView result = buffer
+			MemoryBuffer result = buffer
 					.clear() // pos=0, limit=capacity
 					.position(100) // pos=100
 					.mark() // mark=100

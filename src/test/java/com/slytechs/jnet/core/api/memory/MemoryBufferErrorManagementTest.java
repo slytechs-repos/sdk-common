@@ -34,8 +34,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+
+
 /**
- * Test suite for MemoryBufferView error management in normal operation scenarios.
+ * Test suite for MemoryBuffer error management in normal operation scenarios.
  * 
  * <p>
  * This test class validates the error handling mechanisms including error
@@ -45,7 +47,7 @@ import org.junit.jupiter.params.provider.ValueSource;
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  */
-@DisplayName("MemoryBufferView Error Management - Normal Operations")
+@DisplayName("MemoryBuffer Error Management - Normal Operations")
 class MemoryBufferErrorManagementTest {
 
 	private static final long BUFFER_SIZE = 1024;
@@ -119,7 +121,7 @@ class MemoryBufferErrorManagementTest {
 		void testClearErrorChaining() {
 			buffer.position(-1);
 
-			MemoryBufferView result = buffer.clearError()
+			MemoryBuffer result = buffer.clearError()
 					.position(50)
 					.mark();
 
@@ -196,7 +198,7 @@ class MemoryBufferErrorManagementTest {
 		    assertEquals(100, buffer.position());
 		    
 		    // Cause error in chain
-		    MemoryBufferView result = buffer
+		    MemoryBuffer result = buffer
 		        .position(-1)      // Error here - position stays at 100
 		        .skip(50)          // No-op
 		        .limit(200)        // No-op
@@ -283,7 +285,7 @@ class MemoryBufferErrorManagementTest {
 		@Test
 		@DisplayName("orElseThrow returns buffer for chaining when no error")
 		void testOrElseThrowChaining() {
-			MemoryBufferView result = buffer
+			MemoryBuffer result = buffer
 					.position(100)
 					.orElseThrow()
 					.mark()
@@ -697,4 +699,8 @@ class MemoryBufferErrorManagementTest {
 			assertFalse(buffer.hasError());
 		}
 	}
+	
+	
+	
+	
 }

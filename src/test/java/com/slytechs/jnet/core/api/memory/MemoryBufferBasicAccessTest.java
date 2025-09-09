@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
  * Tests basic data access operations for MemoryBuffer. Focuses on typical
  * usage patterns with valid operations.
  */
-class MemoryByteBufferBasicAccessTest {
+class MemoryBufferBasicAccessTest {
 
 	private MemoryBuffer buffer;
 	private static final int BUFFER_SIZE = 1024;

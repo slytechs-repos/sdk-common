@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,36 +18,64 @@
 package com.slytechs.jnet.core.api.memory;
 
 /**
- * Interface for memory objects that can be managed by a MemoryPool.
+ * Interface for objects that can be managed by memory pools.
  * 
  * <p>
- * This marker interface identifies memory objects that support pool management,
- * enabling automatic return to their originating pool when reference counts
- * reach zero. Implementations must maintain a reference to their owning pool to
- * enable proper pool integration.
+ * MemoryPoolable provides a contract for objects that can be pooled and reused.
+ * This includes memory objects (FixedMemory, ScopedMemory), view objects
+ * (Packet, Header), and buffers (MemoryBuffer). The interface ensures objects
+ * can be reset to a clean state and properly managed by their owning pools.
  * </p>
  * 
- * <h2>Implementation Requirements</h2>
+ * <h2>Naming Clarification</h2>
+ * <p>
+ * The method {@code recycle()} is specifically for pool lifecycle management,
+ * distinct from domain-specific reset operations. For example, MemoryBuffer has:
+ * </p>
  * <ul>
- * <li>Store reference to owning pool during construction</li>
- * <li>Return correct pool reference from {@link #getOwningPool()}</li>
- * <li>Support pool-managed lifecycle through reference counting</li>
+ * <li>{@code reset()} - Resets buffer position to mark (ByteBuffer semantics)</li>
+ * <li>{@code recycle()} - Prepares buffer for pool reuse (MemoryPoolable semantics)</li>
  * </ul>
  * 
- * @see MemoryPool for pool management
- * @see MemoryBufferView for example implementation
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ * @since 1.0
  */
 public interface MemoryPoolable {
+    
     /**
-     * Returns the MemoryPool that owns this memory object.
+     * Prepares this object for return to pool and reuse.
      * 
      * <p>
-     * This method enables the memory object to identify its originating pool, which
-     * is essential for automatic return when reference counting reaches zero. The
-     * returned pool must be the same instance that created this memory object.
+     * Clears all state to prepare the object for the next allocation.
+     * This method should:
+     * </p>
+     * <ul>
+     * <li>Clear any references to prevent memory leaks</li>
+     * <li>Reset counters and flags to defaults</li>
+     * <li>Unbind from any memory if applicable</li>
+     * <li>NOT modify the pool reference itself</li>
+     * </ul>
+     */
+    void recycle();
+    
+    /**
+     * Sets the owning pool for this object.
+     * 
+     * <p>
+     * Called by the pool during object creation or initialization.
+     * The pool reference enables automatic return when appropriate
+     * (e.g., refcount reaches zero for Memory objects).
      * </p>
      * 
-     * @return the owning MemoryPool, or {@code null} if this memory is not pooled
+     * @param pool the owning pool
      */
-    MemoryPool<?> getOwningPool();
+    void setPool(MemoryPool<?> pool);
+    
+    /**
+     * Returns the pool that owns this object.
+     * 
+     * @return the owning pool, or null if not pooled
+     */
+    MemoryPool<?> getPool();
 }
