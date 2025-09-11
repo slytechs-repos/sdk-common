@@ -272,10 +272,10 @@ class BoundViewTest {
 		@DisplayName("Null memory binding throws NPE")
 		void testNullMemoryBinding() {
 			assertThrows(NullPointerException.class,
-					() -> boundView.bind(null));
+					() -> boundView.bind((Memory) null));
 
 			assertThrows(NullPointerException.class,
-					() -> boundView.bind(null, 0, 100));
+					() -> boundView.bind((Memory)null, 0, 100));
 		}
 
 		@Test
