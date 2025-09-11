@@ -18,7 +18,7 @@
 package com.slytechs.jnet.core.api.memory;
 
 /**
- * Abstract base class providing optimized memory binding implementation.
+ * Concrete implementation providing optimized memory binding operations.
  * 
  * <p>
  * BoundView provides an optimized implementation of {@link BindableView} that
@@ -26,6 +26,43 @@ package com.slytechs.jnet.core.api.memory;
  * copying. This optimization can improve performance in high-frequency binding
  * scenarios such as packet processing.
  * </p>
+ * 
+ * <h2>Dual Usage Pattern</h2>
+ * <p>
+ * BoundView supports two usage patterns:
+ * </p>
+ * <ol>
+ * <li><strong>Direct extension:</strong> Classes extend BoundView to inherit all functionality</li>
+ * <li><strong>Delegation:</strong> Classes implement BindableView and contain a BoundView field</li>
+ * </ol>
+ * 
+ * <h3>Extension Example</h3>
+ * <pre>{@code
+ * public class MemoryBuffer extends BoundView {
+ *     // Inherits all binding functionality
+ *     
+ *     public void readData() {
+ *         if (isBound()) {
+ *             MemorySegment seg = segment();
+ *             // ... perform operations
+ *         }
+ *     }
+ * }
+ * }</pre>
+ * 
+ * <h3>Delegation Example</h3>
+ * <pre>{@code
+ * public class Packet implements BindableView {
+ *     private final BoundView boundView = new BoundView() {};
+ *     
+ *     @Override
+ *     public BoundView boundView() {
+ *         return boundView;
+ *     }
+ *     
+ *     // Can extend any other base class
+ * }
+ * }</pre>
  * 
  * <h2>Optimization Strategy</h2>
  * <ul>
@@ -35,32 +72,20 @@ package com.slytechs.jnet.core.api.memory;
  * with field copying</li>
  * </ul>
  * 
- * <h2>Usage</h2>
- * <p>
- * Extend this class when you want optimized binding performance and don't need
- * a different base class:
- * </p>
- * 
- * <pre>{@code
- * public class Packet extends BoundView {
- * 	// Inherits optimized binding implementation
- * 
- * 	public void processPacket() {
- * 		// Access memory through view field
- * 		MemorySegment seg = view.segment;
- * 		long offset = view.start;
- * 		// ...
- * 	}
- * }
- * }</pre>
- * 
  * <h2>Performance Characteristics</h2>
  * <ul>
  * <li>Zero allocations - all views pre-allocated</li>
- * <li>Direct binding: 2 assignments + 1 refcount operation</li>
- * <li>Mapped binding: 4 assignments + 1 refcount operation</li>
- * <li>Unbind: 1-2 assignments + 1 refcount operation</li>
+ * <li>Direct binding: 2 assignments</li>
+ * <li>Mapped binding: 4 assignments</li>
+ * <li>Unbind: 1-2 assignments</li>
  * </ul>
+ * 
+ * <h2>Thread Safety</h2>
+ * <p>
+ * BoundView is NOT thread-safe. Each thread should have its own BoundView
+ * instance for concurrent operations. The bound memory's reference counting
+ * is thread-safe.
+ * </p>
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
@@ -68,241 +93,420 @@ package com.slytechs.jnet.core.api.memory;
  * @see MemoryView for the view data structure
  * @since 1.0
  */
-public abstract class BoundView implements BindableView {
+public class BoundView implements BindableView {
 
-	/**
-	 * Pre-allocated view for mapped bindings (offset > 0).
-	 * 
-	 * <p>
-	 * This view is reused for all bindings that require offset mapping, avoiding
-	 * allocation in the binding path.
-	 * </p>
-	 */
-	protected final MemoryView mappedView = new MemoryView();
+    /**
+     * Pre-allocated view for mapped bindings (offset > 0).
+     * 
+     * <p>
+     * This view is reused for all bindings that require offset mapping,
+     * avoiding allocation in the binding path.
+     * </p>
+     */
+    protected final MemoryView mappedView = new MemoryView();
 
-	/**
-	 * Current active view - points to either source's view or mappedView.
-	 * 
-	 * <p>
-	 * When binding at offset 0, this references the source memory's view directly.
-	 * When binding with offset, this references the mappedView.
-	 * </p>
-	 */
-	protected MemoryView view;
+    /**
+     * Current active view - points to either source's view or mappedView.
+     * 
+     * <p>
+     * When binding at offset 0, this references the source memory's view directly.
+     * When binding with offset, this references the mappedView.
+     * </p>
+     */
+    protected MemoryView view;
 
-	/**
-	 * Reference to the bound memory for lifecycle management.
-	 * 
-	 * <p>
-	 * Kept separate from view.source to enable direct view sharing optimization.
-	 * Used for reference counting and unbinding.
-	 * </p>
-	 */
-	protected Memory boundSource;
+    /**
+     * Reference to the bound memory for lifecycle management.
+     * 
+     * <p>
+     * Kept separate from view.source to enable direct view sharing optimization.
+     * Used for reference counting operations and unbinding.
+     * </p>
+     */
+    protected Memory boundSource;
+    
+    // Package-private fields for pool management
+    /** Next view in pool's free list - package-private for pool access */
+    BoundView poolNext;
+    
+    /** Owning pool if this view is pooled - package-private */
+    ViewPool<?> owningPool;
 
-	/**
-	 * Constructs an unbound BoundView.
-	 */
-	public BoundView() {
-		// Start unbound
-	}
+    /**
+     * Constructs an unbound BoundView.
+     * 
+     * <p>
+     * The view starts in an unbound state and must be bound to memory
+     * before use. This constructor is used both for direct instantiation
+     * and as the base constructor for subclasses.
+     * </p>
+     */
+    public BoundView() {
+        // Start unbound - all fields null/uninitialized
+    }
+    
+    /**
+     * Returns this BoundView instance.
+     * 
+     * <p>
+     * Implementation of {@link BindableView#boundView()} for the direct
+     * extension pattern. When a class extends BoundView, it returns itself
+     * as the bound view.
+     * </p>
+     * 
+     * @return this BoundView instance
+     */
+    @Override
+    public BoundView boundView() {
+        return this;
+    }
+    
+    /**
+     * Recycles this view for pool reuse.
+     * 
+     * <p>
+     * Package-private method called by pools when returning this view
+     * to the free list. Ensures the view is unbound and ready for reuse.
+     * </p>
+     */
+    void recycle() {
+        if (isBound()) {
+            unbind();
+        }
+        // Subclasses can override for additional cleanup
+        onRecycle();
+    }
+    
+    /**
+     * Hook for subclass-specific recycling.
+     * 
+     * <p>
+     * Package-private method that subclasses can override to perform
+     * additional cleanup when being returned to a pool.
+     * </p>
+     */
+    void onRecycle() {
+        // Override in subclasses if needed
+    }
 
-	/**
-	 * @see com.slytechs.jnet.core.api.memory.BindableView#boundView()
-	 */
-	@Override
-	public BoundView boundView() {
-		throw new UnsupportedOperationException();
-	}
+    /**
+     * {@inheritDoc}
+     * 
+     * <p>
+     * Optimized implementation that shares the source's view directly when
+     * binding at offset 0, requiring only 2 reference assignments instead
+     * of field copying.
+     * </p>
+     * 
+     * @throws NullPointerException if memory is null
+     */
+    @Override
+    public void bind(Memory memory) {
+        if (memory == null) {
+            throw new NullPointerException("Cannot bind to null memory");
+        }
 
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * @return the current view (direct or mapped)
-	 * @throws IllegalStateException if not bound
-	 */
-	@Override
-	public MemoryView view() {
-		if (view == null) {
-			throw new IllegalStateException("BoundView is not bound");
-		}
-		return view;
-	}
+        unbind();
+        this.view = memory.view();  // Direct view sharing
+        this.boundSource = memory;
+        // Note: No incrementRef() - views are lightweight observers
+        onBind();
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * Optimized implementation that shares the source's view directly, requiring
-	 * only 2 reference assignments instead of field copying.
-	 * </p>
-	 */
-	@Override
-	public void bind(Memory memory) {
-		if (memory == null) {
-			throw new NullPointerException("Cannot bind to null memory");
-		}
+    /**
+     * {@inheritDoc}
+     * 
+     * <p>
+     * Binds with offset, using the pre-allocated mappedView if offset > 0
+     * for optimal performance.
+     * </p>
+     * 
+     * @throws NullPointerException if memory is null
+     */
+    @Override
+    public void bind(Memory memory, long offset) {
+        if (memory == null) {
+            throw new NullPointerException("Cannot bind to null memory");
+        }
 
-		unbind();
-		this.view = memory.view(); // Direct view sharing - no copying
-		this.boundSource = memory;
-		memory.incrementRef();
-		
-	    onBind();  // Notify after binding
-	}
+        unbind();
+        
+        if (offset == 0) {
+            // Direct binding optimization
+            this.view = memory.view();
+        } else {
+            // Mapped binding
+            mappedView.segment = memory.segment();
+            mappedView.start = memory.start() + offset;
+            mappedView.length = memory.length() - offset;
+            mappedView.source = memory;
+            this.view = mappedView;
+        }
+        
+        this.boundSource = memory;
+        onBind();
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * Uses the pre-allocated mappedView for offset binding.
-	 * </p>
-	 */
-	@Override
-	public void bind(Memory memory, long offset, long length) {
-		if (memory == null) {
-			throw new NullPointerException("Cannot bind to null memory");
-		}
-		if (offset < 0 || length < 0 || offset + length > memory.length()) {
-			throw new IllegalArgumentException(
-					String.format("Invalid bounds: offset=%d, length=%d (memory length: %d)",
-							offset, length, memory.length()));
-		}
+    /**
+     * {@inheritDoc}
+     * 
+     * <p>
+     * Binds with specific offset and length, always using the mappedView
+     * for precise boundary control.
+     * </p>
+     * 
+     * @throws NullPointerException if memory is null
+     * @throws IllegalArgumentException if bounds are invalid
+     */
+    @Override
+    public void bind(Memory memory, long offset, long length) {
+        if (memory == null) {
+            throw new NullPointerException("Cannot bind to null memory");
+        }
+        if (offset < 0 || length < 0 || offset + length > memory.length()) {
+            throw new IllegalArgumentException(
+                    String.format("Invalid bounds: offset=%d, length=%d (memory length: %d)",
+                            offset, length, memory.length()));
+        }
 
-		unbind();
+        unbind();
 
-		// Use mapped view for offset binding
-		mappedView.segment = memory.segment();
-		mappedView.start = memory.start() + offset;
-		mappedView.length = length;
-		mappedView.source = memory;
+        // Always use mapped view for explicit bounds
+        mappedView.segment = memory.segment();
+        mappedView.start = memory.start() + offset;
+        mappedView.length = length;
+        mappedView.source = memory;
 
-		this.view = mappedView;
-		this.boundSource = memory;
-		memory.incrementRef();
-		
-	    onBind();  // Notify after binding
-	}
+        this.view = mappedView;
+        this.boundSource = memory;
+        onBind();
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * Handles both direct and mapped unbinding cases.
-	 * </p>
-	 */
-	@Override
-	public void unbind() {
-		if (boundSource != null) {
-	        onUnbind();  // Notify before unbinding
+    /**
+     * Returns the bound memory object.
+     * 
+     * @return the bound memory or null if not bound
+     */
+    @Override
+    public Memory boundMemory() {
+        return boundSource;
+    }
 
-			boundSource.decrementRef();
-			boundSource = null;
-		}
+    /**
+     * {@inheritDoc}
+     * 
+     * @throws IllegalStateException if not bound
+     */
+    @Override
+    public int decrementRef() {
+        if (boundSource == null) {
+            throw new IllegalStateException("Cannot decrement ref - view is not bound");
+        }
+        return boundSource.decrementRef();
+    }
 
-		// Only clear mappedView if it was used
-		if (view == mappedView) {
-			mappedView.clear();
-		}
+    /**
+     * Returns the ending offset (exclusive).
+     * 
+     * @return start + length
+     * @throws IllegalStateException if not bound
+     */
+    public long end() {
+        if (view == null) {
+            throw new IllegalStateException("BoundView is not bound");
+        }
+        return view.start + view.length;
+    }
 
-		view = null;
-	}
+    /**
+     * {@inheritDoc}
+     * 
+     * @throws IllegalStateException if not bound
+     */
+    @Override
+    public int incrementRef() {
+        if (boundSource == null) {
+            throw new IllegalStateException("Cannot increment ref - view is not bound");
+        }
+        return boundSource.incrementRef();
+    }
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public boolean isBound() {
-		return boundSource != null;
-	}
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isBound() {
+        return boundSource != null;
+    }
 
-	/**
-	 * Direct access to the memory segment for performance.
-	 * 
-	 * @return the memory segment
-	 * @throws IllegalStateException if not bound
-	 */
-	public java.lang.foreign.MemorySegment segment() {
-		if (view == null) {
-			throw new IllegalStateException("BoundView is not bound");
-		}
-		return view.segment;
-	}
+    /**
+     * Returns the length of the bound region.
+     * 
+     * @return the length in bytes
+     * @throws IllegalStateException if not bound
+     */
+    public long length() {
+        if (view == null) {
+            throw new IllegalStateException("BoundView is not bound");
+        }
+        return view.length;
+    }
 
-	/**
-	 * Direct access to the start offset for performance.
-	 * 
-	 * @return the start offset
-	 * @throws IllegalStateException if not bound
-	 */
-	public long start() {
-		if (view == null) {
-			throw new IllegalStateException("BoundView is not bound");
-		}
-		return view.start;
-	}
+    /**
+     * Called after successful binding.
+     * 
+     * <p>
+     * Subclasses can override this method to perform initialization or state
+     * updates when bound to new memory. This method is called after the view
+     * has been successfully bound and all internal state has been updated.
+     * </p>
+     * 
+     * <p>
+     * Default implementation does nothing.
+     * </p>
+     */
+    @Override
+    public void onBind() {
+        // Override in subclasses if needed
+    }
 
-	/**
-	 * Direct access to the length for performance.
-	 * 
-	 * @return the length in bytes
-	 * @throws IllegalStateException if not bound
-	 */
-	public long length() {
-		if (view == null) {
-			throw new IllegalStateException("BoundView is not bound");
-		}
-		return view.length;
-	}
+    /**
+     * Called before unbinding.
+     * 
+     * <p>
+     * Subclasses can override this method to perform cleanup or save state
+     * before the view is unbound from its current memory. This method is
+     * called before the unbinding process begins.
+     * </p>
+     * 
+     * <p>
+     * Default implementation does nothing.
+     * </p>
+     */
+    @Override
+    public void onUnbind() {
+        // Override in subclasses if needed
+    }
 
-	/**
-	 * Returns the ending offset (exclusive).
-	 * 
-	 * @return start + length
-	 * @throws IllegalStateException if not bound
-	 */
-	public long end() {
-		if (view == null) {
-			throw new IllegalStateException("BoundView is not bound");
-		}
-		return view.start + view.length;
-	}
+    /**
+     * {@inheritDoc}
+     * 
+     * @throws IllegalStateException if not bound
+     */
+    @Override
+    public int refCount() {
+        if (boundSource == null) {
+            throw new IllegalStateException("Cannot get ref count - view is not bound");
+        }
+        return boundSource.refCount();
+    }
 
-	/**
-	 * Creates a string representation of this bound view.
-	 * 
-	 * @return a string describing the binding state
-	 */
-	@Override
-	public String toString() {
-		if (!isBound()) {
-			return getClass().getSimpleName() + "[unbound]";
-		}
-		return String.format("%s[start=%d, length=%d]",
-				getClass().getSimpleName(), view.start, view.length);
-	}
+    /**
+     * Returns the memory segment.
+     * 
+     * <p>
+     * Provides direct access to the underlying memory segment for low-level
+     * operations. The segment remains valid as long as the bound memory has
+     * a non-zero reference count.
+     * </p>
+     * 
+     * @return the memory segment
+     * @throws IllegalStateException if not bound
+     */
+    public java.lang.foreign.MemorySegment segment() {
+        if (view == null) {
+            throw new IllegalStateException("BoundView is not bound");
+        }
+        return view.segment;
+    }
 
-	/**
-	 * Called after successful binding.
-	 * 
-	 * <p>
-	 * Subclasses can override this method to perform initialization or state
-	 * updates when bound to new memory. This method is called after the view has
-	 * been successfully bound and all internal state has been updated.
-	 * </p>
-	 */
-	@Override
-	public void onBind() {}
+    /**
+     * Returns the starting offset of the bound region.
+     * 
+     * @return the start offset
+     * @throws IllegalStateException if not bound
+     */
+    public long start() {
+        if (view == null) {
+            throw new IllegalStateException("BoundView is not bound");
+        }
+        return view.start;
+    }
 
-	/**
-	 * Called before unbinding.
-	 * 
-	 * <p>
-	 * Subclasses can override this method to perform cleanup or save state before
-	 * the view is unbound from its current memory. This method is called before the
-	 * unbinding process begins.
-	 * </p>
-	 */
-	@Override
-	public void onUnbind() {}
+    /**
+     * Creates a string representation of this bound view.
+     * 
+     * @return a string describing the binding state
+     */
+    @Override
+    public String toString() {
+        if (!isBound()) {
+            return getClass().getSimpleName() + "[unbound]";
+        }
+        return String.format("%s[start=%d, length=%d]",
+                getClass().getSimpleName(), view.start, view.length);
+    }
+
+    /**
+     * {@inheritDoc}
+     * 
+     * <p>
+     * Handles both direct and mapped unbinding cases. After unbinding,
+     * the view cannot be used until bound again.
+     * </p>
+     * 
+     * <p>
+     * Note: This does NOT decrement the memory's reference count. Views
+     * are lightweight observers that don't affect memory lifecycle.
+     * </p>
+     */
+    @Override
+    public void unbind() {
+        if (boundSource != null) {
+            onUnbind();
+            boundSource = null;
+        }
+
+        if (view == mappedView) {
+            mappedView.clear();
+        }
+        view = null;
+    }
+
+    /**
+     * Unbinds and decrements reference count in one atomic operation.
+     * 
+     * <p>
+     * Convenience method that ensures the view is cleanly unbound before
+     * the memory's reference count is decremented, preventing use-after-free
+     * if the decrement causes deallocation.
+     * </p>
+     * 
+     * @return the new reference count after decrement
+     * @throws IllegalStateException if not bound
+     */
+    @Override
+    public int unbindAndRelease() {
+        if (boundSource == null) {
+            throw new IllegalStateException("Cannot unbind and release - view is not bound");
+        }
+
+        Memory mem = boundSource;
+        unbind(); // Unbind first, while memory is still valid
+        return mem.decrementRef(); // Then decrement, possibly releasing
+    }
+
+    /**
+     * {@inheritDoc}
+     * 
+     * @return the current view (direct or mapped)
+     * @throws IllegalStateException if not bound
+     */
+    @Override
+    public MemoryView view() {
+        if (view == null) {
+            throw new IllegalStateException("BoundView is not bound");
+        }
+        return view;
+    }
 }

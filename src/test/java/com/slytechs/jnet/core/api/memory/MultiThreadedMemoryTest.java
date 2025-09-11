@@ -187,11 +187,22 @@ class MultiThreadedMemoryTest {
         Assertions.assertNotNull(buf1);
         Assertions.assertNotNull(buf2);
         
-        buf1.nextSegment(buf2);  // This increments buf2's refcount
-
-        // Use BoundView instead of MemorySegmentProxy
+        // Initial state: both have refCount=1 from allocation
+        Assertions.assertEquals(1, buf1.refCount());
+        Assertions.assertEquals(1, buf2.refCount());
+        
+        // Set buf2 as next of buf1 - this increments buf2's refcount
+        buf1.nextSegment(buf2);
+        Assertions.assertEquals(1, buf1.refCount()); // Unchanged
+        Assertions.assertEquals(2, buf2.refCount()); // Incremented by nextSegment
+        
+        // Create a view - views don't affect refcount in new model
         BoundView chain = new BoundView() {};
-        chain.bind(buf1);  // This increments buf1's refcount
+        chain.bind(buf1);
+        
+        // Refcounts should be unchanged after view binding
+        Assertions.assertEquals(1, buf1.refCount()); // Still 1
+        Assertions.assertEquals(2, buf2.refCount()); // Still 2
 
         int threadCount = 5;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -206,7 +217,7 @@ class MultiThreadedMemoryTest {
                     try {
                         startLatch.await();
                         for (int j = 0; j < 100; j++) {
-                            // Don't increment/decrement buf1 here - just test operations
+                            // Test chain operations
                             Assertions.assertEquals(2, buf1.segmentCount());
                             Memory sought = buf1.seekSegment(10);
                             Assertions.assertNotNull(sought);
@@ -226,24 +237,30 @@ class MultiThreadedMemoryTest {
             Assertions.assertTrue(completed, "All threads should complete");
             Assertions.assertEquals(0, errorCount.get(), "No errors should occur");
 
-            // Expected refcounts:
-            // buf1: 2 (1 from allocation + 1 from chain binding)
-            // buf2: 2 (1 from allocation + 1 from being set as next segment)
-            Assertions.assertEquals(2, buf1.refCount());
-            Assertions.assertEquals(2, buf2.refCount());  // FIXED: Should be 2, not 1
+            // Verify refcounts are still correct after concurrent operations
+            Assertions.assertEquals(1, buf1.refCount());
+            Assertions.assertEquals(2, buf2.refCount());
 
-            chain.unbind();  // Decrements buf1
-            buf1.nextSegment(null);  // Decrements buf2
-            buf1.decrementRef();  // Decrements buf1 to 0
-            buf2.decrementRef();  // Decrements buf2 to 0
+            // Clean up properly
+            chain.unbind();              // Just unbinds, no refcount change
+            buf1.nextSegment(null);      // Decrements buf2 (2 -> 1)
+            
+            // Now both should have refCount=1
+            Assertions.assertEquals(1, buf1.refCount());
+            Assertions.assertEquals(1, buf2.refCount());
+            
+            // Release our references
+            buf1.decrementRef();         // buf1: 1 -> 0, returns to pool
+            buf2.decrementRef();         // buf2: 1 -> 0, returns to pool
 
+            // Verify pool has all memories back
+            Thread.sleep(50);            // Allow time for pool operations
             Assertions.assertEquals(10, pool.available());
             
         } finally {
             shutdownExecutor(executor);
         }
-    }
-    
+    }    
     @RepeatedTest(value = 10, name = "Reference counting test {currentRepetition}/{totalRepetitions}")
     void testConcurrentRefCount(RepetitionInfo repetitionInfo) throws InterruptedException {
         FixedMemoryPool pool = createPool();

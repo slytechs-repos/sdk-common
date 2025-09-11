@@ -69,7 +69,7 @@ public class MemoryView {
      * It may be shared across multiple views.
      * </p>
      */
-    public MemorySegment segment;
+    MemorySegment segment;
     
     /**
      * The starting offset of data within the segment.
@@ -79,7 +79,7 @@ public class MemoryView {
      * the viewed data begins.
      * </p>
      */
-    public long start;
+    long start;
     
     /**
      * The length of data in bytes.
@@ -88,7 +88,7 @@ public class MemoryView {
      * The view spans from start (inclusive) to start + length (exclusive).
      * </p>
      */
-    public long length;
+    long length;
     
     /**
      * Optional reference to the source Memory for reference counting.
@@ -99,7 +99,7 @@ public class MemoryView {
      * that don't require reference counting.
      * </p>
      */
-    public Memory source;
+    Memory source;
     
     /**
      * Constructs an empty MemoryView.

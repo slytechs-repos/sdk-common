@@ -78,7 +78,7 @@ package com.slytechs.jnet.core.api.memory;
  * @see BoundView for the delegated implementation
  * @since 1.0
  */
-public interface BindableView {
+public interface BindableView extends MemoryRefCounter {
 
 	/**
 	 * Binds to a memory region.
@@ -99,6 +99,20 @@ public interface BindableView {
 	}
 
 	/**
+	 * Binds to a memory region projected by the view.
+	 * 
+	 * <p>
+	 * Delegates to the BoundView's optimized implementation which shares the
+	 * source's view directly when possible.
+	 * </p>
+	 * 
+	 * @param memory the memory to bind to
+	 */
+	default void bind(BindableView view) {
+		bind(view.boundMemory());
+	}
+
+	/**
 	 * Binds to a memory region with an offset.
 	 * 
 	 * @param memory the memory to bind to
@@ -110,6 +124,16 @@ public interface BindableView {
 		if (wasUnbound) {
 			onBind();
 		}
+	}
+
+	/**
+	 * Binds to a memory region projected by the view, with an offset.
+	 * 
+	 * @param memory the memory to bind to
+	 * @param offset the offset within the memory's active data
+	 */
+	default void bind(BindableView view, long offset) {
+		bind(view, offset, view.boundView().length() - offset);
 	}
 
 	/**
@@ -128,6 +152,37 @@ public interface BindableView {
 	}
 
 	/**
+	 * Binds to a memory region projected by the view, with offset and length.
+	 * 
+	 * @param view   the memory to bind to
+	 * @param offset the offset within the view's active data
+	 * @param length the length of the new view
+	 */
+	default void bind(BindableView view, long offset, long length) {
+		MemoryView mview = view.view();
+		if (mview.length() - offset > length)
+			throw new IndexOutOfBoundsException(length);
+
+		boolean wasUnbound = !isBound();
+
+		offset += mview.start();
+
+		boundView().bind(view.boundMemory(), offset, length);
+		if (wasUnbound) {
+			onBind();
+		}
+	}
+
+	/**
+	 * Returns the bound memory object.
+	 * 
+	 * @return the bound memory or null if not bound
+	 */
+	default Memory boundMemory() {
+		return boundView().boundMemory();
+	}
+
+	/**
 	 * Returns the BoundView instance for delegation.
 	 * 
 	 * <p>
@@ -139,6 +194,28 @@ public interface BindableView {
 	 * @return the BoundView instance (never null)
 	 */
 	BoundView boundView();
+
+	/**
+	 * Decrements the reference count of the bound memory.
+	 * 
+	 * @return the new reference count
+	 * @throws IllegalStateException if not bound
+	 */
+	@Override
+	default int decrementRef() {
+		return boundView().decrementRef();
+	}
+
+	/**
+	 * Increments the reference count of the bound memory.
+	 * 
+	 * @return the new reference count
+	 * @throws IllegalStateException if not bound
+	 */
+	@Override
+	default int incrementRef() {
+		return boundView().incrementRef();
+	}
 
 	/**
 	 * Checks if currently bound.
@@ -169,6 +246,19 @@ public interface BindableView {
 	 */
 	default void onUnbind() {}
 
+	// Add to BindableView interface:
+
+	/**
+	 * Returns the current reference count of the bound memory.
+	 * 
+	 * @return the reference count
+	 * @throws IllegalStateException if not bound
+	 */
+	@Override
+	default int refCount() {
+		return boundView().refCount();
+	}
+
 	/**
 	 * Unbinds from the current memory.
 	 */
@@ -177,6 +267,22 @@ public interface BindableView {
 			onUnbind(); // Notify only if we were bound
 			boundView().unbind();
 		}
+	}
+
+	/**
+	 * Unbinds and decrements reference count atomically.
+	 * 
+	 * <p>
+	 * Convenience method that ensures proper ordering: unbind first, then decrement
+	 * reference count. This prevents use-after-free if the decrement causes memory
+	 * deallocation.
+	 * </p>
+	 * 
+	 * @return the new reference count after decrement
+	 * @throws IllegalStateException if not bound
+	 */
+	default int unbindAndRelease() {
+		return boundView().unbindAndRelease();
 	}
 
 	/**

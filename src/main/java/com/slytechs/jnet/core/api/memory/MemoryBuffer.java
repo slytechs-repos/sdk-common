@@ -302,6 +302,60 @@ public class MemoryBuffer extends BoundView {
 	}
 
 	/**
+	 * Reads bytes into array.
+	 */
+	public MemoryBuffer get(byte[] dst) {
+		if (dst == null) {
+			setError(new BufferOperationException("Destination array is null"));
+			return this;
+		}
+		return get(dst, 0, dst.length);
+	}
+
+	// ==================== Big-Endian Operations ====================
+
+	/**
+	 * Reads bytes into array portion.
+	 */
+	public MemoryBuffer get(byte[] dst, int offset, int length) {
+		if (hasError())
+			return this;
+
+		// Null check
+		if (dst == null) {
+			setError(new BufferOperationException("Destination array is null"));
+			return this;
+		}
+
+		// Bounds checking
+		if (offset < 0 || length < 0 || offset + length > dst.length) {
+			setError(new BufferOperationException(
+					String.format("Invalid array bounds: offset=%d, length=%d, array.length=%d",
+							offset, length, dst.length)));
+			return this;
+		}
+
+		// Check buffer has enough data
+		if (remaining() < length) {
+			setError(new BufferOperationException("Buffer underflow"));
+			return this;
+		}
+
+		// Only copy if length > 0
+		if (length > 0) {
+			try {
+				MemorySegment.copy(view.segment, view.start + position,
+						MemorySegment.ofArray(dst), offset, length);
+				position += length;
+			} catch (Exception e) {
+				setError(new BufferOperationException("Failed to read from buffer", e));
+			}
+		}
+
+		return this;
+	}
+
+	/**
 	 * Reads a byte at the specified index.
 	 * 
 	 * @param index the index
@@ -318,8 +372,6 @@ public class MemoryBuffer extends BoundView {
 		return (byte) BYTE_HANDLE.get(view.segment, view.start + index);
 	}
 
-	// ==================== Big-Endian Operations ====================
-
 	/**
 	 * Reads a char at the current position.
 	 */
@@ -334,6 +386,8 @@ public class MemoryBuffer extends BoundView {
 		position += 2;
 		return result;
 	}
+
+	// ==================== Array Operations ====================
 
 	/**
 	 * Reads a char at the specified index.
@@ -362,8 +416,6 @@ public class MemoryBuffer extends BoundView {
 		position += 8;
 		return result;
 	}
-
-	// ==================== Array Operations ====================
 
 	/**
 	 * Reads a double at the specified index.
@@ -433,6 +485,8 @@ public class MemoryBuffer extends BoundView {
 		return result;
 	}
 
+	// ==================== Buffer Control ====================
+
 	/**
 	 * Reads an int at the specified index.
 	 */
@@ -445,8 +499,6 @@ public class MemoryBuffer extends BoundView {
 		}
 		return (int) INT_HANDLE.get(view.segment, view.start + index);
 	}
-
-	// ==================== Buffer Control ====================
 
 	/**
 	 * Reads an int in big-endian byte order.
@@ -464,6 +516,19 @@ public class MemoryBuffer extends BoundView {
 		int result = (int) INT_BE_HANDLE.get(view.segment, view.start + position);
 		position += 4;
 		return result;
+	}
+
+	/**
+	 * Reads an int at the specified index in big-endian byte order.
+	 */
+	public int getIntBE(long index) {
+		if (hasError())
+			return 0;
+		if (index < 0 || index + 4 > limit) {
+			setError(new IllegalArgumentException("Index out of bounds"));
+			return 0;
+		}
+		return (int) INT_BE_HANDLE.get(view.segment, view.start + index);
 	}
 
 	/**
@@ -516,6 +581,19 @@ public class MemoryBuffer extends BoundView {
 	}
 
 	/**
+	 * Reads a long at the specified index in big-endian byte order.
+	 */
+	public long getLongBE(long index) {
+		if (hasError())
+			return 0;
+		if (index < 0 || index + 8 > limit) {
+			setError(new IllegalArgumentException("Index out of bounds"));
+			return 0;
+		}
+		return (long) LONG_BE_HANDLE.get(view.segment, view.start + index);
+	}
+
+	/**
 	 * Reads a short at the current position.
 	 * 
 	 * @return the short value
@@ -565,6 +643,21 @@ public class MemoryBuffer extends BoundView {
 	}
 
 	/**
+	 * Reads a short at the specified index in big-endian byte order.
+	 */
+	public short getShortBE(long index) {
+		if (hasError())
+			return 0;
+		if (index < 0 || index + 2 > limit) {
+			setError(new IllegalArgumentException("Index out of bounds"));
+			return 0;
+		}
+		return (short) SHORT_BE_HANDLE.get(view.segment, view.start + index);
+	}
+
+	// ==================== Error Management ====================
+
+	/**
 	 * Checks if buffer has an error.
 	 * 
 	 * @return true if error exists
@@ -582,8 +675,6 @@ public class MemoryBuffer extends BoundView {
 		return position < limit;
 	}
 
-	// ==================== Error Management ====================
-
 	// For the ifError exception replacement issue, update the ifError method:
 	public MemoryBuffer ifError(Consumer<BufferOperationException> monitor) {
 		if (hasError()) {
@@ -599,6 +690,8 @@ public class MemoryBuffer extends BoundView {
 		}
 		return this;
 	}
+
+	// ==================== Get Operations ====================
 
 	/**
 	 * Returns the limit.
@@ -627,8 +720,6 @@ public class MemoryBuffer extends BoundView {
 		}
 		return this;
 	}
-
-	// ==================== Get Operations ====================
 
 	/**
 	 * Marks the current position.
@@ -675,6 +766,8 @@ public class MemoryBuffer extends BoundView {
 		return this;
 	}
 
+	// ==================== Put Operations ====================
+
 	/**
 	 * Returns the current position.
 	 * 
@@ -701,7 +794,7 @@ public class MemoryBuffer extends BoundView {
 		return this;
 	}
 
-	// ==================== Put Operations ====================
+	// ==================== Network Byte Order ====================
 
 	/**
 	 * Writes a byte at the current position.
@@ -723,6 +816,64 @@ public class MemoryBuffer extends BoundView {
 	}
 
 	/**
+	 * Writes a byte array.
+	 */
+	public MemoryBuffer put(byte[] src) {
+		if (src == null) {
+			setError(new BufferOperationException("Source array is null"));
+			return this;
+		}
+		return put(src, 0, src.length);
+	}
+
+	// ==================== Lifecycle ====================
+
+	/**
+	 * Writes a portion of a byte array.
+	 */
+	public MemoryBuffer put(byte[] src, int offset, int length) {
+		if (hasError())
+			return this;
+
+		// Null check
+		if (src == null) {
+			setError(new BufferOperationException("Source array is null"));
+			return this;
+		}
+
+		// Bounds checking
+		if (offset < 0 || length < 0 || offset + length > src.length) {
+			setError(new BufferOperationException(
+					String.format("Invalid array bounds: offset=%d, length=%d, array.length=%d",
+							offset, length, src.length)));
+			return this;
+		}
+
+		// Check buffer has enough space
+		if (remaining() < length) {
+			setError(new BufferOperationException("Buffer overflow"));
+			return this;
+		}
+
+		// Only copy if length > 0
+		if (length > 0) {
+			try {
+				MemorySegment.copy(MemorySegment.ofArray(src), offset,
+						view.segment, view.start + position, length);
+				position += length;
+			} catch (Exception e) {
+				setError(new BufferOperationException("Failed to write to buffer", e));
+			}
+		}
+
+		return this;
+	}
+
+	// Add these methods to MemoryBuffer.java
+
+	// ==================== Error Management Methods ====================
+
+	/**
 	 * Writes a byte at the specified index.
 	 */
 	public MemoryBuffer put(long index, byte value) {
@@ -735,8 +886,6 @@ public class MemoryBuffer extends BoundView {
 		BYTE_HANDLE.set(view.segment, view.start + index, value);
 		return this;
 	}
-
-	// ==================== Network Byte Order ====================
 
 	/**
 	 * Writes a char at the current position.
@@ -767,8 +916,6 @@ public class MemoryBuffer extends BoundView {
 		return this;
 	}
 
-	// ==================== Lifecycle ====================
-
 	/**
 	 * Writes a double at the current position.
 	 */
@@ -784,10 +931,6 @@ public class MemoryBuffer extends BoundView {
 		return this;
 	}
 
-	// Add these methods to MemoryBuffer.java
-
-	// ==================== Error Management Methods ====================
-
 	/**
 	 * Writes a double at the specified index.
 	 */
@@ -801,6 +944,9 @@ public class MemoryBuffer extends BoundView {
 		DOUBLE_HANDLE.set(view.segment, view.start + index, value);
 		return this;
 	}
+
+	// ==================== Update setError to use BufferOperationException
+	// ====================
 
 	/**
 	 * Writes a float at the current position.
@@ -830,6 +976,9 @@ public class MemoryBuffer extends BoundView {
 		FLOAT_HANDLE.set(view.segment, view.start + index, value);
 		return this;
 	}
+
+	// ==================== Update existing methods to use BufferOperationException
+	// ====================
 
 	/**
 	 * Writes an int at the current position.
@@ -863,9 +1012,6 @@ public class MemoryBuffer extends BoundView {
 		INT_HANDLE.set(view.segment, view.start + index, value);
 		return this;
 	}
-
-	// ==================== Update setError to use BufferOperationException
-	// ====================
 
 	/**
 	 * Writes an int in big-endian byte order.
@@ -901,9 +1047,6 @@ public class MemoryBuffer extends BoundView {
 		return this;
 	}
 
-	// ==================== Update existing methods to use BufferOperationException
-	// ====================
-
 	/**
 	 * Writes a long at the specified index.
 	 */
@@ -917,6 +1060,8 @@ public class MemoryBuffer extends BoundView {
 		LONG_HANDLE.set(view.segment, view.start + index, value);
 		return this;
 	}
+
+	// Similar pattern for other methods - don't modify state when error occurs
 
 	/**
 	 * Writes a long in big-endian byte order.
@@ -981,8 +1126,6 @@ public class MemoryBuffer extends BoundView {
 		return this;
 	}
 
-	// Similar pattern for other methods - don't modify state when error occurs
-
 	/**
 	 * Returns remaining bytes.
 	 * 
@@ -1003,6 +1146,8 @@ public class MemoryBuffer extends BoundView {
 		position = mark;
 		return this;
 	}
+
+	// Fix the array put/get methods in MemoryBuffer.java:
 
 	// Update rewind() to preserve state on error:
 	public MemoryBuffer rewind() {
@@ -1073,111 +1218,5 @@ public class MemoryBuffer extends BoundView {
 		limit = 0;
 		mark = -1;
 		error = null;
-	}
-
-	// Fix the array put/get methods in MemoryBuffer.java:
-
-	/**
-	 * Reads bytes into array.
-	 */
-	public MemoryBuffer get(byte[] dst) {
-		if (dst == null) {
-			setError(new BufferOperationException("Destination array is null"));
-			return this;
-		}
-		return get(dst, 0, dst.length);
-	}
-
-	/**
-	 * Reads bytes into array portion.
-	 */
-	public MemoryBuffer get(byte[] dst, int offset, int length) {
-		if (hasError())
-			return this;
-
-		// Null check
-		if (dst == null) {
-			setError(new BufferOperationException("Destination array is null"));
-			return this;
-		}
-
-		// Bounds checking
-		if (offset < 0 || length < 0 || offset + length > dst.length) {
-			setError(new BufferOperationException(
-					String.format("Invalid array bounds: offset=%d, length=%d, array.length=%d",
-							offset, length, dst.length)));
-			return this;
-		}
-
-		// Check buffer has enough data
-		if (remaining() < length) {
-			setError(new BufferOperationException("Buffer underflow"));
-			return this;
-		}
-
-		// Only copy if length > 0
-		if (length > 0) {
-			try {
-				MemorySegment.copy(view.segment, view.start + position,
-						MemorySegment.ofArray(dst), offset, length);
-				position += length;
-			} catch (Exception e) {
-				setError(new BufferOperationException("Failed to read from buffer", e));
-			}
-		}
-
-		return this;
-	}
-
-	/**
-	 * Writes a byte array.
-	 */
-	public MemoryBuffer put(byte[] src) {
-		if (src == null) {
-			setError(new BufferOperationException("Source array is null"));
-			return this;
-		}
-		return put(src, 0, src.length);
-	}
-
-	/**
-	 * Writes a portion of a byte array.
-	 */
-	public MemoryBuffer put(byte[] src, int offset, int length) {
-		if (hasError())
-			return this;
-
-		// Null check
-		if (src == null) {
-			setError(new BufferOperationException("Source array is null"));
-			return this;
-		}
-
-		// Bounds checking
-		if (offset < 0 || length < 0 || offset + length > src.length) {
-			setError(new BufferOperationException(
-					String.format("Invalid array bounds: offset=%d, length=%d, array.length=%d",
-							offset, length, src.length)));
-			return this;
-		}
-
-		// Check buffer has enough space
-		if (remaining() < length) {
-			setError(new BufferOperationException("Buffer overflow"));
-			return this;
-		}
-
-		// Only copy if length > 0
-		if (length > 0) {
-			try {
-				MemorySegment.copy(MemorySegment.ofArray(src), offset,
-						view.segment, view.start + position, length);
-				position += length;
-			} catch (Exception e) {
-				setError(new BufferOperationException("Failed to write to buffer", e));
-			}
-		}
-
-		return this;
 	}
 }

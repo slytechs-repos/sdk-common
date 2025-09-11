@@ -1,108 +1,87 @@
-/*
- * Sly Technologies Free License
- * 
- * Copyright 2024 Sly Technologies Inc.
- *
- * Licensed under the Sly Technologies Free License (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.slytechs.com/free-license-text
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
 package com.slytechs.jnet.core.api.memory;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Minimal metrics for memory pool operations.
- * 
- * <p>
- * Only tracks essential counters for production monitoring
- * without impacting 100M+ pps performance.
- * </p>
+ * Lightweight pool metrics for monitoring.
  */
 public class PoolMetrics {
-    
-    /** The allocation failures. */
-    // Only essential counters - minimal overhead
-    private final AtomicLong allocationFailures = new AtomicLong();
-    
-    /** The release errors. */
-    private final AtomicLong releaseErrors = new AtomicLong();
-    
-    /** The segment size. */
-    // Pool configuration (immutable, for reporting)
-    private final long segmentSize;
-    
-    /** The segment count. */
-    private final long segmentCount;
-    
-    /**
-	 * Instantiates a new pool metrics.
-	 *
-	 * @param segmentSize  the segment size
-	 * @param segmentCount the segment count
+	private final String poolName;
+	private final int capacity;
+	private final AtomicInteger allocations = new AtomicInteger(0);
+	private final AtomicInteger releases = new AtomicInteger(0);
+	private final AtomicInteger exhaustions = new AtomicInteger(0);
+
+	public PoolMetrics(String poolName, int capacity) {
+		this.poolName = poolName;
+		this.capacity = capacity;
+	}
+
+	public void recordAllocation() {
+		allocations.incrementAndGet();
+	}
+
+	public void recordRelease() {
+		releases.incrementAndGet();
+	}
+
+	public void recordExhaustion() {
+		exhaustions.incrementAndGet();
+	}
+
+	// Getters
+	public String getName() {
+		return poolName;
+	}
+
+	public int getCapacity() {
+		return capacity;
+	}
+
+	public int getAllocations() {
+		return allocations.get();
+	}
+
+	public int getReleases() {
+		return releases.get();
+	}
+
+	public int getExhaustions() {
+		return exhaustions.get();
+	}
+
+	/**
+	 * Creates an aggregated view of multiple metrics.
+	 * 
+	 * @param name    name for the aggregated metrics
+	 * @param metrics metrics to aggregate
+	 * @return new PoolMetrics with summed values
 	 */
-    public PoolMetrics(long segmentSize, long segmentCount) {
-        this.segmentSize = segmentSize;
-        this.segmentCount = segmentCount;
-    }
-    
-    /**
-	 * Record allocation failure.
-	 */
-    // Fast increment methods (called in hot path)
-    void recordAllocationFailure() { 
-        allocationFailures.incrementAndGet(); 
-    }
-    
-    /**
-	 * Record release error.
-	 */
-    void recordReleaseError() { 
-        releaseErrors.incrementAndGet(); 
-    }
-    
-    /**
-	 * Gets the allocation failures.
-	 *
-	 * @return the allocation failures
-	 */
-    // Query methods (called infrequently for monitoring)
-    public long getAllocationFailures() { return allocationFailures.get(); }
-    
-    /**
-	 * Gets the release errors.
-	 *
-	 * @return the release errors
-	 */
-    public long getReleaseErrors() { return releaseErrors.get(); }
-    
-    /**
-	 * Gets the segment size.
-	 *
-	 * @return the segment size
-	 */
-    public long getSegmentSize() { return segmentSize; }
-    
-    /**
-	 * Gets the segment count.
-	 *
-	 * @return the segment count
-	 */
-    public long getSegmentCount() { return segmentCount; }
-    
-    /**
-	 * Reset.
-	 */
-    public void reset() {
-        allocationFailures.set(0);
-        releaseErrors.set(0);
-    }
+	public static PoolMetrics aggregate(String name, PoolMetrics... metrics) {
+		int totalCapacity = 0;
+		int totalAllocations = 0;
+		int totalReleases = 0;
+		int totalExhaustions = 0;
+		int totalAvailable = 0;
+
+		for (PoolMetrics m : metrics) {
+			totalCapacity += m.getCapacity();
+			totalAllocations += m.getAllocations();
+			totalReleases += m.getReleases();
+			totalExhaustions += m.getExhaustions();
+		}
+
+		PoolMetrics aggregated = new PoolMetrics(name, totalCapacity);
+		aggregated.allocations.set(totalAllocations);
+		aggregated.releases.set(totalReleases);
+		aggregated.exhaustions.set(totalExhaustions);
+
+		return aggregated;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("%s[capacity=%d, allocations=%d, releases=%d, exhaustions=%d]",
+				poolName, capacity, allocations.get(), releases.get(), exhaustions.get());
+	}
 }

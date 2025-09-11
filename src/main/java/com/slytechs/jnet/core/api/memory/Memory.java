@@ -79,7 +79,7 @@ import java.nio.ByteBuffer;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public interface Memory extends MemoryWindow {
+public interface Memory extends MemoryWindow, MemoryRefCounter {
 
 	/**
 	 * Checks if a Memory or MemorySegment is null.
@@ -159,6 +159,7 @@ public interface Memory extends MemoryWindow {
 	 * @return the new reference count
 	 * @throws IllegalStateException if decrement would cause underflow
 	 */
+	@Override
 	int decrementRef();
 
 	/**
@@ -182,6 +183,7 @@ public interface Memory extends MemoryWindow {
 	 * @return the new reference count
 	 * @throws IllegalStateException if memory is already released (refCount == 0)
 	 */
+	@Override
 	int incrementRef();
 
 	/**
@@ -226,6 +228,7 @@ public interface Memory extends MemoryWindow {
 	 * 
 	 * @return the reference count (always ≥ 0)
 	 */
+	@Override
 	int refCount();
 
 	/**

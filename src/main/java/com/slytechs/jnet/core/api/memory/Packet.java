@@ -35,7 +35,7 @@ import java.lang.foreign.MemorySegment;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class Packet extends BoundView implements MemoryPoolable {
+public class Packet extends BoundView {
 
 	/** Packet timestamp */
 	protected long timestamp;
@@ -122,11 +122,6 @@ public class Packet extends BoundView implements MemoryPoolable {
 		return dup;
 	}
 
-	@Override
-	public MemoryPool<?> getPool() {
-		return pool;
-	}
-
 	/**
 	 * Checks if this packet is pinned.
 	 * 
@@ -181,11 +176,6 @@ public class Packet extends BoundView implements MemoryPoolable {
 	 */
 	public void setPinningMode(boolean deferred) {
 		this.isDeferredMode = deferred;
-	}
-
-	@Override
-	public void setPool(MemoryPool<?> pool) {
-		this.pool = pool;
 	}
 
 	/**
