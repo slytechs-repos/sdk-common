@@ -46,7 +46,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class MemoryBufferPositioningCornerCasesTest {
 
 	private static final long BUFFER_SIZE = 1024;
-	private MemoryBuffer buffer;
+	private ByteBuf buffer;
 	private Arena arena;
 
 	@BeforeEach
@@ -55,7 +55,7 @@ class MemoryBufferPositioningCornerCasesTest {
 		MemorySegment segment = arena.allocate(BUFFER_SIZE);
 
 		// Create buffer without pool - data bounds match memory bounds
-		buffer = new MemoryBuffer(segment); // Uses entire segment
+		buffer = new ByteBuf(segment); // Uses entire segment
 	}
 
 	// ==================== Extreme Value Tests ====================
@@ -134,12 +134,12 @@ class MemoryBufferPositioningCornerCasesTest {
 	@DisplayName("Zero-Size Buffer Corner Cases")
 	class ZeroSizeBufferTests {
 
-		private MemoryBuffer zeroBuffer;
+		private ByteBuf zeroBuffer;
 
 		@BeforeEach
 		void setUpZeroBuffer() {
 			MemorySegment segment = arena.allocate(1); // Minimum allocation
-			zeroBuffer = new MemoryBuffer(); 
+			zeroBuffer = new ByteBuf(); 
 			zeroBuffer.bind(Memory.of(segment, 0, 0)); // Zero-size buffer
 		}
 
@@ -508,7 +508,7 @@ class MemoryBufferPositioningCornerCasesTest {
 		@Test
 		@DisplayName("Extremely long method chain")
 		void testExtremelyLongChain() {
-			MemoryBuffer result = buffer;
+			ByteBuf result = buffer;
 			for (int i = 0; i < 1000; i++) {
 				result = result.position(i % 100);
 			}
@@ -532,7 +532,7 @@ class MemoryBufferPositioningCornerCasesTest {
 		@Test
 		@DisplayName("Null-safe chaining after error")
 		void testNullSafeChaining() {
-			MemoryBuffer result = buffer
+			ByteBuf result = buffer
 					.position(-1) // Cause error
 					.mark() // No-op
 					.skip(100) // No-op

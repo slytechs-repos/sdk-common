@@ -3,7 +3,7 @@ package com.slytechs.jnet.core.api.memory;
 public abstract class AbstractMemoryPool<T extends Memory> extends AbstractPool<T> implements MemoryPool<T> {
     protected final long defaultHeadroom;
     
-    protected AbstractMemoryPool(String name, int capacity, long defaultHeadroom) {
+    protected AbstractMemoryPool(String name, long capacity, long defaultHeadroom) {
         super(name, capacity);
         this.defaultHeadroom = defaultHeadroom;
     }

@@ -22,14 +22,14 @@ public interface Pool<T> {
      * 
      * @return maximum capacity
      */
-    int capacity();
+    long capacity();
     
     /**
      * Returns the number of available items.
      * 
      * @return available count
      */
-    int available();
+    long available();
     
     /**
      * Returns the pool metrics.

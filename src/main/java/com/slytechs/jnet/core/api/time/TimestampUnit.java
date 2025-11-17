@@ -32,32 +32,15 @@ import java.util.function.LongUnaryOperator;
 public enum TimestampUnit implements TimestampPrecisionInfo {
 
 	/**
-	 * PCAP-ns format is based on a 1 ns unit with a 32-bit unit counter in MSBs of
-	 * the time stamp descriptor field, and a 32-bit second counter in LSBs of the
-	 * time stamp descriptor field, so the time resolution is 1 ns. The start time
-	 * is January 1st 1970.
+	 * Native UNIX format is based on a 1 us unit with a 64-bit unit counter. The
+	 * start time is January 1st 1970.
 	 */
-	PCAP_NANO(9,
-			ts -> ((ts >> TS_MSB_SHIFT) & TS_LSB_MASK),
-			ts -> (ts & TS_LSB_MASK),
-			(msb, lsb) -> (msb << TS_MSB_SHIFT) | (lsb & TS_LSB_MASK)) {
+	EPOCH_MICRO(Constants.TIMESTAMP_UNIT_EPOCH_MICRO,
+			6,
+			ts -> (ts / TS_MICROS_PER_SECOND),
+			ts -> (ts % TS_MICROS_PER_SECOND) * 1000l, (msb, lsb) -> ((msb * TS_MICROS_PER_SECOND) + lsb)) {
 		@Override
-		public long toPcapNano(long ts) {
-			return ts;
-		}
-	},
-
-	/**
-	 * PCAP-μs format is based on a 1000 ns (1 μs) unit with a 32-bit unit counter
-	 * in MSBs of the time stamp descriptor field, and a 32-bit second counter in
-	 * LSBs of the time stamp descriptor field. The start time is January 1st 1970.
-	 */
-	PCAP_MICRO(6,
-			ts -> ((ts >> TS_MSB_SHIFT) & TS_LSB_MASK),
-			ts -> (ts & TS_LSB_MASK) * 1000l,
-			(msb, lsb) -> (msb << TS_MSB_SHIFT) | (lsb & TS_LSB_MASK)) {
-		@Override
-		public long toPcapMicro(long ts) {
+		public long toEpochMicro(long ts) {
 			return ts;
 		}
 	},
@@ -66,10 +49,10 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * Native UNIX format is based on a 1 ns unit with a 64-bit unit counter. The
 	 * start time is January 1st 1970.
 	 */
-	EPOCH_NANO(9,
+	EPOCH_NANO(Constants.TIMESTAMP_UNIT_EPOCH_NANO,
+			9,
 			ts -> (ts / TS_NANOS_IN_SECOND),
-			ts -> (ts % TS_NANOS_IN_SECOND),
-			(msb, lsb) -> ((msb * TS_NANOS_IN_SECOND) + lsb)) {
+			ts -> (ts % TS_NANOS_IN_SECOND), (msb, lsb) -> ((msb * TS_NANOS_IN_SECOND) + lsb)) {
 		@Override
 		public long toEpochNano(long ts) {
 			return ts;
@@ -80,26 +63,12 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * Native UNIX format is based on a 10 ns unit with a 64-bit unit counter. The
 	 * start time is January 1st 1970.
 	 */
-	EPOCH_10NANO(8,
+	EPOCH_10NANO(Constants.TIMESTAMP_UNIT_EPOCH_10NANO,
+			8,
 			ts -> (ts / TS_TENS_NANOS_PER_SECOND),
-			ts -> (ts % TS_TENS_NANOS_PER_SECOND) * 10l,
-			(msb, lsb) -> ((msb * TS_TENS_NANOS_PER_SECOND) + lsb)) {
+			ts -> (ts % TS_TENS_NANOS_PER_SECOND) * 10l, (msb, lsb) -> ((msb * TS_TENS_NANOS_PER_SECOND) + lsb)) {
 		@Override
 		public long toEpoch10Nano(long ts) {
-			return ts;
-		}
-	},
-
-	/**
-	 * Native UNIX format is based on a 1 us unit with a 64-bit unit counter. The
-	 * start time is January 1st 1970.
-	 */
-	EPOCH_MICRO(6,
-			ts -> (ts / TS_MICROS_PER_SECOND),
-			ts -> (ts % TS_MICROS_PER_SECOND) * 1000l,
-			(msb, lsb) -> ((msb * TS_MICROS_PER_SECOND) + lsb)) {
-		@Override
-		public long toEpochMicro(long ts) {
 			return ts;
 		}
 	},
@@ -108,15 +77,57 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * Native UNIX format is based on a 1 ms unit with a 64-bit unit counter. The
 	 * start time is January 1st 1970.
 	 */
-	EPOCH_MILLI(3,
+	EPOCH_MILLI(Constants.TIMESTAMP_UNIT_EPOCH_MILLI,
+			3,
 			ts -> (ts / TS_MILLIS_PER_SECOND),
-			ts -> (ts % TS_MILLIS_PER_SECOND) * 1000_000l,
-			(msb, lsb) -> ((msb * TS_MILLIS_PER_SECOND) + lsb)) {
+			ts -> (ts % TS_MILLIS_PER_SECOND) * 1000_000l, (msb, lsb) -> ((msb * TS_MILLIS_PER_SECOND) + lsb)) {
 		@Override
 		public long toEpochMilli(long ts) {
 			return ts;
 		}
-	},;
+	},
+
+	/**
+	 * PCAP-μs format is based on a 1000 ns (1 μs) unit with a 32-bit unit counter
+	 * in MSBs of the time stamp descriptor field, and a 32-bit second counter in
+	 * LSBs of the time stamp descriptor field. The start time is January 1st 1970.
+	 */
+	PCAP_MICRO(Constants.TIMESTAMP_UNIT_PCAP_MICRO,
+			6,
+			ts -> ((ts >> TS_MSB_SHIFT) & TS_LSB_MASK),
+			ts -> (ts & TS_LSB_MASK) * 1000l, (msb, lsb) -> (msb << TS_MSB_SHIFT) | (lsb & TS_LSB_MASK)) {
+		@Override
+		public long toPcapMicro(long ts) {
+			return ts;
+		}
+	},
+
+	/**
+	 * PCAP-ns format is based on a 1 ns unit with a 32-bit unit counter in MSBs of
+	 * the time stamp descriptor field, and a 32-bit second counter in LSBs of the
+	 * time stamp descriptor field, so the time resolution is 1 ns. The start time
+	 * is January 1st 1970.
+	 */
+	PCAP_NANO(Constants.TIMESTAMP_UNIT_PCAP_NANO,
+			9,
+			ts -> ((ts >> TS_MSB_SHIFT) & TS_LSB_MASK),
+			ts -> (ts & TS_LSB_MASK), (msb, lsb) -> (msb << TS_MSB_SHIFT) | (lsb & TS_LSB_MASK)) {
+		@Override
+		public long toPcapNano(long ts) {
+			return ts;
+		}
+	},
+
+	;
+
+	public interface Constants {
+		int TIMESTAMP_UNIT_EPOCH_MICRO = 0;
+		int TIMESTAMP_UNIT_EPOCH_NANO = 1;
+		int TIMESTAMP_UNIT_EPOCH_10NANO = 2;
+		int TIMESTAMP_UNIT_EPOCH_MILLI = 3;
+		int TIMESTAMP_UNIT_PCAP_MICRO = 4;
+		int TIMESTAMP_UNIT_PCAP_NANO = 5;
+	}
 
 	/** The encoder. */
 	private final LongBinaryOperator encoder;
@@ -133,16 +144,20 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	/** The precision time unit. */
 	private final TimeUnit precisionTimeUnit;
 
+	private final int unitId;
+
 	/**
 	 * Instantiates a new timestamp unit.
-	 *
+	 * 
+	 * @param unitId    TODO
 	 * @param precision the precision
 	 * @param seconds   the seconds
 	 * @param nanos     the nanos
 	 * @param encoder   the encoder
 	 */
-	private TimestampUnit(int precision, LongUnaryOperator seconds, LongUnaryOperator nanos,
-			LongBinaryOperator encoder) {
+	private TimestampUnit(int unitId, int precision, LongUnaryOperator seconds,
+			LongUnaryOperator nanos, LongBinaryOperator encoder) {
+		this.unitId = unitId;
 		this.encoder = encoder;
 		this.precisionExponent = precision;
 		this.seconds = seconds;
@@ -156,6 +171,15 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 
 		default -> throw new IllegalArgumentException("Unexpected precision: " + precisionExponent);
 		};
+	}
+
+	/**
+	 * Unique numerical ID of the timestamp unit represented.
+	 *
+	 * @return the unit id starting at 0, suitable for use in descriptor contexts
+	 */
+	public int timestampUnitId() {
+		return unitId;
 	}
 
 	/**

@@ -402,7 +402,6 @@ public abstract class MemoryHandle<T> {
 	 * </p>
 	 */
 	public static class ByteHandle extends MemoryHandle<Byte> {
-
 		public ByteHandle(VarHandle handle) {
 			super(handle);
 		}
@@ -497,6 +496,113 @@ public abstract class MemoryHandle<T> {
 
 		public void setByteAtIndex(MemoryView view, long index, byte value) {
 			setByte(view.segment, view.start + index, value);
+		}
+
+		// New byte array methods
+		public byte[] getByteArray(MemorySegment segment, long offset, int length) {
+			byte[] array = new byte[length];
+			for (int i = 0; i < length; i++) {
+				array[i] = getByte(segment, offset + i);
+			}
+			return array;
+		}
+
+		public byte[] getByteArray(Memory memory, int length) {
+			return getByteArray(memory.segment(), memory.start(), length);
+		}
+
+		public byte[] getByteArray(Memory memory, long offset, int length) {
+			return getByteArray(memory.segment(), memory.start() + offset, length);
+		}
+
+		public byte[] getByteArray(MemoryView view, int length) {
+			return getByteArray(view.segment, view.start, length);
+		}
+
+		public byte[] getByteArray(MemoryView view, long offset, int length) {
+			return getByteArray(view.segment, view.start + offset, length);
+		}
+
+		public void setByteArray(MemorySegment segment, long offset, byte[] array) {
+			for (int i = 0; i < array.length; i++) {
+				setByte(segment, offset + i, array[i]);
+			}
+		}
+
+		public void setByteArray(MemorySegment segment, long offset, byte[] array, int arrayOffset, int length) {
+			for (int i = 0; i < length; i++) {
+				setByte(segment, offset + i, array[arrayOffset + i]);
+			}
+		}
+
+		public void setByteArray(Memory memory, byte[] array) {
+			setByteArray(memory.segment(), memory.start(), array);
+		}
+
+		public void setByteArray(Memory memory, long offset, byte[] array) {
+			setByteArray(memory.segment(), memory.start() + offset, array);
+		}
+
+		public void setByteArray(Memory memory, byte[] array, int arrayOffset, int length) {
+			setByteArray(memory.segment(), memory.start(), array, arrayOffset, length);
+		}
+
+		public void setByteArray(Memory memory, long offset, byte[] array, int arrayOffset, int length) {
+			setByteArray(memory.segment(), memory.start() + offset, array, arrayOffset, length);
+		}
+
+		public void setByteArray(MemoryView view, byte[] array) {
+			setByteArray(view.segment, view.start, array);
+		}
+
+		public void setByteArray(MemoryView view, long offset, byte[] array) {
+			setByteArray(view.segment, view.start + offset, array);
+		}
+
+		public void setByteArray(MemoryView view, byte[] array, int arrayOffset, int length) {
+			setByteArray(view.segment, view.start, array, arrayOffset, length);
+		}
+
+		public void setByteArray(MemoryView view, long offset, byte[] array, int arrayOffset, int length) {
+			setByteArray(view.segment, view.start + offset, array, arrayOffset, length);
+		}
+
+		// Index-based array methods
+		public byte[] getByteArrayAtIndex(MemorySegment segment, long baseOffset, long index, int length) {
+			return getByteArray(segment, baseOffset + index, length);
+		}
+
+		public byte[] getByteArrayAtIndex(Memory memory, long index, int length) {
+			return getByteArray(memory.segment(), memory.start() + index, length);
+		}
+
+		public byte[] getByteArrayAtIndex(MemoryView view, long index, int length) {
+			return getByteArray(view.segment, view.start + index, length);
+		}
+
+		public void setByteArrayAtIndex(MemorySegment segment, long baseOffset, long index, byte[] array) {
+			setByteArray(segment, baseOffset + index, array);
+		}
+
+		public void setByteArrayAtIndex(MemorySegment segment, long baseOffset, long index, byte[] array,
+				int arrayOffset, int length) {
+			setByteArray(segment, baseOffset + index, array, arrayOffset, length);
+		}
+
+		public void setByteArrayAtIndex(Memory memory, long index, byte[] array) {
+			setByteArray(memory.segment(), memory.start() + index, array);
+		}
+
+		public void setByteArrayAtIndex(Memory memory, long index, byte[] array, int arrayOffset, int length) {
+			setByteArray(memory.segment(), memory.start() + index, array, arrayOffset, length);
+		}
+
+		public void setByteArrayAtIndex(MemoryView view, long index, byte[] array) {
+			setByteArray(view.segment, view.start + index, array);
+		}
+
+		public void setByteArrayAtIndex(MemoryView view, long index, byte[] array, int arrayOffset, int length) {
+			setByteArray(view.segment, view.start + index, array, arrayOffset, length);
 		}
 	}
 

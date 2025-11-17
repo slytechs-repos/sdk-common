@@ -17,6 +17,7 @@
  */
 package com.slytechs.jnet.core.api.memory;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 
@@ -121,6 +122,16 @@ public interface Memory extends MemoryWindow, MemoryRefCounter {
 	 */
 	static Memory of(MemorySegment segment, long offset, long length) {
 		return new FixedMemory(segment, offset, length);
+	}
+
+	static Memory of(long byteSize) {
+		var seg = Arena.ofAuto().allocate(byteSize);
+
+		return of(seg, 0);
+	}
+
+	static Memory of(long size, MemoryUnit unit) {
+		return of(unit.toBytes(size));
 	}
 
 	/**

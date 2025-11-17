@@ -33,6 +33,10 @@ public interface MemoryPool<T> {
      */
     T allocate();
     
+    default T allocate(long size) {
+    	return allocate();
+    }
+    
     /**
      * Releases a memory object back to the pool.
      * 
@@ -45,14 +49,14 @@ public interface MemoryPool<T> {
      * 
      * @return total number of objects in pool
      */
-    int capacity();
+    long capacity();
     
     /**
      * Returns the number of available objects.
      * 
      * @return available count
      */
-    int available();
+    long available();
     
     /**
      * Returns the default headroom for new allocations.

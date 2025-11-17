@@ -7,18 +7,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Comprehensive corner case tests for MemoryBuffer. Tests boundary
+ * Comprehensive corner case tests for ByteBuf. Tests boundary
  * conditions, error handling, and edge cases.
  */
 class MemoryBufferCornerCaseTest {
 
-	private MemoryBuffer buffer;
+	private ByteBuf buffer;
 	private static final int BUFFER_SIZE = 100;
 
 	@BeforeEach
 	void setUp() {
 		Arena arena = Arena.ofAuto();
-		buffer = new MemoryBuffer(arena.allocate(BUFFER_SIZE));
+		buffer = new ByteBuf(arena.allocate(BUFFER_SIZE));
 		buffer.clear();
 	}
 
@@ -254,7 +254,7 @@ class MemoryBufferCornerCaseTest {
 
 	@Test
 	void testNullArrayPut() {
-		buffer.put(null);
+		buffer.put((byte[])null);
 
 		Assertions.assertTrue(buffer.hasError(), "Null array should cause error");
 		Assertions.assertEquals(0, buffer.position(), "Position shouldn't change on error");

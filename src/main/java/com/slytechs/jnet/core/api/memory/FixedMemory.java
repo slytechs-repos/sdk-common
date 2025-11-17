@@ -17,6 +17,8 @@
  */
 package com.slytechs.jnet.core.api.memory;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 
 /**
@@ -122,13 +124,17 @@ public class FixedMemory extends AbstractMemory {
 	 * @param offset  starting offset within segment
 	 * @param length  length of the memory region
 	 */
-	public FixedMemory(MemoryPool<FixedMemory> pool, MemorySegment segment, long offset, long length) {
+	public FixedMemory(MemoryPool<? extends FixedMemory> pool, MemorySegment segment, long offset, long length) {
 		this(segment, offset, length);
 
 		this.owningPool = pool;
 
 		// Pooled objects start at refCount=0, not 1
 		this.refCount.set(0);
+	}
+
+	public FixedMemory(MemoryLayout layout, Arena arena) {
+		this(arena.allocate(layout.byteSize()));
 	}
 
 	/**

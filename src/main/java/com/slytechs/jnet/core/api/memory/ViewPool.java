@@ -6,8 +6,8 @@ import java.util.function.Supplier;
 
 // ViewPool.java - fixed
 public class ViewPool<T extends BoundView> extends AbstractPool<T> implements Pool<T> {
-	private final int minCapacity;
-	private final int maxCapacity;
+	private final long minCapacity;
+	private final long maxCapacity;
 	private final AtomicInteger currentSize = new AtomicInteger(0);
 	private final Supplier<T> factory;
 
@@ -32,7 +32,7 @@ public class ViewPool<T extends BoundView> extends AbstractPool<T> implements Po
 		this.maxCapacity = maxCapacity;
 
 		// Pre-allocate minimum
-		for (int i = 0; i < minCapacity; i++) {
+		for (long i = 0; i < minCapacity; i++) {
 			T view = factory.get();
 			if (view != null) {
 				addToFreeList(view);
@@ -96,7 +96,7 @@ public class ViewPool<T extends BoundView> extends AbstractPool<T> implements Po
 	}
 
 	public void compact() {
-		int toRemove = Math.max(0, available() - minCapacity);
+		long toRemove = Math.max(0, available() - minCapacity);
 		for (int i = 0; i < toRemove; i++) {
 			if (allocateFromFreeList() != null) {
 				currentSize.decrementAndGet();

@@ -240,6 +240,50 @@ public class ScopedMemory extends AbstractMemory {
 	}
 
 	/**
+	 * Binds this memory to a native segment.
+	 * 
+	 * <p>
+	 * Generates a new scope ID for staleness detection. Any existing binding is
+	 * replaced. This method is thread-safe with respect to the scope ID generation
+	 * but the memory object itself should not be shared between threads.
+	 * </p>
+	 * 
+	 * @param segment the memory segment to bind
+	 * @param offset  the offset within segment
+	 * @param length  the length to bind
+	 * @throws IllegalArgumentException if bounds are invalid
+	 */
+	public void bind(MemorySegment segment, long offset, long length, long headroom, long tailroom) {
+		if (segment == null) {
+			throw new NullPointerException("Cannot bind to null segment");
+		}
+		if (offset < 0 || length < 0 || offset + length > segment.byteSize()) {
+			throw new IllegalArgumentException(
+					String.format("Invalid bounds: offset=%d, length=%d, segment.byteSize=%d",
+							offset, length, segment.byteSize()));
+		}
+
+		// Unbind if currently bound
+		if (isBound()) {
+			unbind();
+		}
+
+		this.originalSegment = segment;
+		this.segment = segment;
+		this.scopeId = SCOPE_COUNTER.incrementAndGet();
+		this.isPinned = false;
+
+		// Set segment bounds - the entire bound region
+		setSegmentBounds(offset, length);
+
+		dataStart = offset + headroom;
+		dataEnd = offset + headroom; // Empty initially
+
+		updateView();
+		onBind();
+	}
+
+	/**
 	 * Unbinds this memory from its current segment.
 	 * 
 	 * <p>
@@ -404,7 +448,7 @@ public class ScopedMemory extends AbstractMemory {
 	 * @return the pool that owns this memory, or null if not pooled
 	 */
 	@SuppressWarnings("rawtypes")
-	public ScopedMemoryPool getPool() {
+	public ScopedMemoryPool getScopedPool() {
 		return pool;
 	}
 

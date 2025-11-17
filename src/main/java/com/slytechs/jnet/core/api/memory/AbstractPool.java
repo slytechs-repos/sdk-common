@@ -1,17 +1,17 @@
 package com.slytechs.jnet.core.api.memory;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 // AbstractPool.java - fixed version
 abstract class AbstractPool<T> {
     private final AtomicReference<Object> head = new AtomicReference<>(); // Use Object to avoid cast issues
-    private final AtomicInteger available = new AtomicInteger(0);
+    private final AtomicLong available = new AtomicLong(0);
     protected final PoolMetrics metrics;
     protected final String name;
-    protected final int capacity;
+    protected final long capacity;
     
-    protected AbstractPool(String name, int capacity) {
+    protected AbstractPool(String name, long capacity) {
         this.name = name;
         this.capacity = capacity;
         this.metrics = new PoolMetrics(name, capacity);
@@ -56,11 +56,11 @@ abstract class AbstractPool<T> {
         available.incrementAndGet();
     }
     
-    public int available() {
+    public long available() {
         return available.get();
     }
     
-    public int capacity() {
+    public long capacity() {
         return capacity;
     }
     

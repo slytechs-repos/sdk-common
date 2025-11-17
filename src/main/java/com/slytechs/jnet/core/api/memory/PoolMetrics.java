@@ -1,18 +1,18 @@
 package com.slytechs.jnet.core.api.memory;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Lightweight pool metrics for monitoring.
  */
 public class PoolMetrics {
 	private final String poolName;
-	private final int capacity;
-	private final AtomicInteger allocations = new AtomicInteger(0);
-	private final AtomicInteger releases = new AtomicInteger(0);
-	private final AtomicInteger exhaustions = new AtomicInteger(0);
+	private final long capacity;
+	private final AtomicLong allocations = new AtomicLong(0);
+	private final AtomicLong releases = new AtomicLong(0);
+	private final AtomicLong exhaustions = new AtomicLong(0);
 
-	public PoolMetrics(String poolName, int capacity) {
+	public PoolMetrics(String poolName, long capacity) {
 		this.poolName = poolName;
 		this.capacity = capacity;
 	}
@@ -34,19 +34,19 @@ public class PoolMetrics {
 		return poolName;
 	}
 
-	public int getCapacity() {
+	public long getCapacity() {
 		return capacity;
 	}
 
-	public int getAllocations() {
+	public long getAllocations() {
 		return allocations.get();
 	}
 
-	public int getReleases() {
+	public long getReleases() {
 		return releases.get();
 	}
 
-	public int getExhaustions() {
+	public long getExhaustions() {
 		return exhaustions.get();
 	}
 

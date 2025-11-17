@@ -466,7 +466,7 @@ class FixedMemoryPoolTest {
 		@DisplayName("Metrics track allocations correctly")
 		void testAllocationMetrics() {
 			PoolMetrics metrics = pool.getMetrics();
-			int initialAllocations = metrics.getAllocations();
+			long initialAllocations = metrics.getAllocations();
 
 			// Allocate some memories
 			List<FixedMemory> memories = new ArrayList<>();
@@ -485,7 +485,7 @@ class FixedMemoryPoolTest {
 		@DisplayName("Metrics track exhaustion")
 		void testExhaustionMetrics() {
 			PoolMetrics metrics = pool.getMetrics();
-			int initialExhaustions = metrics.getExhaustions();
+			long initialExhaustions = metrics.getExhaustions();
 
 			// Allocate all
 			List<FixedMemory> memories = new ArrayList<>();

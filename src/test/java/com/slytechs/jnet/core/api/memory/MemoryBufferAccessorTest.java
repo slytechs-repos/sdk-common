@@ -8,20 +8,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for MemoryBuffer accessor methods with normal, straightforward operations.
+ * Tests for ByteBuf accessor methods with normal, straightforward operations.
  * No cross-boundary or spanning scenarios - just single segment access patterns.
  * Uses the new nomenclature (activeBytes*, segment*, headroom/tailroom).
  */
 class MemoryBufferAccessorTest {
     
-    private MemoryBuffer buffer;
+    private ByteBuf buffer;
     private static final int SEGMENT_SIZE = 1024;
     
     @BeforeEach
     void setUp() {
         Arena arena = Arena.ofAuto();
         MemorySegment segment = arena.allocate(SEGMENT_SIZE);
-        buffer = new MemoryBuffer(segment);
+        buffer = new ByteBuf(segment);
         buffer.clear(); // position=0, limit=segmentSize()
     }
     
