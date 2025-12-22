@@ -160,8 +160,8 @@ public interface BindableView extends MemoryRefCounter {
 	 */
 	default void bind(BindableView view, long offset, long length) {
 		MemoryView mview = view.view();
-		if (mview.length() - offset > length)
-			throw new IndexOutOfBoundsException(length);
+//		if (mview.length() > (offset + length))
+//			throw new IndexOutOfBoundsException(length);
 
 		boolean wasUnbound = !isBound();
 

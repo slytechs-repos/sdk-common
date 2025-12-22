@@ -23,7 +23,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import com.slytechs.jnet.core.api.format.Detail;
+import com.slytechs.jnet.core.api.detail.Detail;
 
 /**
  * The Class Timestamp.

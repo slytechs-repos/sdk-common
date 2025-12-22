@@ -258,8 +258,7 @@ public final class StructFormat {
 	 */
 	public StructFormat printf(String left, Object... args) {
 		printIndent();
-		printLeft(left);
-		printRight(left.formatted(args));
+		print(left.formatted(args));
 
 		return this;
 	}

@@ -10,6 +10,10 @@ public interface Pool<T> {
      */
     T allocate();
     
+    default T allocate(long minimumSize) {
+    	return allocate();
+    }
+    
     /**
      * Releases an item back to the pool.
      * 

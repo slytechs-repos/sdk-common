@@ -18,118 +18,115 @@
 package com.slytechs.jnet.core.api.settings;
 
 /**
- * A specialized property class for handling boolean values within the settings
- * framework. This class provides type-safe operations for boolean properties,
- * including parsing from strings and value manipulation.
+ * A property that holds a boolean value.
  * 
  * <p>
- * BooleanProperty extends the base Property class and implements
- * boolean-specific functionality. It can be used to store and manage boolean
- * configuration values with proper type safety and change notification support.
+ * BooleanProperty provides type-safe access to boolean configuration values
+ * with automatic resolution from system properties, environment variables, and
+ * domain configuration files.
  * </p>
  * 
+ * <h2>Parsing</h2>
  * <p>
- * Example usage:
+ * String values are parsed with flexible matching (case-insensitive):
  * </p>
+ * <ul>
+ * <li><b>True values:</b> {@code true}, {@code yes}, {@code on}, {@code 1}, {@code enabled}</li>
+ * <li><b>False values:</b> {@code false}, {@code no}, {@code off}, {@code 0}, {@code disabled}</li>
+ * </ul>
  * 
- * <pre>
- * BooleanProperty debug = new BooleanProperty("app.debug", false);
- * debug.setBoolean(true);
- * boolean isDebug = debug.getBoolean();
- * 
- * // Can also parse from string
- * debug.parseValue("true");
- * </pre>
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * public class DebugSettings extends Settings {
+ *     private final BooleanProperty enabled;
+ *     private final BooleanProperty verbose;
+ *     
+ *     public DebugSettings() {
+ *         super("config", "debug");
+ *         this.enabled = booleanProperty("enabled", false)
+ *             .comment("Enable debug mode");
+ *         this.verbose = booleanProperty("verbose", false);
+ *     }
+ *     
+ *     public boolean isEnabled() { return enabled.getBoolean(); }
+ *     public boolean isVerbose() { return verbose.getBoolean(); }
+ *     
+ *     public DebugSettings withEnabled(boolean enabled) {
+ *         this.enabled.setBoolean(enabled);
+ *         return this;
+ *     }
+ * }
+ * }</pre>
  *
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc
- * @see Property
+ * @author Mark Bednarczyk
+ * @author Sly Technologies Inc.
+ * @see Settings#booleanProperty(String, boolean)
  */
-public final class BooleanProperty extends Property<Boolean, BooleanProperty> {
+public final class BooleanProperty extends Property<Boolean> {
 
-	/**
-	 * Creates a new BooleanProperty with the specified name and no initial value.
-	 * The property will be created in an unset state.
-	 *
-	 * @param name the name of the property, used for identification
-	 */
-	public BooleanProperty(String name) {
-		super(name);
-	}
+    /**
+     * Constructs a new BooleanProperty with the specified name, default value, and domain.
+     *
+     * @param name         the fully qualified property name
+     * @param defaultValue the default value
+     * @param domain       the domain this property belongs to, or null
+     */
+    public BooleanProperty(String name, boolean defaultValue, String domain) {
+        super(name, defaultValue, domain);
+    }
 
-	/**
-	 * Creates a new BooleanProperty with the specified name and initial value. The
-	 * property will be initialized with the provided boolean value.
-	 *
-	 * @param name  the name of the property, used for identification
-	 * @param value the initial boolean value for this property
-	 */
-	public BooleanProperty(String name, boolean value) {
-		super(name, value);
-	}
+    /**
+     * Returns the boolean value of this property.
+     * 
+     * <p>
+     * This is a convenience method equivalent to {@link #get()} but returns
+     * a primitive {@code boolean} instead of {@link Boolean}.
+     * </p>
+     *
+     * @return the resolved boolean value
+     */
+    public boolean getBoolean() {
+        return get();
+    }
 
-	/**
-	 * Creates a new BooleanProperty with the specified name and no initial value.
-	 * The property will be created in an unset state.
-	 *
-	 * @param support the settings support instance for handling property change
-	 *                notifications
-	 * @param name    the name of the property, used for identification
-	 */
-	BooleanProperty(SettingsSupport support, String name) {
-		super(support, name);
-	}
+    /**
+     * Sets the boolean value of this property.
+     * 
+     * <p>
+     * This is a convenience method equivalent to {@link #set(Object)} but
+     * accepts a primitive {@code boolean}.
+     * </p>
+     *
+     * @param value the value to set
+     */
+    public void setBoolean(boolean value) {
+        set(value);
+    }
 
-	/**
-	 * Creates a new BooleanProperty with the specified name and initial value. The
-	 * property will be initialized with the provided boolean value.
-	 *
-	 * @param support the settings support instance for handling property change
-	 *                notifications
-	 * @param name    the name of the property, used for identification
-	 * @param value   the initial boolean value for this property
-	 */
-	BooleanProperty(SettingsSupport support, String name, boolean value) {
-		super(support, name, value);
-	}
+    /**
+     * Parses a string value into a boolean.
+     * 
+     * <p>
+     * Supports flexible parsing with common boolean representations:
+     * </p>
+     * <ul>
+     * <li>True: "true", "yes", "on", "1", "enabled"</li>
+     * <li>False: "false", "no", "off", "0", "disabled"</li>
+     * </ul>
+     *
+     * @param value the string to parse
+     * @return the parsed boolean value
+     * @throws IllegalArgumentException if the string is not a recognized boolean value
+     */
+    @Override
+    protected Boolean parseValue(String value) {
+        String normalized = value.trim().toLowerCase();
 
-	/**
-	 * Retrieves the current boolean value of this property. This is a convenience
-	 * method that provides direct access to the boolean value without requiring
-	 * casting from the generic type.
-	 *
-	 * @return the current boolean value of this property
-	 * @throws IllegalStateException if the property has not been set
-	 */
-	public boolean getBoolean() {
-		return getValue();
-	}
-
-	/**
-	 * Parses a string value and sets the property's value accordingly. The string
-	 * value is converted to a boolean using {@link Boolean#parseBoolean(String)},
-	 * which returns false for any value other than the literal "true"
-	 * (case-insensitive). A null input will result in the property being set to
-	 * null.
-	 *
-	 * @param newValue the string value to parse, may be null
-	 * @return this BooleanProperty instance for method chaining
-	 * @see Boolean#parseBoolean(String)
-	 */
-	@Override
-	public BooleanProperty deserializeValue(String newValue) {
-		return setValue(newValue == null ? null : Boolean.parseBoolean(newValue));
-	}
-
-	/**
-	 * Sets the value of this property to the specified boolean value. This is a
-	 * convenience method that provides a more natural way to set boolean values
-	 * compared to the generic setValue method.
-	 *
-	 * @param newValue the new boolean value to set
-	 * @return this BooleanProperty instance for method chaining
-	 */
-	public BooleanProperty setBoolean(boolean newValue) {
-		return setValue(newValue);
-	}
+        return switch (normalized) {
+            case "true", "yes", "on", "1", "enabled" -> true;
+            case "false", "no", "off", "0", "disabled" -> false;
+            default -> throw new IllegalArgumentException(
+                "Invalid boolean value: '" + value + "'. Expected: true/false, yes/no, on/off, 1/0, enabled/disabled");
+        };
+    }
 }

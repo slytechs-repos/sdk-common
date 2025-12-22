@@ -225,14 +225,14 @@ public class ScopedMemory extends AbstractMemory {
 			long headroom = pool.getDefaultHeadroom();
 			if (headroom > 0 && length > headroom) {
 				dataStart = offset + headroom;
-				dataEnd = offset + headroom; // Empty initially
+				dataEnd = offset + length +  tailroom(); // Empty initially
 			} else {
 				dataStart = offset;
-				dataEnd = offset;
+				dataEnd = offset + length;
 			}
 		} else {
 			dataStart = offset;
-			dataEnd = offset;
+			dataEnd = offset + length;
 		}
 
 		updateView();

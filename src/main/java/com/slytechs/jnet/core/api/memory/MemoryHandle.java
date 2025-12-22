@@ -214,6 +214,9 @@ public abstract class MemoryHandle<T> {
 
 			if (element.endsWith("[]")) {
 				// Array access without index: "arrayName[]"
+				String groupElement = element.split("\\[")[0];
+				
+				elements.add(PathElement.groupElement(groupElement));
 				elements.add(PathElement.sequenceElement());
 			} else if (element.contains("[") && element.endsWith("]")) {
 				// Array access with index: "arrayName[3]"
@@ -483,7 +486,8 @@ public abstract class MemoryHandle<T> {
 		}
 
 		public byte getByteAtIndex(MemoryView view, long index) {
-			return getByte(view.segment, view.start + index);
+			return (byte) handle.get(view.segment, view.start, index);
+
 		}
 
 		public void setByteAtIndex(MemorySegment segment, long baseOffset, long index, byte value) {

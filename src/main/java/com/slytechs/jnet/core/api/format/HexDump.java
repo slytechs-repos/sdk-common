@@ -902,4 +902,15 @@ public final class HexDump {
             buffer.position(originalPosition); // Restore original position
         }
     }
+
+	/**
+	 * @param sb
+	 * @param data
+	 * @param offset
+	 * @param length
+	 * @param dataIndent
+	 */
+	public static void render(StringBuilder sb, byte[] data, int offset, int length, String dataIndent) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
 }

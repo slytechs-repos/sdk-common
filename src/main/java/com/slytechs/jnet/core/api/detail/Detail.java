@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.core.api.format;
+package com.slytechs.jnet.core.api.detail;
 
 /**
  * A constant which specifies the detail level to generate by various utility

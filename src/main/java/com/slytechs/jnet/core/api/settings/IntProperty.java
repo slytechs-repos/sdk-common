@@ -17,154 +17,104 @@
  */
 package com.slytechs.jnet.core.api.settings;
 
-import java.util.OptionalInt;
-
 /**
- * A specialized property class for handling integer values within the settings
- * framework. This class provides type-safe operations for integer properties,
- * including parsing from strings, value manipulation, and optional value
- * retrieval using the memory-efficient OptionalInt class.
+ * A property that holds an integer value.
  * 
  * <p>
- * IntProperty extends the base Property class and implements integer-specific
- * functionality. It can be used to store and manage integer configuration
- * values with proper type safety and change notification support. The class
- * supports the full range of 32-bit signed integers ({@code -2^31} to
- * {@code 2^31-1}).
+ * IntProperty provides type-safe access to integer configuration values with
+ * automatic resolution from system properties, environment variables, and
+ * domain configuration files.
  * </p>
  * 
+ * <h2>Parsing</h2>
  * <p>
- * Example usage:
+ * String values are parsed using {@link Integer#decode(String)}, which supports:
  * </p>
+ * <ul>
+ * <li>Decimal: {@code 1234}</li>
+ * <li>Hexadecimal: {@code 0x4D2} or {@code #4D2}</li>
+ * <li>Octal: {@code 02322}</li>
+ * <li>Negative values: {@code -1234}</li>
+ * </ul>
  * 
- * <pre>
- * IntProperty port = new IntProperty("server.port", 8080);
- * port.setInt(9090);
- * int value = port.getInt();
- * 
- * // Parse from string
- * port.parseValue("8443");
- * 
- * // Get as OptionalInt
- * OptionalInt optionalValue = port.toIntOptional();
- * 
- * // Use with different number formats
- * port.parseValue("0xFF"); // Hexadecimal
- * port.parseValue("0100"); // Octal
- * </pre>
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * public class ServerSettings extends Settings {
+ *     private final IntProperty port;
+ *     
+ *     public ServerSettings() {
+ *         super("config", "server");
+ *         this.port = intProperty("port", 8080).comment("Server listen port");
+ *     }
+ *     
+ *     public int port() { return port.getInt(); }
+ *     
+ *     public ServerSettings withPort(int port) {
+ *         this.port.setInt(port);
+ *         return this;
+ *     }
+ * }
+ * }</pre>
  *
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc
- * @see Property
- * @see Integer
- * @see OptionalInt
+ * @author Mark Bednarczyk
+ * @author Sly Technologies Inc.
+ * @see Settings#intProperty(String, int)
  */
-public final class IntProperty extends Property<Integer, IntProperty> {
+public final class IntProperty extends Property<Integer> {
 
-	/**
-	 * Creates a new IntProperty with the specified name and no initial value. The
-	 * property will be created in an unset state.
-	 *
-	 * @param name the name of the property, used for identification
-	 */
-	public IntProperty(String name) {
-		super(name);
-	}
+    /**
+     * Constructs a new IntProperty with the specified name, default value, and domain.
+     *
+     * @param name         the fully qualified property name
+     * @param defaultValue the default value
+     * @param domain       the domain this property belongs to, or null
+     */
+    public IntProperty(String name, int defaultValue, String domain) {
+        super(name, defaultValue, domain);
+    }
 
-	/**
-	 * Creates a new IntProperty with the specified name and initial value. The
-	 * property will be initialized with the provided integer value.
-	 *
-	 * @param name  the name of the property, used for identification
-	 * @param value the initial integer value for this property
-	 */
-	public IntProperty(String name, int value) {
-		super(name, value);
-	}
+    /**
+     * Returns the integer value of this property.
+     * 
+     * <p>
+     * This is a convenience method equivalent to {@link #get()} but returns
+     * a primitive {@code int} instead of {@link Integer}.
+     * </p>
+     *
+     * @return the resolved integer value
+     */
+    public int getInt() {
+        return get();
+    }
 
-	/**
-	 * Creates a new IntProperty with the specified name and no initial value. The
-	 * property will be created in an unset state.
-	 *
-	 * @param support the settings support instance for handling property change
-	 *                notifications
-	 * @param name    the name of the property, used for identification
-	 */
-	IntProperty(SettingsSupport support, String name) {
-		super(support, name);
-	}
+    /**
+     * Sets the integer value of this property.
+     * 
+     * <p>
+     * This is a convenience method equivalent to {@link #set(Object)} but
+     * accepts a primitive {@code int}.
+     * </p>
+     *
+     * @param value the value to set
+     */
+    public void setInt(int value) {
+        set(value);
+    }
 
-	/**
-	 * Creates a new IntProperty with the specified name and initial value. The
-	 * property will be initialized with the provided integer value.
-	 *
-	 * @param support the settings support instance for handling property change
-	 *                notifications
-	 * @param name    the name of the property, used for identification
-	 * @param value   the initial integer value for this property
-	 */
-	IntProperty(SettingsSupport support, String name, int value) {
-		super(support, name, value);
-	}
-
-	/**
-	 * Retrieves the current integer value of this property. This is a convenience
-	 * method that provides direct access to the integer value without requiring
-	 * unboxing from the generic type.
-	 *
-	 * @return the current integer value of this property
-	 * @throws IllegalStateException if the property has not been set
-	 */
-	public int getInt() {
-		return getValue();
-	}
-
-	/**
-	 * Parses a string value and sets the property's value accordingly. The string
-	 * value is converted to an integer using {@link Integer#parseInt(String)}. A
-	 * null input will result in the property being set to null. The method supports
-	 * decimal, hexadecimal (with "0x" or "#" prefix), and octal (with "0" prefix)
-	 * formats.
-	 *
-	 * @param newValue the string value to parse, may be null
-	 * @return this IntProperty instance for method chaining
-	 * @throws NumberFormatException if the string does not contain a parsable
-	 *                               integer or if the value is out of range for a
-	 *                               32-bit signed integer
-	 * @see Integer#parseInt(String)
-	 */
-	@Override
-	public IntProperty deserializeValue(String newValue) {
-		return setValue(newValue == null ? null : Integer.parseInt(newValue));
-	}
-
-	/**
-	 * Sets the value of this property to the specified integer value. This is a
-	 * convenience method that provides a more natural way to set integer values
-	 * compared to the generic setValue method.
-	 *
-	 * @param newValue the new integer value to set
-	 * @return this IntProperty instance for method chaining
-	 */
-	public IntProperty setInt(int newValue) {
-		return setValue(newValue);
-	}
-
-	/**
-	 * Converts the current property value to an OptionalInt. If the property has a
-	 * value set, it will be wrapped in an OptionalInt. If the property is unset, an
-	 * empty OptionalInt will be returned. This method provides a memory-efficient
-	 * way to handle optional integer values compared to using
-	 * Optional&lt;Integer&gt;.
-	 *
-	 * @return an OptionalInt containing the current integer value if present, or an
-	 *         empty OptionalInt if the property is unset
-	 * @see OptionalInt
-	 */
-	public OptionalInt toIntOptional() {
-		if (isPresent())
-			return OptionalInt.of(getValue());
-
-		return OptionalInt.empty();
-	}
+    /**
+     * Parses a string value into an integer.
+     * 
+     * <p>
+     * Uses {@link Integer#decode(String)} to support decimal, hexadecimal,
+     * and octal formats.
+     * </p>
+     *
+     * @param value the string to parse
+     * @return the parsed integer value
+     * @throws NumberFormatException if the string cannot be parsed
+     */
+    @Override
+    protected Integer parseValue(String value) {
+        return Integer.decode(value.trim());
+    }
 }

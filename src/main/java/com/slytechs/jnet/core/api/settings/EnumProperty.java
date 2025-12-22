@@ -17,146 +17,174 @@
  */
 package com.slytechs.jnet.core.api.settings;
 
-import com.slytechs.jnet.core.api.util.Enums;
+import java.util.Objects;
 
 /**
- * A specialized property class for handling enumeration values within the
- * settings framework. This class provides type-safe operations for enum
- * properties, including parsing from strings and value manipulation with proper
- * enum type checking.
+ * A property that holds an enum value.
  * 
  * <p>
- * EnumProperty extends the base Property class and implements enum-specific
- * functionality. It maintains type safety by requiring the enum type to be
- * specified either through the class object or an enum value. The class
- * supports all Java enumeration types that extend {@code Enum<E>}.
+ * EnumProperty provides type-safe access to enum configuration values with
+ * automatic resolution from system properties, environment variables, and
+ * domain configuration files. This is useful for configuration options with
+ * a fixed set of valid values.
  * </p>
  * 
+ * <h2>Parsing</h2>
  * <p>
- * Example usage:
+ * String values are parsed with case-insensitive matching. The following
+ * formats are supported:
  * </p>
+ * <ul>
+ * <li>Exact match: {@code SECONDS}</li>
+ * <li>Case-insensitive: {@code seconds}, {@code Seconds}</li>
+ * </ul>
  * 
- * <pre>
- * enum Status {
- * 	ACTIVE, INACTIVE, PENDING
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * public class TimeoutSettings extends Settings {
+ *     private final LongProperty timeout;
+ *     private final EnumProperty<TimeUnit> unit;
+ *     
+ *     public TimeoutSettings() {
+ *         super("config", "timeout");
+ *         this.timeout = longProperty("value", 30L);
+ *         this.unit = enumProperty("unit", TimeUnit.SECONDS)
+ *             .comment("Time unit for timeout");
+ *     }
+ *     
+ *     public long timeout() { return timeout.getLong(); }
+ *     public TimeUnit unit() { return unit.getEnum(); }
+ *     
+ *     public Duration asDuration() {
+ *         return Duration.of(timeout(), unit().toChronoUnit());
+ *     }
+ *     
+ *     public TimeoutSettings withTimeout(long value, TimeUnit unit) {
+ *         this.timeout.setLong(value);
+ *         this.unit.setEnum(unit);
+ *         return this;
+ *     }
  * }
- * 
- * // Create with enum class
- * EnumProperty&lt;Status&gt; status = new EnumProperty&lt;&gt;("system.status", Status.class);
- * status.setEnum(Status.ACTIVE);
- * 
- * // Create with enum value
- * EnumProperty&lt;Status&gt; status2 = new EnumProperty&lt;&gt;("system.status", Status.PENDING);
- * 
- * // Parse from string
- * status.parseValue("INACTIVE");
- * 
- * Status currentStatus = status.getEnum();
- * </pre>
+ * }</pre>
  *
- * @param <E> the enum type this property will hold, must extend Enum&lt;E&gt;
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc
- * @see Property
- * @see Enum
+ * @param <E> the enum type
+ * @author Mark Bednarczyk
+ * @author Sly Technologies Inc.
+ * @see Settings#enumProperty(String, Enum)
  */
-public final class EnumProperty<E extends Enum<E>> extends Property<E, EnumProperty<E>> {
+public final class EnumProperty<E extends Enum<E>> extends Property<E> {
 
-	/** The enum type. */
-	private final Class<E> enumType;
+    /** The enum class for parsing. */
+    private final Class<E> enumType;
 
-	/**
-	 * Creates a new EnumProperty with the specified name and enum type. The
-	 * property will be created in an unset state, but will use the provided enum
-	 * class for type safety and value parsing.
-	 *
-	 * @param name     the name of the property, used for identification
-	 * @param enumType the Class object representing the enum type E
-	 */
-	public EnumProperty(String name, Class<E> enumType) {
-		super(name);
-		this.enumType = enumType;
+    /**
+     * Constructs a new EnumProperty with the specified name, default value, and domain.
+     * 
+     * <p>
+     * The enum type is inferred from the default value's class.
+     * </p>
+     *
+     * @param name         the fully qualified property name
+     * @param defaultValue the default value (must not be null)
+     * @param domain       the domain this property belongs to, or null
+     * @throws NullPointerException if defaultValue is null
+     */
+    @SuppressWarnings("unchecked")
+    public EnumProperty(String name, E defaultValue, String domain) {
+        super(name, Objects.requireNonNull(defaultValue, "default enum value cannot be null"), domain);
+        this.enumType = (Class<E>) defaultValue.getClass();
+    }
 
-		super.setDeserializer((newValue) -> Enums.getEnumOrThrow(
-				enumType,
-				newValue, () -> new IllegalArgumentException(newValue)));
-	}
+    /**
+     * Returns the enum type of this property.
+     *
+     * @return the enum class
+     */
+    public Class<E> enumType() {
+        return enumType;
+    }
 
-	/**
-	 * Creates a new EnumProperty with the specified name and initial enum value.
-	 * The enum type is automatically determined from the provided value.
-	 *
-	 * @param name  the name of the property, used for identification
-	 * @param value the initial enum value for this property, also used to determine
-	 *              the enum type
-	 */
-	@SuppressWarnings("unchecked")
-	public EnumProperty(String name, E value) {
-		super(name, value);
-		this.enumType = (Class<E>) value.getClass();
-		super.setDeserializer((newValue) -> Enums.getEnumOrThrow(
-				enumType,
-				newValue, () -> new IllegalArgumentException(newValue)));
-	}
+    /**
+     * Returns the enum value of this property.
+     * 
+     * <p>
+     * This is a convenience method equivalent to {@link #get()} and is provided
+     * for API clarity.
+     * </p>
+     *
+     * @return the resolved enum value
+     */
+    public E getEnum() {
+        return get();
+    }
 
-	/**
-	 * Creates a new EnumProperty with the specified name and enum type. The
-	 * property will be created in an unset state, but will use the provided enum
-	 * class for type safety and value parsing.
-	 *
-	 * @param support  the settings support instance for handling property change
-	 *                 notifications
-	 * @param name     the name of the property, used for identification
-	 * @param enumType the Class object representing the enum type E
-	 */
-	EnumProperty(SettingsSupport support, String name, Class<E> enumType) {
-		super(support, name);
-		this.enumType = enumType;
-		super.setDeserializer((newValue) -> Enums.getEnumOrThrow(
-				enumType,
-				newValue, () -> new IllegalArgumentException(newValue)));
-	}
+    /**
+     * Sets the enum value of this property.
+     * 
+     * <p>
+     * This is a convenience method equivalent to {@link #set(Object)} and is
+     * provided for API clarity.
+     * </p>
+     *
+     * @param value the value to set
+     */
+    public void setEnum(E value) {
+        set(value);
+    }
 
-	/**
-	 * Creates a new EnumProperty with the specified name and initial enum value.
-	 * The enum type is automatically determined from the provided value.
-	 *
-	 * @param support the settings support instance for handling property change
-	 *                notifications
-	 * @param name    the name of the property, used for identification
-	 * @param value   the initial enum value for this property, also used to
-	 *                determine the enum type
-	 */
-	@SuppressWarnings("unchecked")
-	EnumProperty(SettingsSupport support, String name, E value) {
-		super(support, name, value);
-		this.enumType = (Class<E>) value.getClass();
-		super.setDeserializer((newValue) -> Enums.getEnumOrThrow(
-				enumType,
-				newValue, () -> new IllegalArgumentException(newValue)));
-	}
+    /**
+     * Parses a string value into an enum constant.
+     * 
+     * <p>
+     * Parsing is case-insensitive. First attempts exact match, then
+     * tries uppercase conversion for case-insensitive matching.
+     * </p>
+     *
+     * @param value the string to parse
+     * @return the parsed enum constant
+     * @throws IllegalArgumentException if no matching enum constant is found
+     */
+    @Override
+    protected E parseValue(String value) {
+        String normalized = value.trim();
 
-	/**
-	 * Retrieves the current enum value of this property. This is a convenience
-	 * method that provides direct access to the enum value without requiring
-	 * casting from the generic type.
-	 *
-	 * @return the current enum value of this property
-	 * @throws IllegalStateException if the property has not been set
-	 */
-	public E getEnum() {
-		return getValue();
-	}
+        // Try exact match first
+        for (E constant : enumType.getEnumConstants()) {
+            if (constant.name().equals(normalized)) {
+                return constant;
+            }
+        }
 
-	/**
-	 * Sets the value of this property to the specified enum value. This is a
-	 * convenience method that provides a more natural way to set enum values
-	 * compared to the generic setValue method.
-	 *
-	 * @param newValue the new enum value to set
-	 * @return this EnumProperty instance for method chaining
-	 */
-	public EnumProperty<E> setEnum(E newValue) {
-		return super.setValue(newValue);
-	}
+        // Try case-insensitive match
+        String upper = normalized.toUpperCase();
+        for (E constant : enumType.getEnumConstants()) {
+            if (constant.name().equals(upper)) {
+                return constant;
+            }
+        }
+
+        // Build error message with valid options
+        StringBuilder validValues = new StringBuilder();
+        for (E constant : enumType.getEnumConstants()) {
+            if (validValues.length() > 0) {
+                validValues.append(", ");
+            }
+            validValues.append(constant.name());
+        }
+
+        throw new IllegalArgumentException(
+            "Invalid enum value: '" + value + "' for type " + enumType.getSimpleName()
+            + ". Valid values: " + validValues);
+    }
+
+    /**
+     * Formats an enum value as its name.
+     *
+     * @param value the enum value to format
+     * @return the enum constant name
+     */
+    @Override
+    protected String formatValue(E value) {
+        return value == null ? "" : value.name();
+    }
 }

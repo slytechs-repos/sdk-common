@@ -18,121 +18,95 @@
 package com.slytechs.jnet.core.api.settings;
 
 /**
- * A specialized property class for handling string values within the settings
- * framework. This class provides direct string value management without any
- * type conversion needs, making it particularly suitable for text-based
- * configuration values.
+ * A property that holds a string value.
  * 
  * <p>
- * StringProperty extends the base Property class and implements string-specific
- * functionality. Unlike numeric property types, StringProperty handles values
- * in their native form, requiring no parsing or conversion beyond what the base
- * Property class provides for string formatting.
+ * StringProperty provides access to string configuration values with automatic
+ * resolution from system properties, environment variables, and domain
+ * configuration files. This is useful for paths, hostnames, labels, and other
+ * textual configuration.
  * </p>
  * 
- * <p>
- * Example usage:
- * </p>
- * 
- * <pre>
- * StringProperty hostName = new StringProperty("server.host", "localhost");
- * hostName.setString("example.com");
- * String host = hostName.getString();
- * 
- * // Direct parsing of string values
- * hostName.parseValue("new-server.domain.com");
- * 
- * // Use with format strings
- * hostName.setFormat("Host: %s");
- * String formatted = hostName.toFormattedValue(); // "Host: new-server.domain.com"
- * </pre>
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * public class ConnectionSettings extends Settings {
+ *     private final StringProperty host;
+ *     private final StringProperty username;
+ *     
+ *     public ConnectionSettings() {
+ *         super("config", "connection");
+ *         this.host = stringProperty("host", "localhost")
+ *             .comment("Server hostname or IP address");
+ *         this.username = stringProperty("username", null);
+ *     }
+ *     
+ *     public String host() { return host.get(); }
+ *     public String username() { return username.get(); }
+ *     
+ *     public ConnectionSettings withHost(String host) {
+ *         this.host.set(host);
+ *         return this;
+ *     }
+ * }
+ * }</pre>
  *
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc
- * @see Property
+ * @author Mark Bednarczyk
+ * @author Sly Technologies Inc.
+ * @see Settings#stringProperty(String, String)
  */
-public final class StringProperty extends Property<String, StringProperty> {
+public final class StringProperty extends Property<String> {
 
-	/**
-	 * Creates a new StringProperty with the specified name and no initial value.
-	 * The property will be created in an unset state.
-	 *
-	 * @param name the name of the property, used for identification
-	 */
-	public StringProperty(String name) {
-		super(name);
-	}
+    /**
+     * Constructs a new StringProperty with the specified name, default value, and domain.
+     *
+     * @param name         the fully qualified property name
+     * @param defaultValue the default value (may be null)
+     * @param domain       the domain this property belongs to, or null
+     */
+    public StringProperty(String name, String defaultValue, String domain) {
+        super(name, defaultValue, domain);
+    }
 
-	/**
-	 * Creates a new StringProperty with the specified name and initial value. The
-	 * property will be initialized with the provided string value.
-	 *
-	 * @param name  the name of the property, used for identification
-	 * @param value the initial string value for this property
-	 */
-	public StringProperty(String name, String value) {
-		super(name, value);
-	}
+    /**
+     * Returns the string value of this property.
+     * 
+     * <p>
+     * This method is equivalent to {@link #get()} and is provided for
+     * API consistency with other property types.
+     * </p>
+     *
+     * @return the resolved string value, may be null
+     */
+    public String getString() {
+        return get();
+    }
 
-	/**
-	 * Creates a new StringProperty with the specified name and no initial value.
-	 * The property will be created in an unset state.
-	 *
-	 * @param support the settings support instance for handling property change
-	 *                notifications
-	 * @param name    the name of the property, used for identification
-	 */
-	StringProperty(SettingsSupport support, String name) {
-		super(support, name);
-	}
+    /**
+     * Sets the string value of this property.
+     * 
+     * <p>
+     * This method is equivalent to {@link #set(Object)} and is provided for
+     * API consistency with other property types.
+     * </p>
+     *
+     * @param value the value to set (may be null)
+     */
+    public void setString(String value) {
+        set(value);
+    }
 
-	/**
-	 * Creates a new StringProperty with the specified name and initial value. The
-	 * property will be initialized with the provided string value.
-	 *
-	 * @param support the settings support instance for handling property change
-	 *                notifications
-	 * @param name    the name of the property, used for identification
-	 * @param value   the initial string value for this property
-	 */
-	StringProperty(SettingsSupport support, String name, String value) {
-		super(support, name, value);
-	}
-
-	/**
-	 * Retrieves the current string value of this property. This is a convenience
-	 * method that provides direct access to the string value without requiring
-	 * casting from the generic type.
-	 *
-	 * @return the current string value of this property
-	 * @throws IllegalStateException if the property has not been set
-	 */
-	public String getString() {
-		return getValue();
-	}
-
-	/**
-	 * Sets the value of this property from a string input. Unlike other property
-	 * types that need to parse their input, this method simply sets the value
-	 * directly as no conversion is needed.
-	 *
-	 * @param newValue the new string value to set, may be null
-	 * @return this StringProperty instance for method chaining
-	 */
-	@Override
-	public StringProperty deserializeValue(String newValue) {
-		return setValue(newValue);
-	}
-
-	/**
-	 * Sets the value of this property to the specified string value. This is a
-	 * convenience method that provides a more natural way to set string values
-	 * compared to the generic setValue method.
-	 *
-	 * @param newValue the new string value to set, may be null
-	 * @return this StringProperty instance for method chaining
-	 */
-	public StringProperty setString(String newValue) {
-		return super.setValue(newValue);
-	}
+    /**
+     * Parses a string value.
+     * 
+     * <p>
+     * For StringProperty, parsing is identity - the value is returned as-is.
+     * </p>
+     *
+     * @param value the string to parse
+     * @return the same string value
+     */
+    @Override
+    protected String parseValue(String value) {
+        return value;
+    }
 }

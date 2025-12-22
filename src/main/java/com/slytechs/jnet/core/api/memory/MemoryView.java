@@ -195,4 +195,12 @@ public class MemoryView {
         this.length = 0;
         this.source = null;
     }
+
+	/**
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "MemoryView [start=" + start + ", length=" + length + "]";
+	}
 }

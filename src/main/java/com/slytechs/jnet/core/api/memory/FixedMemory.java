@@ -137,6 +137,14 @@ public class FixedMemory extends AbstractMemory {
 		this(arena.allocate(layout.byteSize()));
 	}
 
+	public FixedMemory(long size) {
+		this(Arena.ofAuto().allocate(size));
+	}
+
+	public FixedMemory(long size, MemoryUnit unit) {
+		this(Arena.ofAuto().allocate(unit.toBytes(size)));
+	}
+
 	/**
 	 * {@inheritDoc}
 	 * 

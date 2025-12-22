@@ -24,6 +24,8 @@ module com.slytechs.jnet.core.api {
     exports com.slytechs.jnet.core.api.util.function;
     exports com.slytechs.jnet.core.api.util.collection;
     exports com.slytechs.jnet.core.api.settings;
+    exports com.slytechs.jnet.core.api.detail;
+    exports com.slytechs.jnet.core.api.detail.render;
 
     requires java.logging;
 }

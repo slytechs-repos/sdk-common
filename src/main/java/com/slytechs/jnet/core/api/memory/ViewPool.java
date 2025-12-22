@@ -4,7 +4,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-// ViewPool.java - fixed
 public class ViewPool<T extends BoundView> extends AbstractPool<T> implements Pool<T> {
 	private final long minCapacity;
 	private final long maxCapacity;

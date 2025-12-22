@@ -17,958 +17,672 @@
  */
 package com.slytechs.jnet.core.api.settings;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-
-import com.slytechs.jnet.core.api.settings.Property.Action;
-import com.slytechs.jnet.core.api.settings.Property.Deserializer;
-import com.slytechs.jnet.core.api.settings.Property.PropertyFactory;
-import com.slytechs.jnet.core.api.settings.Property.PropertyFactoryWithValue;
-import com.slytechs.jnet.core.api.settings.Property.Serializer;
-import com.slytechs.jnet.core.api.util.Registration;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A flexible and extensible settings management system that provides type-safe
- * property handling with support for various data types, default values, and
- * change notifications.
+ * Abstract base class for type-safe, hierarchical configuration settings with
+ * domain-based organization and layered property resolution.
  * 
  * <p>
- * The Settings class serves as a central repository for application
- * configuration, allowing for dynamic property management with type safety and
- * change tracking. It supports various property types including primitives,
- * enums, strings, and lists, with the ability to register listeners for
- * property changes.
+ * Settings provides a clean, inheritance-friendly framework for defining
+ * configuration properties. Subclasses define properties using protected
+ * factory methods and expose them through public getters and fluent setters.
  * </p>
  * 
+ * <h2>Design Philosophy</h2>
+ * <ul>
+ * <li><b>Simple inheritance</b> - Child classes provide a different base name
+ *     and optionally add properties</li>
+ * <li><b>Protected property creation</b> - Users see only the public API you expose</li>
+ * <li><b>Layered resolution</b> - Values resolved from explicit value, system property,
+ *     environment variable, loaded config files, or coded default</li>
+ * <li><b>Domain grouping</b> - Related settings organized into domains for
+ *     grouped save/load operations</li>
+ * <li><b>Fluent API</b> - Chainable setters with covariant return types</li>
+ * </ul>
+ * 
+ * <h2>Domains</h2>
  * <p>
- * Example usage:
+ * Domains group related settings together for organized save/load operations.
+ * For example, UI-related settings might use domain "ui" while capture settings
+ * use domain "capture". This allows saving/loading specific groups of settings
+ * to/from separate configuration files.
  * </p>
  * 
- * <pre>
- * class MySettings extends Settings {
- * 	private final IntProperty port = ofInt("server.port", 8080)
- * 			.on((newValue, source) -> System.out.println("Port changed to: " + newValue));
+ * <h2>Resolution Order</h2>
+ * <p>
+ * Each property resolves its value using this priority order:
+ * </p>
+ * <ol>
+ * <li><b>Explicit</b> - Value set programmatically via setter</li>
+ * <li><b>System Property</b> - {@code -D<baseName>.<propName>=value}</li>
+ * <li><b>Environment Variable</b> - {@code <BASENAME>_<PROPNAME>=value}</li>
+ * <li><b>Domain Properties</b> - Loaded via {@link #load} or {@link #loadDefaults}</li>
+ * <li><b>Default</b> - Value specified in property definition</li>
+ * </ol>
  * 
- * 	public MySettings() {
- * 		super("MyServerSettings");
- * 		enableUpdates(true);
- * 	}
+ * <h2>Layered Defaults</h2>
+ * <p>
+ * Multiple calls to {@link #loadDefaults} layer on top of each other using
+ * Java Properties' built-in parent chain. This enables SDK defaults to be
+ * overridden by application defaults, which can be overridden by user preferences:
+ * </p>
+ * <pre>{@code
+ * // SDK defaults (lowest priority)
+ * Settings.loadDefaults(Sdk.class.getResourceAsStream("/defaults.properties"), "ui");
+ * 
+ * // Application defaults (override SDK)
+ * Settings.loadDefaults(new FileInputStream("app-config.properties"), "ui");
+ * 
+ * // User preferences (override application)
+ * Settings.loadDefaults(new FileInputStream(userPrefs), "ui");
+ * }</pre>
+ * 
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * public class WindowSettings extends Settings {
+ *     
+ *     private final IntProperty x;
+ *     private final IntProperty y;
+ *     private final IntProperty sessionCount;
+ *     
+ *     public WindowSettings() {
+ *         super("ui", "window");
+ *         setComment("Main window position and size preferences");
+ *         
+ *         this.x = intProperty("x", 0).comment("X position in pixels");
+ *         this.y = intProperty("y", 0).comment("Y position in pixels");
+ *         this.sessionCount = intProperty("session.count", 0).transient_();
+ *     }
+ *     
+ *     public int x() { return x.getInt(); }
+ *     public int y() { return y.getInt(); }
+ *     
+ *     public WindowSettings withX(int x) {
+ *         this.x.setInt(x);
+ *         return this;
+ *     }
  * }
- * </pre>
+ * 
+ * // Save all UI settings
+ * Settings.save(new File("ui.properties"), "ui");
+ * 
+ * // Load UI settings
+ * Settings.load(new FileInputStream("ui.properties"), "ui");
+ * }</pre>
+ * 
+ * <h2>Thread Safety</h2>
+ * <p>
+ * The static registry and property maps are thread-safe for registration and
+ * lookup. Individual Settings instances are designed for configuration at
+ * startup time and should not be modified concurrently.
+ * </p>
  *
- * @param <T_BASE> the generic type
- * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Mark Bednarczyk
  * @author Sly Technologies Inc.
+ * @see Property
  */
-public class Settings<T_BASE extends Settings<T_BASE>> {
-
-	/**
-	 * The Interface CleanSettingsNotification.
-	 *
-	 * @param <T> the generic type
-	 */
-	interface CleanSettingsNotification<T extends Settings<T>> {
-
-		/**
-		 * On clear settings.
-		 *
-		 * @param settings the settings
-		 */
-		void onClearSettings(T settings);
-	}
-
-	/**
-	 * The Interface ResetSettingsNotification.
-	 *
-	 * @param <T> the generic type
-	 */
-	interface ResetSettingsNotification<T extends Settings<T>> {
-
-		/**
-		 * On reset settings.
-		 *
-		 * @param settings the settings
-		 */
-		void onResetSettings(T settings);
-	}
-
-	/**
-	 * The main method.
-	 *
-	 * @param __ the arguments
-	 */
-	// TODO: Remove after testing and validation period.
-	public static void main(String[] __) {
-
-		class MySettings extends Settings<MySettings> {
-			private static final String BASENAME = "ports";
-
-			private final IntProperty x = super.<Integer, IntProperty>newProperty("delay", 10, IntProperty::new)
-					.on(Action.withSource(this::setX_withSource, this).andThen(this::setY_simpleSetter))
-					.loadSystemProperty();
-
-			private final EnumProperty<TimeUnit> e = super.<TimeUnit, EnumProperty<TimeUnit>>newProperty("timeunit",
-					TimeUnit.MICROSECONDS, EnumProperty::new)
-					.on(Action.withSource(this::setTimeUnit, this));
-
-			private final ListProperty<TimeUnit> l = super.<TimeUnit>newListProperty("ids", TimeUnit::valueOf,
-					TimeUnit.MICROSECONDS);
-
-			MySettings(String name) {
-				super(BASENAME, name);
-
-				super.onClear(settings -> System.out.println("clear:: " + settings));
-				super.onReset(settings -> System.out.println("reset:: " + settings));
-
-				/*
-				 * Action's on settings are disabled by default so that they don't fire updates
-				 * before class fields are initialized and actually assigned which happens
-				 * before the code in the constructor is executed. So we need to enable them in
-				 * the constructor and then force fire actions which will update
-				 */
-				enableActions(true);
-				updateAllActions();
-			}
-
-			public int getX() {
-				return x.getInt();
-			}
-
-			public void setTimeUnit(TimeUnit unit, Object source) {
-				System.out.println(unit + ", source=" + source);
-			}
-
-			public MySettings setX_withSource(int newValue, Object source) {
-				if (source != this)
-					x.setValue(newValue, this);
-
-				System.out.println(name() + "::setX x=" + x.getInt() + ", source=" + source);
-
-				return this;
-			}
-
-			public void setY_simpleSetter(int newValue) {
-				System.out.println(name() + "::setY x=" + newValue);
-			}
-
-		}
-
-		StringProperty property = new IntProperty("property.id", 11)
-				.on(newValue -> System.out.println("on:: property.id = " + newValue))
-				.setFormat("0x%08X")
-				.map(i -> String.valueOf(i))
-				.mapToFormattedString()
-
-		;
-
-		System.out.println("main:: " + property);
-
-		MySettings s1 = new MySettings("s1")
-				.setX_withSource(20, null);
-
-		MySettings s2 = new MySettings("s2")
-				.setX_withSource(30, null);
-
-		s1.e.setEnum(TimeUnit.DAYS);
-
-		System.out.println("---");
-		s1.mergeValues(s2);
-
-		System.out.println("s2:: direct getX() = " + s2.getX());
-		s2.clear();
-		s1.reset();
-	}
-
-	/** The name. */
-	// Private fields
-	private String name = getClass().getSimpleName();
-	
-	/** The us. */
-	@SuppressWarnings("unchecked")
-	private final T_BASE us = (T_BASE) this;
-	
-	/** The settings support. */
-	private final SettingsSupport settingsSupport = new SettingsSupport();
-	
-	/** The properties. */
-	final List<Property<?, ?>> properties = new ArrayList<>();
-	
-	/** The clear actions. */
-	private final List<CleanSettingsNotification<T_BASE>> clearActions = new ArrayList<>();
-	
-	/** The reset actions. */
-	private final List<ResetSettingsNotification<T_BASE>> resetActions = new ArrayList<>();
-
-	/** The base name. */
-	private final String baseName;
-
-	/**
-	 * Creates a new Settings instance with updates disabled by default.
-	 *
-	 * @param baseName the base name
-	 */
-	public Settings(String baseName) {
-		this.baseName = baseName.endsWith(".") ? baseName : baseName + ".";
-		settingsSupport.enableFireEvents = false;
-	}
-
-	/**
-	 * Creates a new Settings instance with the specified name and updates disabled
-	 * by default.
-	 *
-	 * @param baseName the base name
-	 * @param name     the name of this settings instance, used for identification
-	 *                 and logging
-	 */
-	public Settings(String baseName, String name) {
-		this.baseName = baseName.endsWith(".") ? baseName : baseName + ".";
-		this.name = name;
-		settingsSupport.enableFireEvents = false;
-	}
-
-	/**
-	 * Creates the property name.
-	 *
-	 * @param name the name
-	 * @return the string
-	 */
-	protected String createPropertyName(String name) {
-		return baseName + name;
-	}
-
-	/**
-	 * Reads and loads property values from a Java properties format input stream.
-	 * The stream may contain multiple sections of properties, each identified by a
-	 * header in the format "# [section_name]". Properties are loaded from the
-	 * section matching this settings instance's name (from {@link #name()}).
-	 * 
-	 * <p>
-	 * Example properties file format:
-	 * </p>
-	 * 
-	 * <pre>
-	* # Properties without a section header go to default section
-	* global.property=value
-	* 
-	* # [network]
-	* port=8080
-	* host=localhost
-	* 
-	* # [security]
-	* ssl.enabled=true
-	* keystore.path=/path/to/keystore
-	 * </pre>
-	 * 
-	 * <p>
-	 * Properties without a section header are stored in a default section and will
-	 * be loaded if no matching section is found for the settings name. This is
-	 * useful for single-section files that don't have an explicit header.
-	 * </p>
-	 *
-	 * @param input the input stream containing the property values in Java
-	 *              properties format
-	 * @return this settings instance for method chaining
-	 * @throws IOException if an I/O error occurs while reading from the stream
-	 * @see #name()
-	 * @see #writeSettings(OutputStream)
-	 */
-	public T_BASE readSettings(InputStream input) throws IOException {
-		var reader = new SettingsReader(input);
-		reader.read(this);
-		return us;
-	}
-
-	/**
-	 * Writes the current property values to an output stream in Java properties
-	 * format, within a section identified by this settings instance's name. The
-	 * output can be read back using {@link #readSettings(InputStream)}.
-	 * 
-	 * <p>
-	 * The properties are written with a section header in the format "#
-	 * [section_name]" where section_name is obtained from {@link #name()}. Multiple
-	 * settings can be written to the same file by calling writeSettings on
-	 * different settings instances with the same output stream, creating a
-	 * multi-section properties file.
-	 * </p>
-	 * 
-	 * <p>
-	 * Example usage for writing multiple sections:
-	 * </p>
-	 * 
-	 * <pre>
-	 * try (var output = new FileOutputStream("config.properties")) {
-	 * 	networkSettings.writeSettings(output); // Writes [network] section
-	 * 	securitySettings.writeSettings(output); // Appends [security] section
-	 * }
-	 * </pre>
-	 *
-	 * @param output the output stream to write the property values to
-	 * @return this settings instance for method chaining
-	 * @throws IOException if an I/O error occurs while writing to the stream
-	 * @see #name()
-	 * @see #readSettings(InputStream)
-	 */
-	public T_BASE writeSettings(OutputStream output) throws IOException {
-		var writer = new SettingsWriter(output);
-		writer.write(this);
-		return us;
-	}
-
-	/**
-	 * Clears all properties in this settings instance, resetting them to their
-	 * unset state. This operation removes all current values and triggers any
-	 * registered clear notifications. Clear actions are only triggered if property
-	 * change notifications are enabled.
-	 * 
-	 * @return this settings instance for method chaining
-	 * @see #onClear(CleanSettingsNotification)
-	 */
-	public T_BASE clear() {
-		for (var p : properties) {
-			p.clear();
-		}
-
-		if (settingsSupport.enableFireEvents)
-			clearActions.forEach(a -> a.onClearSettings(us));
-
-		return us;
-	}
-
-	/**
-	 * Controls whether property changes trigger registered action listeners. When
-	 * actions are disabled, property values can still be changed, but listeners
-	 * will not be notified of the changes. Re-enabling actions does not
-	 * retroactively trigger notifications for changes that occurred while actions
-	 * were disabled.
-	 * 
-	 * <p>
-	 * This method is thread-safe and can be used to temporarily suspend action
-	 * notifications during batch updates.
-	 * </p>
-	 * 
-	 * <p>
-	 * Example usage:
-	 * </p>
-	 * 
-	 * <pre>
-	 * Settings settings = new Settings("config");
-	 * IntProperty port = settings.newIntProperty("port", 8080)
-	 * 		.on((value, source) -> System.out.println("Port changed to: " + value));
-	 * 
-	 * settings.enableActions(false); // Disable notifications
-	 * port.setValue(9090); // Listener won't be called
-	 * port.setValue(9091); // Listener won't be called
-	 * settings.enableActions(true); // Re-enable notifications
-	 * port.setValue(9092); // Listener will be called
-	 * </pre>
-	 *
-	 * @param b true to enable action notifications, false to disable them
-	 */
-	public synchronized void enableActions(boolean b) {
-		settingsSupport.enableEventDispatching(b);
-	}
-
-	/**
-	 * Locates a property by its name in the properties collection.
-	 *
-	 * @param <T>      the generic type
-	 * @param <P_BASE> the generic type
-	 * @param name     the name of the property to find
-	 * @return the found property or null if not found
-	 */
-	@SuppressWarnings("unchecked")
-	private <T, P_BASE extends Property<T, P_BASE>> P_BASE findProperty(String name) {
-		for (var p : properties) {
-			if (p.name().equals(name))
-				return (P_BASE) p;
-		}
-		return null;
-	}
-
-	/**
-	 * Fires a property change event for the specified property.
-	 *
-	 * @param property the property for which to fire the change event
-	 */
-	private void fireForProperty(Property<?, ?> property) {
-		settingsSupport.fireValueChange(property.name(), null, property.getValue(), "<refresh>");
-	}
-
-	/**
-	 * Merges only the values from another Settings instance into this one,
-	 * maintaining separation of action listeners. This method performs a one-way
-	 * copy of values from the source settings to matching properties in this
-	 * instance.
-	 * 
-	 * <p>
-	 * Key characteristics of the merge:
-	 * </p>
-	 * <ul>
-	 * <li>Only copies values for properties that already exist in this
-	 * instance</li>
-	 * <li>Only copies non-null values from the source</li>
-	 * <li>Does not transfer action listeners from source to destination</li>
-	 * <li>Triggers change notifications on this instance's existing listeners</li>
-	 * </ul>
-	 * 
-	 * <p>
-	 * Example usage:
-	 * </p>
-	 * 
-	 * <pre>
-	 * Settings defaultSettings = new Settings("defaults");
-	 * defaultSettings.newIntProperty("timeout", 1000);
-	 * 
-	 * Settings customSettings = new Settings("custom");
-	 * customSettings.newIntProperty("timeout", 2000);
-	 * customSettings.newStringProperty("name", "test"); // Won't be merged if not in defaults
-	 * 
-	 * defaultSettings.mergeValues(customSettings); // Only merges matching properties
-	 * </pre>
-	 *
-	 * @param srcSettings the source Settings instance whose values should be merged
-	 *                    into this one. Only values are copied, not action
-	 *                    listeners.
-	 */
-	@SuppressWarnings("unchecked")
-	public void mergeValues(Settings<?> srcSettings) {
-		var ours = this.properties;
-
-		for (@SuppressWarnings("rawtypes")
-		Property our : ours) {
-			var their = srcSettings.findProperty(our.name());
-			if (their != null && their.isPresent()) {
-				Object value = their.getValue();
-				our.setValue(value, "<merge>");
-			}
-		}
-	}
-
-	/**
-	 * Returns the name of this settings instance.
-	 *
-	 * @return the name of this settings instance
-	 */
-	public String name() {
-		return name;
-	}
-
-	/**
-	 * New boolean property.
-	 *
-	 * @param name the name
-	 * @return the boolean property
-	 */
-	public BooleanProperty newBooleanProperty(String name) {
-		return newProperty(name, BooleanProperty::new);
-	}
-
-	/**
-	 * New boolean property.
-	 *
-	 * @param name         the name
-	 * @param defaultValue the default value
-	 * @return the boolean property
-	 */
-	public BooleanProperty newBooleanProperty(String name, boolean defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Creates a new byte property with the specified name.
-	 *
-	 * @param name the name of the property
-	 * @return a new ByteProperty instance
-	 */
-	public ByteProperty newByteProperty(String name) {
-		return newProperty(name, ByteProperty::new);
-	}
-
-	/**
-	 * Creates a new byte property with the specified name and default value.
-	 *
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return a new ByteProperty instance
-	 */
-	public ByteProperty newByteProperty(String name, byte defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Creates a new double property with the specified name.
-	 *
-	 * @param name the name of the property
-	 * @return a new DoubleProperty instance
-	 */
-	public DoubleProperty newDoubleProperty(String name) {
-		return newProperty(name, DoubleProperty::new);
-	}
-
-	/**
-	 * Creates a new double property with the specified name and default value.
-	 *
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return a new DoubleProperty instance
-	 */
-	public DoubleProperty newDoubleProperty(String name, double defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Creates a new enum property with the specified name and enum type.
-	 *
-	 * @param <E>      the enum type
-	 * @param name     the name of the property
-	 * @param enumType the Class object of the enum type
-	 * @return a new EnumProperty instance
-	 */
-	public <E extends Enum<E>> EnumProperty<E> newEnumProperty(String name, Class<E> enumType) {
-		return newProperty(name, (s, n) -> new EnumProperty<E>(s, n, enumType));
-	}
-
-	/**
-	 * Creates a new enum property with the specified name and default value.
-	 *
-	 * @param <E>          the enum type
-	 * @param name         the name of the property
-	 * @param defaultValue the default enum value
-	 * @return a new EnumProperty instance
-	 */
-	public <E extends Enum<E>> EnumProperty<E> newEnumProperty(String name, E defaultValue) {
-		return newProperty(name, (s, n) -> new EnumProperty<E>(s, n, defaultValue));
-	}
-
-	/**
-	 * Creates a new float property with the specified name.
-	 *
-	 * @param name the name of the property
-	 * @return a new FloatProperty instance
-	 */
-	public FloatProperty newFloatProperty(String name) {
-		return newProperty(name, FloatProperty::new);
-	}
-
-	/**
-	 * Creates a new float property with the specified name and default value.
-	 *
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return a new FloatProperty instance
-	 */
-	public FloatProperty newFloatProperty(String name, float defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Creates a new integer property with the specified name.
-	 *
-	 * @param name the name of the property
-	 * @return a new IntProperty instance
-	 */
-	public IntProperty newIntProperty(String name) {
-		return newProperty(name, IntProperty::new);
-	}
-
-	/**
-	 * Creates a new integer property with the specified name and default value.
-	 *
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return a new IntProperty instance
-	 */
-	public IntProperty newIntProperty(String name, int defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Creates a new list property with the specified name and parser function.
-	 *
-	 * @param <E>    the type of elements in the list
-	 * @param name   the name of the property
-	 * @param parser the function to parse string values into list elements
-	 * @return a new ListProperty instance
-	 */
-	public <E> ListProperty<E> newListProperty(String name, Function<String, E> parser) {
-		return newProperty(name, (s, n) -> new ListProperty<E>(s, n, parser));
-	}
-
-	/**
-	 * Creates a new list property with the specified name, parser function, and
-	 * variable number of default values.
-	 *
-	 * @param <E>          the type of elements in the list
-	 * @param name         the name of the property
-	 * @param parser       the function to parse string values into list elements
-	 * @param defaultValue the default values as varargs
-	 * @return a new ListProperty instance
-	 */
-	@SafeVarargs
-	public final <E> ListProperty<E> newListProperty(String name, Function<String, E> parser, E... defaultValue) {
-		return newProperty(name, (s, n) -> new ListProperty<E>(s, n, parser, Arrays.asList(defaultValue)));
-	}
-
-	/**
-	 * Creates a new list property with the specified name, parser function, and
-	 * default value.
-	 *
-	 * @param <E>          the type of elements in the list
-	 * @param name         the name of the property
-	 * @param parser       the function to parse string values into list elements
-	 * @param defaultValue the default list value
-	 * @return a new ListProperty instance
-	 */
-	public <E> ListProperty<E> newListProperty(String name, Function<String, E> parser, List<E> defaultValue) {
-		return newProperty(name, (s, n) -> new ListProperty<E>(s, n, parser, defaultValue));
-	}
-
-	/**
-	 * Creates a new list property with the specified name, parser function, default
-	 * value, and action.
-	 *
-	 * @param <E>          the type of elements in the list
-	 * @param name         the name of the property
-	 * @param parser       the function to parse string values into list elements
-	 * @param defaultValue the default list value
-	 * @param action       the action to be performed when the property changes
-	 * @return a new ListProperty instance
-	 */
-	public <E> ListProperty<E> newListProperty(String name, Function<String, E> parser, List<E> defaultValue,
-			Action<List<E>> action) {
-		return newProperty(name, (s, n) -> new ListProperty<E>(s, n, parser, defaultValue));
-	}
-
-	/**
-	 * New object property.
-	 *
-	 * @param <E>          the element type
-	 * @param name         the name
-	 * @param deserializer the deserializer
-	 * @param serializer   the serializer
-	 * @return the object property
-	 */
-	public <E> ObjectProperty<E> newObjectProperty(String name, Deserializer<E> deserializer,
-			Serializer<E> serializer) {
-		return newProperty(name, (s, n) -> new ObjectProperty<E>(s, n, deserializer, serializer));
-	}
-
-	/**
-	 * New object property.
-	 *
-	 * @param <E>          the element type
-	 * @param name         the name
-	 * @param deserializer the deserializer
-	 * @param serializer   the serializer
-	 * @param value        the value
-	 * @return the object property
-	 */
-	public <E> ObjectProperty<E> newObjectProperty(String name, Deserializer<E> deserializer,
-			Serializer<E> serializer, E value) {
-		return newProperty(name, (s, n) -> new ObjectProperty<E>(s, n, deserializer, serializer, value));
-	}
-
-	/**
-	 * New array property.
-	 *
-	 * @param <E>          the element type
-	 * @param name         the name
-	 * @param deserializer the deserializer
-	 * @param serializer   the serializer
-	 * @param arrayFactory the array factory
-	 * @return the array property
-	 */
-	public <E> ArrayProperty<E> newArrayProperty(String name, Deserializer<E> deserializer,
-			Serializer<E> serializer, IntFunction<E[]> arrayFactory) {
-		return newProperty(name, (s, n) -> new ArrayProperty<E>(s, n, deserializer, serializer, arrayFactory));
-	}
-
-	/**
-	 * New array property.
-	 *
-	 * @param <E>          the element type
-	 * @param name         the name
-	 * @param deserializer the deserializer
-	 * @param serializer   the serializer
-	 * @param arrayFactory the array factory
-	 * @param value        the value
-	 * @return the array property
-	 */
-	@SuppressWarnings("unchecked")
-	public <E> ArrayProperty<E> newArrayProperty(String name, Deserializer<E> deserializer,
-			Serializer<E> serializer, IntFunction<E[]> arrayFactory, E... value) {
-		return newProperty(name, (s, n) -> new ArrayProperty<E>(s, n, deserializer, serializer, arrayFactory, value));
-	}
-
-	/**
-	 * Creates a new long property with the specified name.
-	 *
-	 * @param name the name of the property
-	 * @return a new LongProperty instance
-	 */
-	public LongProperty newLongProperty(String name) {
-		return newProperty(name, LongProperty::new);
-	}
-
-	/**
-	 * Creates a new long property with the specified name and default value.
-	 *
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return a new LongProperty instance
-	 */
-	public LongProperty newLongProperty(String name, long defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Creates or retrieves a property with the specified name using a factory
-	 * function.
-	 *
-	 * @param <T>      the type of the property value
-	 * @param <P_BASE> the type of the property
-	 * @param name     the name of the property
-	 * @param factory  the factory function to create the property if it doesn't
-	 *                 exist
-	 * @return the existing or newly created property
-	 */
-	public <T, P_BASE extends Property<T, P_BASE>> P_BASE newProperty(String name, PropertyFactory<P_BASE> factory) {
-		name = createPropertyName(name);
-
-		P_BASE p = findProperty(name);
-		if (p != null)
-			return p;
-
-		P_BASE property = Property.of(settingsSupport, name, factory);
-		properties.add(property);
-		return property;
-	}
-
-	/**
-	 * Creates or retrieves a property with the specified name and default value.
-	 *
-	 * @param <T>          the type of the property value
-	 * @param <P_BASE>     the type of the property
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return the existing or newly created property
-	 */
-	public <T, P_BASE extends Property<T, P_BASE>> P_BASE newProperty(String name, T defaultValue) {
-		name = createPropertyName(name);
-
-		P_BASE p = findProperty(name);
-		if (p != null)
-			return p;
-
-		P_BASE property = Property.of(settingsSupport, name, defaultValue);
-		properties.add(property);
-		return property;
-	}
-
-	/**
-	 * Creates or retrieves a property with the specified name, default value, and
-	 * factory.
-	 *
-	 * @param <T>          the type of the property value
-	 * @param <P_BASE>     the type of the property
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @param factory      the factory function to create the property
-	 * @return the existing or newly created property
-	 */
-	public <T, P_BASE extends Property<T, P_BASE>> P_BASE newProperty(String name,
-			T defaultValue,
-			PropertyFactoryWithValue<T, P_BASE> factory) {
-		name = createPropertyName(name);
-
-		P_BASE p = findProperty(name);
-		if (p != null)
-			return p;
-
-		P_BASE property = Property.of(settingsSupport, name, defaultValue, factory);
-		properties.add(property);
-		return property;
-	}
-
-	/**
-	 * Creates a new short property with the specified name.
-	 *
-	 * @param name the name of the property
-	 * @return a new ShortProperty instance
-	 */
-	public ShortProperty newShortProperty(String name) {
-		return newProperty(name, ShortProperty::new);
-	}
-
-	/**
-	 * Creates a new short property with the specified name and default value.
-	 *
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return a new ShortProperty instance
-	 */
-	public ShortProperty newShortProperty(String name, short defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Creates a new string property with the specified name.
-	 *
-	 * @param name the name of the property
-	 * @return a new StringProperty instance
-	 */
-	public StringProperty newStringProperty(String name) {
-		return newProperty(name, StringProperty::new);
-	}
-
-	/**
-	 * Creates a new string property with the specified name and default value.
-	 *
-	 * @param name         the name of the property
-	 * @param defaultValue the default value for the property
-	 * @return a new StringProperty instance
-	 */
-	public StringProperty newStringProperty(String name, String defaultValue) {
-		return newProperty(name, defaultValue);
-	}
-
-	/**
-	 * Registers an action to be executed when this settings instance is cleared.
-	 * The action will be triggered by the {@link #clear()} method if notifications
-	 * are enabled.
-	 *
-	 * @param action the action to execute when settings are cleared
-	 * @return this settings instance for method chaining
-	 * @see #clear()
-	 */
-	public T_BASE onClear(CleanSettingsNotification<T_BASE> action) {
-		registerClearAction(action);
-		return us;
-	}
-
-	/**
-	 * Registers an action to be executed when this settings instance is cleared,
-	 * providing registration tracking through a consumer.
-	 *
-	 * @param action       the action to execute when settings are cleared
-	 * @param registration consumer to receive the registration object for later
-	 *                     unregistration/cleanup
-	 * @return this settings instance for method chaining
-	 * @see #clear()
-	 */
-	public T_BASE onClear(CleanSettingsNotification<T_BASE> action, Consumer<Registration> registration) {
-		var reg = registerClearAction(action);
-		registration.accept(reg);
-		return us;
-	}
-
-	/**
-	 * Registers an action to be executed when this settings instance is reset. The
-	 * action will be triggered by the {@link #reset()} method if notifications are
-	 * enabled.
-	 *
-	 * @param action the action to execute when settings are reset
-	 * @return this settings instance for method chaining
-	 * @see #reset()
-	 */
-	public T_BASE onReset(ResetSettingsNotification<T_BASE> action) {
-		registerResetAction(action);
-		return us;
-	}
-
-	/**
-	 * Registers an action to be executed when this settings instance is reset,
-	 * providing registration tracking through a consumer.
-	 *
-	 * @param action       the action to execute when settings are reset
-	 * @param registration consumer to receive the registration object for later
-	 *                     unregistration/cleanup
-	 * @return this settings instance for method chaining
-	 * @see #reset()
-	 */
-	public T_BASE onReset(ResetSettingsNotification<T_BASE> action, Consumer<Registration> registration) {
-		var reg = registerResetAction(action);
-		registration.accept(reg);
-		return us;
-	}
-
-	/**
-	 * Registers a clear action and returns a Registration object that can be used
-	 * to unregister the action later.
-	 *
-	 * @param action the action to register for clear notifications
-	 * @return a Registration object that can be used to unregister the action
-	 */
-	public Registration registerClearAction(CleanSettingsNotification<T_BASE> action) {
-		clearActions.add(action);
-		return () -> clearActions.remove(action);
-	}
-
-	/**
-	 * Registers a reset action and returns a Registration object that can be used
-	 * to unregister the action later.
-	 *
-	 * @param action the action to register for reset notifications
-	 * @return a Registration object that can be used to unregister the action
-	 */
-	public Registration registerResetAction(ResetSettingsNotification<T_BASE> action) {
-		resetActions.add(action);
-		return () -> resetActions.remove(action);
-	}
-
-	/**
-	 * Resets all properties in this settings instance to their original default
-	 * values. Properties that have no default value will be cleared. This operation
-	 * triggers any registered reset notifications if property change notifications
-	 * are enabled.
-	 * 
-	 * @return this settings instance for method chaining
-	 * @see #onReset(ResetSettingsNotification)
-	 */
-	public T_BASE reset() {
-		for (var p : properties) {
-			p.reset();
-		}
-
-		if (settingsSupport.enableFireEvents)
-			resetActions.forEach(a -> a.onResetSettings(us));
-
-		return us;
-	}
-
-	/**
-	 * Returns a string representation of this Settings instance, including its name
-	 * and a subset of its properties (limited to 10 for readability).
-	 *
-	 * @return a string representation of this Settings instance
-	 */
-	@Override
-	public String toString() {
-		final int maxLen = 10;
-		return name()
-				+ " [properties=" + (properties != null ? properties.subList(0, Math.min(properties.size(),
-						maxLen)) : null) + "]";
-	}
-
-	/**
-	 * Update all property listeners by firing change notifications for all
-	 * non-empty properties. This can be used to reinitialize listeners after
-	 * enabling updates. Only fires events if updates are enabled.
-	 */
-	public synchronized void updateAllActions() {
-		if (settingsSupport.enableFireEvents == false)
-			return;
-
-		properties.stream()
-				.filter(Property::isPresent)
-				.forEach(this::fireForProperty);
-	}
+public abstract class Settings {
+
+    // =========================================================================
+    // Static Domain Registry
+    // =========================================================================
+
+    /** Domain → registered Settings instances. */
+    private static final Map<String, Set<Settings>> registry = new ConcurrentHashMap<>();
+
+    /** Domain → current session properties (replaced on each load). */
+    private static final Map<String, Properties> global = new ConcurrentHashMap<>();
+
+    /** Domain → layered defaults (compounded on each loadDefaults). */
+    private static final Map<String, Properties> defaults = new ConcurrentHashMap<>();
+
+    /**
+     * Loads default properties for a domain, layering on any previous defaults.
+     * 
+     * <p>
+     * Call order matters: SDK defaults first, then application defaults, then
+     * user preferences. Each subsequent call layers on top of the previous,
+     * with later values taking precedence.
+     * </p>
+     * 
+     * <pre>{@code
+     * // SDK defaults (lowest priority)
+     * Settings.loadDefaults(Sdk.class.getResourceAsStream("/defaults.properties"), "capture");
+     * 
+     * // User preferences (highest priority)
+     * Settings.loadDefaults(new FileInputStream(userPrefs), "capture");
+     * }</pre>
+     *
+     * @param in     the input stream to read properties from
+     * @param domain the domain to load defaults for
+     * @throws IOException if an I/O error occurs
+     */
+    public static void loadDefaults(InputStream in, String domain) throws IOException {
+        Objects.requireNonNull(in, "input stream cannot be null");
+        Objects.requireNonNull(domain, "domain cannot be null");
+
+        Properties oldDefaults = defaults.get(domain);
+        Properties newDefaults = new Properties(oldDefaults); // old as parent
+        newDefaults.load(in);
+        defaults.put(domain, newDefaults);
+
+        // Invalidate caches for all properties in this domain
+        invalidateDomainCaches(domain);
+    }
+
+    /**
+     * Loads default properties for a domain from a file.
+     * 
+     * <p>
+     * Convenience method that opens a FileInputStream for the specified file.
+     * </p>
+     *
+     * @param file   the file to read properties from
+     * @param domain the domain to load defaults for
+     * @throws IOException if an I/O error occurs
+     * @see #loadDefaults(InputStream, String)
+     */
+    public static void loadDefaults(File file, String domain) throws IOException {
+        try (InputStream in = new FileInputStream(file)) {
+            loadDefaults(in, domain);
+        }
+    }
+
+    /**
+     * Loads session properties for a domain, replacing any previous load.
+     * 
+     * <p>
+     * The loaded properties use the domain's defaults chain as a fallback.
+     * Unlike {@link #loadDefaults}, multiple calls to load() replace rather
+     * than layer.
+     * </p>
+     *
+     * @param in     the input stream to read properties from
+     * @param domain the domain to load properties for
+     * @throws IOException if an I/O error occurs
+     */
+    public static void load(InputStream in, String domain) throws IOException {
+        Objects.requireNonNull(in, "input stream cannot be null");
+        Objects.requireNonNull(domain, "domain cannot be null");
+
+        Properties domainDefaults = defaults.get(domain);
+        Properties props = new Properties(domainDefaults); // defaults as parent
+        props.load(in);
+        global.put(domain, props); // replaces any previous
+
+        // Invalidate caches for all properties in this domain
+        invalidateDomainCaches(domain);
+    }
+
+    /**
+     * Loads session properties for a domain from a file.
+     *
+     * @param file   the file to read properties from
+     * @param domain the domain to load properties for
+     * @throws IOException if an I/O error occurs
+     * @see #load(InputStream, String)
+     */
+    public static void load(File file, String domain) throws IOException {
+        try (InputStream in = new FileInputStream(file)) {
+            load(in, domain);
+        }
+    }
+
+    /**
+     * Saves all non-transient properties in a domain to an output stream.
+     * 
+     * <p>
+     * Properties are written with their comments. Settings with comments are
+     * written with a header comment. Transient properties are excluded.
+     * </p>
+     *
+     * @param out    the output stream to write to
+     * @param domain the domain to save
+     * @throws IOException if an I/O error occurs
+     */
+    public static void save(OutputStream out, String domain) throws IOException {
+        Objects.requireNonNull(out, "output stream cannot be null");
+        Objects.requireNonNull(domain, "domain cannot be null");
+
+        Set<Settings> domainSettings = registry.get(domain);
+        if (domainSettings == null || domainSettings.isEmpty()) {
+            return;
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
+
+            // Write file header
+            writer.write("# Domain: ");
+            writer.write(domain);
+            writer.newLine();
+            writer.write("# Generated: ");
+            writer.write(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            writer.newLine();
+            writer.newLine();
+
+            // Write each settings instance
+            for (Settings settings : domainSettings) {
+                writeSettings(writer, settings);
+            }
+        }
+    }
+
+    /**
+     * Saves all non-transient properties in a domain to a file.
+     *
+     * @param file   the file to write to
+     * @param domain the domain to save
+     * @throws IOException if an I/O error occurs
+     * @see #save(OutputStream, String)
+     */
+    public static void save(File file, String domain) throws IOException {
+        try (OutputStream out = new FileOutputStream(file)) {
+            save(out, domain);
+        }
+    }
+
+    /**
+     * Writes a single Settings instance to the output.
+     */
+    private static void writeSettings(BufferedWriter writer, Settings settings) throws IOException {
+        // Settings header comment
+        writer.write("# ");
+        writer.write(settings.getClass().getSimpleName());
+        writer.newLine();
+
+        if (settings.comment != null && !settings.comment.isEmpty()) {
+            writer.write("# ");
+            writer.write(settings.comment);
+            writer.newLine();
+        }
+        writer.newLine();
+
+        // Write properties
+        for (Property<?> property : settings.properties) {
+            if (property.isTransient()) {
+                continue;
+            }
+
+            // Property comment
+            if (property.comment() != null && !property.comment().isEmpty()) {
+                writer.write("# ");
+                writer.write(property.comment());
+                writer.newLine();
+            }
+
+            // Property value
+            writer.write(property.name());
+            writer.write("=");
+            writer.write(property.getAsString());
+            writer.newLine();
+        }
+
+        writer.newLine();
+    }
+
+    /**
+     * Gets a property value from the domain's property chain.
+     * 
+     * <p>
+     * Resolution order: global → defaults chain (via Properties parent).
+     * </p>
+     *
+     * @param domain the domain to look up
+     * @param name   the property name
+     * @return the property value, or null if not found
+     */
+    static String getProperty(String domain, String name) {
+        // Check global first (includes defaults via parent chain)
+        Properties props = global.get(domain);
+        if (props != null) {
+            String value = props.getProperty(name);
+            if (value != null) {
+                return value;
+            }
+        }
+
+        // Fall back to defaults only (if no global loaded)
+        props = defaults.get(domain);
+        return props != null ? props.getProperty(name) : null;
+    }
+
+    /**
+     * Invalidates caches for all properties in the specified domain.
+     */
+    private static void invalidateDomainCaches(String domain) {
+        Set<Settings> domainSettings = registry.get(domain);
+        if (domainSettings != null) {
+            for (Settings settings : domainSettings) {
+                for (Property<?> property : settings.properties) {
+                    property.invalidateCache();
+                }
+            }
+        }
+    }
+
+    /**
+     * Clears all loaded properties and defaults for a domain.
+     * 
+     * <p>
+     * Does not unregister Settings instances; they remain registered but
+     * will resolve to their coded defaults.
+     * </p>
+     *
+     * @param domain the domain to clear
+     */
+    public static void clear(String domain) {
+        global.remove(domain);
+        defaults.remove(domain);
+        invalidateDomainCaches(domain);
+    }
+
+    /**
+     * Returns an unmodifiable view of all registered settings for a domain.
+     *
+     * @param domain the domain to query
+     * @return set of registered settings, or empty set if none
+     */
+    public static Set<Settings> getSettings(String domain) {
+        Set<Settings> domainSettings = registry.get(domain);
+        return domainSettings != null 
+            ? Collections.unmodifiableSet(domainSettings)
+            : Collections.emptySet();
+    }
+
+    // =========================================================================
+    // Instance Fields
+    // =========================================================================
+
+    /** The domain this settings belongs to, or null for standalone. */
+    private final String domain;
+
+    /** The base name prefix for all properties in this settings instance. */
+    private final String baseName;
+
+    /** List of all properties for serialization support. */
+    private final List<Property<?>> properties;
+
+    /** Optional comment describing this settings instance. */
+    private String comment;
+
+    // =========================================================================
+    // Constructors
+    // =========================================================================
+
+    /**
+     * Constructs a standalone Settings instance with no domain registration.
+     * 
+     * <p>
+     * Standalone settings do not participate in domain-based save/load operations.
+     * Properties will not resolve from loaded config files.
+     * </p>
+     *
+     * @param baseName the base name prefix for properties
+     * @throws NullPointerException if baseName is null
+     */
+    protected Settings(String baseName) {
+        this(null, baseName);
+    }
+
+    /**
+     * Constructs a Settings instance registered with the specified domain.
+     * 
+     * <p>
+     * The base name forms the prefix for all property names. The domain
+     * determines which config files properties are loaded from and saved to.
+     * </p>
+     *
+     * @param domain   the domain for grouping (e.g., "ui", "capture"), or null for standalone
+     * @param baseName the base name prefix for properties (e.g., "window", "tcp.reassembly")
+     * @throws NullPointerException if baseName is null
+     */
+    protected Settings(String domain, String baseName) {
+        Objects.requireNonNull(baseName, "baseName cannot be null");
+
+        // Normalize: ensure no trailing dot
+        this.baseName = baseName.endsWith(".")
+            ? baseName.substring(0, baseName.length() - 1)
+            : baseName;
+        this.domain = domain;
+        this.properties = new ArrayList<>();
+
+        // Register with domain
+        if (domain != null) {
+            registry.computeIfAbsent(domain, k -> ConcurrentHashMap.newKeySet())
+                    .add(this);
+        }
+    }
+
+    // =========================================================================
+    // Instance Methods
+    // =========================================================================
+
+    /**
+     * Returns the domain this settings belongs to.
+     *
+     * @return the domain name, or null if standalone
+     */
+    public final String domain() {
+        return domain;
+    }
+
+    /**
+     * Returns the base name prefix for this settings instance.
+     *
+     * @return the base name, never null
+     */
+    public final String baseName() {
+        return baseName;
+    }
+
+    /**
+     * Returns an unmodifiable view of all properties in this settings instance.
+     *
+     * @return unmodifiable list of properties
+     */
+    public final List<Property<?>> properties() {
+        return Collections.unmodifiableList(properties);
+    }
+
+    /**
+     * Returns the comment for this settings instance.
+     *
+     * @return the comment, or null if not set
+     */
+    public final String comment() {
+        return comment;
+    }
+
+    /**
+     * Sets a comment describing this settings instance.
+     * 
+     * <p>
+     * Comments are written to configuration files as a header above this
+     * settings' properties.
+     * </p>
+     *
+     * @param comment the comment text
+     * @return this settings instance for method chaining
+     */
+    public Settings setComment(String comment) {
+        this.comment = comment;
+        return this;
+    }
+
+    /**
+     * Creates the fully qualified property name by combining the base name
+     * with the property name.
+     *
+     * @param propertyName the property name (e.g., "timeout")
+     * @return the fully qualified name (e.g., "tcp.reassembly.timeout")
+     */
+    private String qualifiedName(String propertyName) {
+        return baseName + "." + propertyName;
+    }
+
+    /**
+     * Registers a property with this settings instance.
+     *
+     * @param <P>      the property type
+     * @param property the property to register
+     * @return the same property for method chaining
+     */
+    private <P extends Property<?>> P register(P property) {
+        properties.add(property);
+        return property;
+    }
+
+    /**
+     * Resets all properties to their default values.
+     */
+    public void reset() {
+        for (Property<?> property : properties) {
+            property.reset();
+        }
+    }
+
+    // =========================================================================
+    // Property Factory Methods
+    // =========================================================================
+
+    /**
+     * Creates a new integer property with the specified name and default value.
+     *
+     * @param name         the property name (e.g., "timeout")
+     * @param defaultValue the default value
+     * @return a new IntProperty instance
+     */
+    protected final IntProperty intProperty(String name, int defaultValue) {
+        return register(new IntProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new long property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new LongProperty instance
+     */
+    protected final LongProperty longProperty(String name, long defaultValue) {
+        return register(new LongProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new boolean property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new BooleanProperty instance
+     */
+    protected final BooleanProperty booleanProperty(String name, boolean defaultValue) {
+        return register(new BooleanProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new string property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value (may be null)
+     * @return a new StringProperty instance
+     */
+    protected final StringProperty stringProperty(String name, String defaultValue) {
+        return register(new StringProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new double property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new DoubleProperty instance
+     */
+    protected final DoubleProperty doubleProperty(String name, double defaultValue) {
+        return register(new DoubleProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new float property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new FloatProperty instance
+     */
+    protected final FloatProperty floatProperty(String name, float defaultValue) {
+        return register(new FloatProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new enum property with the specified name and default value.
+     *
+     * @param <E>          the enum type
+     * @param name         the property name
+     * @param defaultValue the default value (also determines the enum type)
+     * @return a new EnumProperty instance
+     */
+    protected final <E extends Enum<E>> EnumProperty<E> enumProperty(String name, E defaultValue) {
+        return register(new EnumProperty<>(qualifiedName(name), defaultValue, domain));
+    }
+
+    // =========================================================================
+    // Object Methods
+    // =========================================================================
+
+    /**
+     * Returns a string representation of this settings instance.
+     *
+     * @return string representation including class name, domain, and base name
+     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getClass().getSimpleName());
+        sb.append("[");
+        if (domain != null) {
+            sb.append("domain=").append(domain).append(", ");
+        }
+        sb.append("baseName=").append(baseName);
+        sb.append("]");
+        return sb.toString();
+    }
+
+    /**
+     * Returns a detailed string representation including all property values.
+     *
+     * @return detailed string with all properties
+     */
+    public String toDetailedString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getClass().getSimpleName());
+        sb.append("[");
+        if (domain != null) {
+            sb.append("domain=").append(domain).append(", ");
+        }
+        sb.append("baseName=").append(baseName);
+        sb.append("] {\n");
+        for (Property<?> property : properties) {
+            sb.append("  ").append(property.toString()).append("\n");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
 }
