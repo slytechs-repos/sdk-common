@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,17 +15,24 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-module com.slytechs.sdk.common {
-    exports com.slytechs.sdk.common.memory;
-    exports com.slytechs.sdk.common.format;
-    exports com.slytechs.sdk.common.time;
-    exports com.slytechs.sdk.common.foreign;
-    exports com.slytechs.sdk.common.util;
-    exports com.slytechs.sdk.common.util.function;
-    exports com.slytechs.sdk.common.util.collection;
-    exports com.slytechs.sdk.common.settings;
-    exports com.slytechs.sdk.common.detail;
-    exports com.slytechs.sdk.common.detail.render;
+package com.slytechs.sdk.common.util.function;
 
-    requires java.logging;
+/**
+ * A function from T to int that may throw an exception.
+ *
+ * @param <T> the type of the input to the function
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ */
+@FunctionalInterface
+public interface ThrowingToIntFunction<T> {
+    
+    /**
+	 * Apply as int.
+	 *
+	 * @param value the value
+	 * @return the int
+	 * @throws Exception the exception
+	 */
+    int applyAsInt(T value) throws Exception;
 }
