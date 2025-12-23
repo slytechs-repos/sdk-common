@@ -23,6 +23,7 @@ package com.slytechs.jnet.core.api.format;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
+@Deprecated
 public interface StructFormattable {
 
 	/**
@@ -31,6 +32,7 @@ public interface StructFormattable {
 	 * @param ssb the ssb
 	 * @return the struct format
 	 */
+	@Deprecated
 	default StructFormat format(StructFormat ssb) {
 		ssb.append(toString());
 
