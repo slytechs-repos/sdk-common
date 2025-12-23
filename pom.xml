@@ -3,18 +3,31 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     
-    <parent>
-        <groupId>com.slytechs.jnet</groupId>
-        <artifactId>jnet-sdk-parent</artifactId>
-        <version>0.2.0-SNAPSHOT</version>
-        <relativePath>../jnet-sdk/pom.xml</relativePath> 
-    </parent>
-    
-    <groupId>com.slytechs.jnet.core</groupId>
-    <artifactId>core-api</artifactId>
-    <name>Core SDK - Core API</name>
+    <groupId>com.slytechs.sdk</groupId>
+    <artifactId>sdk-common</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <name>SDK Common</name>
     <description>Core network utilities and packages</description>
+    
+    <properties>
+        <maven.compiler.source>22</maven.compiler.source>
+        <maven.compiler.target>22</maven.compiler.target>
+        <maven.compiler.release>22</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.slytechs.sdk</groupId>
+                <artifactId>sdk-bom</artifactId>
+                <version>3.0.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -30,7 +43,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>
-                        --add-opens com.slytechs.jnet.core.api/com.slytechs.jnet.core.api.memory=ALL-UNNAMED
+                        --add-opens com.slytechs.sdk.common/com.slytechs.sdk.common.memory=ALL-UNNAMED
                     </argLine>
                 </configuration>
             </plugin>
