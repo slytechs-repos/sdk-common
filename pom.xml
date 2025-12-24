@@ -34,6 +34,11 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+		    <groupId>com.cryptlex.lexactivator</groupId>
+		    <artifactId>lexactivator</artifactId>
+		</dependency>
+
     </dependencies>
 
     <build>
