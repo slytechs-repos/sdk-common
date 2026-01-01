@@ -30,14 +30,14 @@ import java.util.function.Consumer;
  * High-performance buffer for native memory with ByteBuffer-like semantics.
  * 
  * <p>
- * ByteBuf provides concrete buffer state management and byte-level data access.
+ * MemoryBuffer provides concrete buffer state management and byte-level data access.
  * It implements BindableView for memory binding and serves as the foundation
  * for composite buffer types while maintaining zero-allocation operation.
  * </p>
  * 
  * <h2>Architecture</h2>
  * <p>
- * ByteBuf provides core buffer functionality:
+ * MemoryBuffer provides core buffer functionality:
  * </p>
  * <ul>
  * <li><strong>Buffer state:</strong> Contains concrete
@@ -64,7 +64,7 @@ import java.util.function.Consumer;
  * 
  * <h2>Error Accumulation Pattern</h2>
  * <p>
- * Unlike traditional buffers that throw exceptions immediately, ByteBuf
+ * Unlike traditional buffers that throw exceptions immediately, MemoryBuffer
  * accumulates errors to maintain performance in high-frequency processing
  * pipelines. Errors are checked at strategic boundaries rather than on every
  * operation:
@@ -93,7 +93,7 @@ import java.util.function.Consumer;
  * 
  * <pre>{@code
  * // Static allocation
- * ByteBuf buffer = ByteBuf.allocate(1024);
+ * MemoryBuffer buffer = MemoryBuffer.allocate(1024);
  * 
  * // Dynamic binding to existing memory
  * Memory memory = getMemoryFromPool();
@@ -109,14 +109,14 @@ import java.util.function.Consumer;
  * 
  * <h2>Composition Pattern Support</h2>
  * <p>
- * ByteBuf supports composite buffers that extend MemoryBuf. Composite types
+ * MemoryBuffer supports composite buffers that extend ChainedBuffer. Composite types
  * delegate buffer management operations while providing type-specific
  * operations:
  * </p>
  * 
  * <pre>{@code
- * // ByteBuf provides concrete implementation
- * ByteBuf byteBuf = ByteBuf.allocate(1024);
+ * // MemoryBuffer provides concrete implementation
+ * MemoryBuffer byteBuf = MemoryBuffer.allocate(1024);
  * 
  * // Composite buffers delegate operations
  * BlockBuf blockBuf = new BlockBuf(byteBuf);
@@ -145,19 +145,19 @@ import java.util.function.Consumer;
  * 
  * <h2>Thread Safety</h2>
  * <p>
- * ByteBuf is NOT thread-safe. Each thread should maintain its own buffer
+ * MemoryBuffer is NOT thread-safe. Each thread should maintain its own buffer
  * instance. The underlying memory's reference counting is thread-safe, allowing
  * multiple buffers to safely bind to the same memory from different threads.
  * </p>
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see MemoryBuf for abstract base with delegation pattern
+ * @see ChainedBuffer for abstract base with delegation pattern
  * @see BindableView for memory binding interface
  * @see Memory for memory lifecycle management
  * @since 1.0
  */
-public class ByteBuf extends MemoryBuf implements BindableView {
+public class MemoryBuffer extends ChainedBuffer implements BindableView {
 
 	// ==================== VarHandle Optimization ====================
 
@@ -199,21 +199,21 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	// ==================== Static Factory Methods ====================
 
 	/**
-	 * Allocates a new ByteBuf with the specified size in bytes.
+	 * Allocates a new MemoryBuffer with the specified size in bytes.
 	 */
-	public static ByteBuf allocate(long byteSize) {
+	public static MemoryBuffer allocate(long byteSize) {
 		var mem = new FixedMemory(Arena.ofAuto().allocate(byteSize));
-		var buf = new ByteBuf();
+		var buf = new MemoryBuffer();
 		buf.bind(mem);
 		return buf;
 	}
 
 	/**
-	 * Allocates a new ByteBuf with the specified size using the provided Arena.
+	 * Allocates a new MemoryBuffer with the specified size using the provided Arena.
 	 */
-	public static ByteBuf allocate(long byteSize, Arena arena) {
+	public static MemoryBuffer allocate(long byteSize, Arena arena) {
 		var mem = new FixedMemory(arena.allocate(byteSize));
-		var buf = new ByteBuf();
+		var buf = new MemoryBuffer();
 		buf.bind(mem);
 		return buf;
 	}
@@ -221,16 +221,16 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	// ==================== Constructors ====================
 
 	/**
-	 * Constructs an unbound ByteBuf.
+	 * Constructs an unbound MemoryBuffer.
 	 */
-	public ByteBuf() {
+	public MemoryBuffer() {
 		super(null); // Terminal doesn't need delegation
 	}
 
 	/**
-	 * Constructs a ByteBuf bound to a segment.
+	 * Constructs a MemoryBuffer bound to a segment.
 	 */
-	public ByteBuf(MemorySegment segment) {
+	public MemoryBuffer(MemorySegment segment) {
 		super(null); // Terminal doesn't need delegation
 		bind(Memory.of(segment, 0, segment.byteSize()));
 	}
@@ -258,7 +258,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	// ==================== Terminal Overrides ====================
 
 	@Override
-	public ByteBuf asByteBuf() {
+	public MemoryBuffer asByteBuf() {
 		return this; // Terminal returns itself
 	}
 
@@ -275,7 +275,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf position(long newPosition) {
+	public MemoryBuffer position(long newPosition) {
 		if (hasError())
 			return this;
 		if (newPosition < 0 || newPosition > limit) {
@@ -296,7 +296,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf limit(long newLimit) {
+	public MemoryBuffer limit(long newLimit) {
 		if (hasError())
 			return this;
 		if (newLimit < 0 || newLimit > capacity()) {
@@ -315,13 +315,13 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf mark() {
+	public MemoryBuffer mark() {
 		mark = position;
 		return this;
 	}
 
 	@Override
-	public ByteBuf reset() {
+	public MemoryBuffer reset() {
 		if (hasError())
 			return this;
 		if (mark < 0) {
@@ -333,7 +333,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf rewind() {
+	public MemoryBuffer rewind() {
 		if (hasError())
 			return this;
 		position = 0;
@@ -342,7 +342,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf clear() {
+	public MemoryBuffer clear() {
 		if (hasError())
 			return this;
 		position = 0;
@@ -352,7 +352,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf flip() {
+	public MemoryBuffer flip() {
 		if (hasError())
 			return this;
 		limit = position;
@@ -372,7 +372,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf skip(long n) {
+	public MemoryBuffer skip(long n) {
 		if (hasError())
 			return this;
 		if (n < 0) {
@@ -403,7 +403,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf adjustPosition(long delta) {
+	public MemoryBuffer adjustPosition(long delta) {
 		if (hasError())
 			return this;
 
@@ -435,7 +435,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf backup(long n) {
+	public MemoryBuffer backup(long n) {
 		if (hasError())
 			return this;
 		if (n < 0) {
@@ -455,7 +455,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf compact() {
+	public MemoryBuffer compact() {
 		if (hasError())
 			return this;
 		// Compact operation would move remaining data to beginning
@@ -464,7 +464,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf ensureRemaining(long required) {
+	public MemoryBuffer ensureRemaining(long required) {
 		if (hasError())
 			return this;
 		if (remaining() < required) {
@@ -487,13 +487,13 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf clearError() {
+	public MemoryBuffer clearError() {
 		this.error = null;
 		return this;
 	}
 
 	@Override
-	public ByteBuf ifError(Consumer<BufferOperationException> monitor) {
+	public MemoryBuffer ifError(Consumer<BufferOperationException> monitor) {
 		if (hasError()) {
 			try {
 				monitor.accept((BufferOperationException) error);
@@ -507,7 +507,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf onError(BiConsumer<? super MemoryBuf, BufferOperationException> handler) {
+	public MemoryBuffer onError(BiConsumer<? super ChainedBuffer, BufferOperationException> handler) {
 		if (hasError()) {
 			try {
 				handler.accept(this, (BufferOperationException) error);
@@ -521,7 +521,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	@Override
-	public ByteBuf orElseThrow() throws BufferOperationException {
+	public MemoryBuffer orElseThrow() throws BufferOperationException {
 		if (hasError()) {
 			BufferOperationException e = (BufferOperationException) error;
 			error = null;
@@ -655,7 +655,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Reads bytes into array.
 	 */
-	public ByteBuf get(byte[] dst) {
+	public MemoryBuffer get(byte[] dst) {
 		if (dst == null) {
 			setError(new BufferOperationException("Destination array is null"));
 			return this;
@@ -666,7 +666,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Reads bytes into array portion.
 	 */
-	public ByteBuf get(byte[] dst, int offset, int length) {
+	public MemoryBuffer get(byte[] dst, int offset, int length) {
 		if (hasError())
 			return this;
 
@@ -703,7 +703,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Fills the memory buffer between position and limit with fillValue.
 	 */
-	public ByteBuf fill(byte fillValue) {
+	public MemoryBuffer fill(byte fillValue) {
 		if (position == 0 && limit == capacity())
 			view().segment
 					.fill(fillValue);
@@ -999,7 +999,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a byte at the current position.
 	 */
-	public ByteBuf put(byte value) {
+	public MemoryBuffer put(byte value) {
 		if (hasError())
 			return this;
 		if (remaining() < 1) {
@@ -1015,7 +1015,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a byte array.
 	 */
-	public ByteBuf put(byte[] src) {
+	public MemoryBuffer put(byte[] src) {
 		if (src == null) {
 			setError(new BufferOperationException("Source array is null"));
 			return this;
@@ -1026,7 +1026,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a portion of a byte array.
 	 */
-	public ByteBuf put(byte[] src, int offset, int length) {
+	public MemoryBuffer put(byte[] src, int offset, int length) {
 		if (hasError())
 			return this;
 
@@ -1061,9 +1061,9 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	/**
-	 * Writes from another ByteBuf.
+	 * Writes from another MemoryBuffer.
 	 */
-	public ByteBuf put(ByteBuf src) {
+	public MemoryBuffer put(MemoryBuffer src) {
 		if (src == null) {
 			setError(new BufferOperationException("Source buffer is null"));
 			return this;
@@ -1072,9 +1072,9 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	}
 
 	/**
-	 * Writes a portion of another ByteBuf.
+	 * Writes a portion of another MemoryBuffer.
 	 */
-	public ByteBuf put(ByteBuf src, long offset, long length) {
+	public MemoryBuffer put(MemoryBuffer src, long offset, long length) {
 		if (hasError())
 			return this;
 
@@ -1116,7 +1116,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a short at the current position.
 	 */
-	public ByteBuf putShort(short value) {
+	public MemoryBuffer putShort(short value) {
 		if (hasError())
 			return this;
 		if (remaining() < 2) {
@@ -1132,7 +1132,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes an int at the current position.
 	 */
-	public ByteBuf putInt(int value) {
+	public MemoryBuffer putInt(int value) {
 		if (hasError())
 			return this;
 		if (remaining() < 4) {
@@ -1148,7 +1148,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a long at the current position.
 	 */
-	public ByteBuf putLong(long value) {
+	public MemoryBuffer putLong(long value) {
 		if (hasError())
 			return this;
 		if (remaining() < 8) {
@@ -1164,7 +1164,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a float at the current position.
 	 */
-	public ByteBuf putFloat(float value) {
+	public MemoryBuffer putFloat(float value) {
 		if (hasError())
 			return this;
 		if (remaining() < 4) {
@@ -1180,7 +1180,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a double at the current position.
 	 */
-	public ByteBuf putDouble(double value) {
+	public MemoryBuffer putDouble(double value) {
 		if (hasError())
 			return this;
 		if (remaining() < 8) {
@@ -1196,7 +1196,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a char at the current position.
 	 */
-	public ByteBuf putChar(char value) {
+	public MemoryBuffer putChar(char value) {
 		if (hasError())
 			return this;
 		if (remaining() < 2) {
@@ -1214,7 +1214,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a byte at the specified index.
 	 */
-	public ByteBuf put(long index, byte value) {
+	public MemoryBuffer put(long index, byte value) {
 		if (hasError())
 			return this;
 		if (index < 0 || index >= limit) {
@@ -1228,7 +1228,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a short at the specified index.
 	 */
-	public ByteBuf putShort(long index, short value) {
+	public MemoryBuffer putShort(long index, short value) {
 		if (hasError())
 			return this;
 		if (index < 0 || index + 2 > limit) {
@@ -1242,7 +1242,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes an int at the specified index.
 	 */
-	public ByteBuf putInt(long index, int value) {
+	public MemoryBuffer putInt(long index, int value) {
 		if (hasError())
 			return this;
 		if (index < 0 || index + 4 > limit) {
@@ -1256,7 +1256,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a long at the specified index.
 	 */
-	public ByteBuf putLong(long index, long value) {
+	public MemoryBuffer putLong(long index, long value) {
 		if (hasError())
 			return this;
 		if (index < 0 || index + 8 > limit) {
@@ -1270,7 +1270,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a float at the specified index.
 	 */
-	public ByteBuf putFloat(long index, float value) {
+	public MemoryBuffer putFloat(long index, float value) {
 		if (hasError())
 			return this;
 		if (index < 0 || index + 4 > limit) {
@@ -1284,7 +1284,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a double at the specified index.
 	 */
-	public ByteBuf putDouble(long index, double value) {
+	public MemoryBuffer putDouble(long index, double value) {
 		if (hasError())
 			return this;
 		if (index < 0 || index + 8 > limit) {
@@ -1298,7 +1298,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a char at the specified index.
 	 */
-	public ByteBuf putChar(long index, char value) {
+	public MemoryBuffer putChar(long index, char value) {
 		if (hasError())
 			return this;
 		if (index < 0 || index + 2 > limit) {
@@ -1314,7 +1314,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a short in big-endian byte order.
 	 */
-	public ByteBuf putShortBE(short value) {
+	public MemoryBuffer putShortBE(short value) {
 		if (hasError())
 			return this;
 		if (remaining() < 2) {
@@ -1329,7 +1329,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes an int in big-endian byte order.
 	 */
-	public ByteBuf putIntBE(int value) {
+	public MemoryBuffer putIntBE(int value) {
 		if (hasError())
 			return this;
 		if (remaining() < 4) {
@@ -1344,7 +1344,7 @@ public class ByteBuf extends MemoryBuf implements BindableView {
 	/**
 	 * Writes a long in big-endian byte order.
 	 */
-	public ByteBuf putLongBE(long value) {
+	public MemoryBuffer putLongBE(long value) {
 		if (hasError())
 			return this;
 		if (remaining() < 8) {

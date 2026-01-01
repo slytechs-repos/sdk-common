@@ -7,18 +7,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests basic data access operations for ByteBuf. Focuses on typical
+ * Tests basic data access operations for MemoryBuffer. Focuses on typical
  * usage patterns with valid operations.
  */
 class MemoryBufferBasicAccessTest {
 
-	private ByteBuf buffer;
+	private MemoryBuffer buffer;
 	private static final int BUFFER_SIZE = 1024;
 
 	@BeforeEach
 	void setUp() {
 		Arena arena = Arena.ofAuto();
-		buffer = new ByteBuf(arena.allocate(BUFFER_SIZE));
+		buffer = new MemoryBuffer(arena.allocate(BUFFER_SIZE));
 		buffer.clear(); // Start fresh: position=0, limit=capacity
 	}
 

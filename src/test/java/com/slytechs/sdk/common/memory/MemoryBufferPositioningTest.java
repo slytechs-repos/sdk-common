@@ -44,7 +44,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class MemoryBufferPositioningTest {
 
 	private static final long BUFFER_SIZE = 1024;
-	private ByteBuf buffer;
+	private MemoryBuffer buffer;
 	private Arena arena;
 
 	@BeforeEach
@@ -52,8 +52,8 @@ class MemoryBufferPositioningTest {
 		arena = Arena.ofConfined();
 		MemorySegment segment = arena.allocate(BUFFER_SIZE);
 
-		// Create buffer without pool - data bounds match memory bounds
-		buffer = new ByteBuf(segment); // Uses entire segment
+		// Create buffer without freeListPool - data bounds match memory bounds
+		buffer = new MemoryBuffer(segment); // Uses entire segment
 	}
 
 	// ==================== Position Tests ====================
@@ -931,7 +931,7 @@ class MemoryBufferPositioningTest {
 		@Test
 		@DisplayName("Chain all positioning operations")
 		void testChainAllOperations() {
-			ByteBuf result = buffer
+			MemoryBuffer result = buffer
 					.clear() // pos=0, limit=capacity
 					.position(100) // pos=100
 					.mark() // mark=100

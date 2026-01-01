@@ -25,8 +25,8 @@ import java.util.function.Consumer;
  * Abstract base class for memory buffers with composition-based delegation.
  * 
  * <p>
- * MemoryBuf provides a base for buffer types that delegate position-based
- * operations to a ByteBuf instance. This enables specialized buffer types to
+ * ChainedBuffer provides a base for buffer types that delegate position-based
+ * operations to a MemoryBuffer instance. This enables specialized buffer types to
  * focus on their specific data operations while inheriting standard buffer
  * management through composition.
  * </p>
@@ -34,19 +34,19 @@ import java.util.function.Consumer;
  * <h2>Design Intent</h2>
  * <p>
  * This class implements a delegation pattern where buffer operations are
- * forwarded to a ByteBuf instance:
+ * forwarded to a MemoryBuffer instance:
  * </p>
  * <ul>
- * <li><strong>Concrete implementation:</strong> ByteBuf contains
+ * <li><strong>Concrete implementation:</strong> MemoryBuffer contains
  * position/limit/mark/error fields and overrides delegating methods with direct
  * implementations</li>
  * <li><strong>Composite implementation:</strong> Specialized buffer types
- * extend MemoryBuf and provide a ByteBuf via constructor for delegation</li>
+ * extend ChainedBuffer and provide a MemoryBuffer via constructor for delegation</li>
  * </ul>
  * 
  * <h2>Buffer Properties</h2>
  * <p>
- * A buffer is defined by four properties (delegated to ByteBuf):
+ * A buffer is defined by four properties (delegated to MemoryBuffer):
  * </p>
  * <ul>
  * <li><b>Capacity:</b> The total number of bytes in the buffer</li>
@@ -62,13 +62,13 @@ import java.util.function.Consumer;
  * 
  * <h2>Delegation Architecture</h2>
  * <p>
- * MemoryBuf uses constructor-injected ByteBuf for buffer operations:
+ * ChainedBuffer uses constructor-injected MemoryBuffer for buffer operations:
  * </p>
  * 
  * <pre>{@code
- * public class CustomBuffer extends MemoryBuf {
- * 	public CustomBuffer(ByteBuf byteBuf) {
- * 		super(byteBuf); // Pass ByteBuf to base
+ * public class CustomBuffer extends ChainedBuffer {
+ * 	public CustomBuffer(MemoryBuffer byteBuf) {
+ * 		super(byteBuf); // Pass MemoryBuffer to base
  * 	}
  * 
  * 	public CustomType getCustomType() {
@@ -96,24 +96,24 @@ import java.util.function.Consumer;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public abstract class MemoryBuf {
+public abstract class ChainedBuffer {
 
 	/**
-	 * The terminal ByteBuf for all delegated operations.
+	 * The terminal MemoryBuffer for all delegated operations.
 	 * 
 	 * <p>
-	 * Will be null only for ByteBuf itself, which overrides all delegating methods
+	 * Will be null only for MemoryBuffer itself, which overrides all delegating methods
 	 * with concrete implementations.
 	 * </p>
 	 */
-	protected final ByteBuf terminal;
+	protected final MemoryBuffer terminal;
 
 	/**
-	 * Constructs a MemoryBuf with a terminal ByteBuf for delegation.
+	 * Constructs a ChainedBuffer with a terminal MemoryBuffer for delegation.
 	 * 
-	 * @param terminal the terminal ByteBuf, or null for ByteBuf itself
+	 * @param terminal the terminal MemoryBuffer, or null for MemoryBuffer itself
 	 */
-	protected MemoryBuf(ByteBuf terminal) {
+	protected ChainedBuffer(MemoryBuffer terminal) {
 		this.terminal = terminal;
 	}
 
@@ -132,7 +132,7 @@ public abstract class MemoryBuf {
 	 * return itself since terminal is null.
 	 * </p>
 	 * 
-	 * @return the terminal ByteBuf
+	 * @return the terminal MemoryBuffer
 	 */
 	public ByteBuffer asByteBuffer() {
 		return terminal.asByteBuffer();
@@ -149,16 +149,16 @@ public abstract class MemoryBuf {
 	}
 
 	/**
-	 * Returns the terminal ByteBuf for byte-level operations.
+	 * Returns the terminal MemoryBuffer for byte-level operations.
 	 * 
 	 * <p>
-	 * Default implementation returns the terminal field. ByteBuf overrides to
+	 * Default implementation returns the terminal field. MemoryBuffer overrides to
 	 * return itself since terminal is null.
 	 * </p>
 	 * 
-	 * @return the terminal ByteBuf
+	 * @return the terminal MemoryBuffer
 	 */
-	public ByteBuf asByteBuf() {
+	public MemoryBuffer asByteBuf() {
 		return terminal;
 	}
 
@@ -179,7 +179,7 @@ public abstract class MemoryBuf {
 	 * @param delta the amount to adjust by (positive or negative)
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf adjustPosition(long delta) {
+	public ChainedBuffer adjustPosition(long delta) {
 		terminal.adjustPosition(delta);
 		return this;
 	}
@@ -190,7 +190,7 @@ public abstract class MemoryBuf {
 	 * @param n the number of bytes to move backward
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf backup(long n) {
+	public ChainedBuffer backup(long n) {
 		terminal.backup(n);
 		return this;
 	}
@@ -204,7 +204,7 @@ public abstract class MemoryBuf {
 	 * 
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf clear() {
+	public ChainedBuffer clear() {
 		terminal.clear();
 		return this;
 	}
@@ -214,7 +214,7 @@ public abstract class MemoryBuf {
 	 * 
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf clearError() {
+	public ChainedBuffer clearError() {
 		terminal.clearError();
 		return this;
 	}
@@ -224,7 +224,7 @@ public abstract class MemoryBuf {
 	 * 
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf compact() {
+	public ChainedBuffer compact() {
 		terminal.compact();
 		return this;
 	}
@@ -235,7 +235,7 @@ public abstract class MemoryBuf {
 	 * @param required the minimum number of bytes that must remain
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf ensureRemaining(long required) {
+	public ChainedBuffer ensureRemaining(long required) {
 		terminal.ensureRemaining(required);
 		return this;
 	}
@@ -250,7 +250,7 @@ public abstract class MemoryBuf {
 	 * 
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf flip() {
+	public ChainedBuffer flip() {
 		terminal.flip();
 		return this;
 	}
@@ -288,7 +288,7 @@ public abstract class MemoryBuf {
 	 * @param monitor the action to execute if an error exists
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf ifError(Consumer<BufferOperationException> monitor) {
+	public ChainedBuffer ifError(Consumer<BufferOperationException> monitor) {
 		terminal.ifError(monitor);
 		return this;
 	}
@@ -308,7 +308,7 @@ public abstract class MemoryBuf {
 	 * @param newLimit the new limit value
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf limit(long newLimit) {
+	public ChainedBuffer limit(long newLimit) {
 		terminal.limit(newLimit);
 		return this;
 	}
@@ -318,7 +318,7 @@ public abstract class MemoryBuf {
 	 * 
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf mark() {
+	public ChainedBuffer mark() {
 		terminal.mark();
 		return this;
 	}
@@ -329,7 +329,7 @@ public abstract class MemoryBuf {
 	 * @param handler the error handler receiving (buffer, error)
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf onError(BiConsumer<? super MemoryBuf, BufferOperationException> handler) {
+	public ChainedBuffer onError(BiConsumer<? super ChainedBuffer, BufferOperationException> handler) {
 		terminal.onError((buf, err) -> handler.accept(this, err));
 		return this;
 	}
@@ -340,7 +340,7 @@ public abstract class MemoryBuf {
 	 * @return this buffer if no error is accumulated
 	 * @throws BufferOperationException if an error has been accumulated
 	 */
-	public MemoryBuf orElseThrow() throws BufferOperationException {
+	public ChainedBuffer orElseThrow() throws BufferOperationException {
 		terminal.orElseThrow();
 		return this;
 	}
@@ -360,7 +360,7 @@ public abstract class MemoryBuf {
 	 * @param newPosition the new position value
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf position(long newPosition) {
+	public ChainedBuffer position(long newPosition) {
 		terminal.position(newPosition);
 		return this;
 	}
@@ -379,7 +379,7 @@ public abstract class MemoryBuf {
 	 * 
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf reset() {
+	public ChainedBuffer reset() {
 		terminal.reset();
 		return this;
 	}
@@ -393,7 +393,7 @@ public abstract class MemoryBuf {
 	 * 
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf rewind() {
+	public ChainedBuffer rewind() {
 		terminal.rewind();
 		return this;
 	}
@@ -404,7 +404,7 @@ public abstract class MemoryBuf {
 	 * @param n the number of bytes to skip
 	 * @return this buffer for method chaining
 	 */
-	public MemoryBuf skip(long n) {
+	public ChainedBuffer skip(long n) {
 		terminal.skip(n);
 		return this;
 	}

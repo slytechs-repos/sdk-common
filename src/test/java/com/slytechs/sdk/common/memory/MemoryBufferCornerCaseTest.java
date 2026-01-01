@@ -7,18 +7,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Comprehensive corner case tests for ByteBuf. Tests boundary
+ * Comprehensive corner case tests for MemoryBuffer. Tests boundary
  * conditions, error handling, and edge cases.
  */
 class MemoryBufferCornerCaseTest {
 
-	private ByteBuf buffer;
+	private MemoryBuffer buffer;
 	private static final int BUFFER_SIZE = 100;
 
 	@BeforeEach
 	void setUp() {
 		Arena arena = Arena.ofAuto();
-		buffer = new ByteBuf(arena.allocate(BUFFER_SIZE));
+		buffer = new MemoryBuffer(arena.allocate(BUFFER_SIZE));
 		buffer.clear();
 	}
 
