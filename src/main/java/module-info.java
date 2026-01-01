@@ -17,6 +17,7 @@
  */
 module com.slytechs.sdk.common {
     exports com.slytechs.sdk.common.memory;
+    exports com.slytechs.sdk.common.memory.pool;
     exports com.slytechs.sdk.common.format;
     exports com.slytechs.sdk.common.time;
     exports com.slytechs.sdk.common.foreign;
@@ -28,6 +29,7 @@ module com.slytechs.sdk.common {
     exports com.slytechs.sdk.common.detail.render;
     exports com.slytechs.sdk.common.license;
     exports com.slytechs.sdk.common.session;
+    exports com.slytechs.sdk.common.spec;
 
     requires java.logging;
     requires lexactivator;

@@ -20,6 +20,9 @@ package com.slytechs.sdk.common.memory;
 import java.lang.foreign.MemorySegment;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.slytechs.sdk.common.memory.pool.PoolEntry;
+import com.slytechs.sdk.common.memory.pool.Poolable;
+
 /**
  * Abstract base implementation providing reference counting and boundary
  * management.
@@ -55,7 +58,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public abstract class AbstractMemory implements Memory {
+public abstract class AbstractMemory implements Memory, Poolable {
 
 	/** Reference counter for lifecycle management. */
 	protected final AtomicInteger refCount = new AtomicInteger(1);
@@ -74,15 +77,24 @@ public abstract class AbstractMemory implements Memory {
 
 	/** The segment size. */
 	protected long segmentSize;
-
+	
 	/**
-	 * Package-private for pool free list chaining and next memory in active chain
+	 * Package-private for freeListPool free list chaining and next memory in active chain
 	 */
 	Memory next;
 
-	// Package-private pool management fields
-	Memory poolNext; // Free list pointer (only used when pooled)
-	MemoryPool<?> owningPool;
+	private final PoolEntry poolEntry = new PoolEntry() {
+		@Override
+		public void onRecycle() {
+			// Reset data boundaries
+			dataStart = segmentOffset;
+			dataEnd = segmentOffset + segmentSize;
+			next = null; // Clear chain
+			updateView();
+			AbstractMemory.this.onRecycle();
+		}
+
+	};
 
 	/**
 	 * Constructs an AbstractMemory with reference count of 1.
@@ -184,32 +196,23 @@ public abstract class AbstractMemory implements Memory {
 	 * 
 	 * <p>
 	 * Subclasses override this method to implement cleanup logic such as returning
-	 * to pool or releasing native resources. The default implementation clears
+	 * to freeListPool or releasing native resources. The default implementation clears
 	 * chain references to prevent leaks.
 	 * </p>
 	 */
-    protected void onRefCountZero() {
-        // Clear chain reference first
-        if (next != null) {
-            next.decrementRef();
-            next = null;
-        }
-        
-        // Don't touch poolNext here - that's managed by the pool
-    }
+	protected void onRefCountZero() {
+		// Clear chain reference first
+		if (next != null) {
+			next.decrementRef();
+			next = null;
+		}
 
-	// ==================== Memory Implementation ====================
+		// Don't touch poolNext here - that's managed by the freeListPool
+	}
 
-	/**
-	 * Resets this memory for reuse. Package-private for pool access.
-	 */
-	void recycle() {
-		// Reset data boundaries
-		dataStart = segmentOffset;
-		dataEnd = segmentOffset + segmentSize;
-		next = null; // Clear chain
-		updateView();
-		onRecycle();
+	@Override
+	public final PoolEntry poolEntry() {
+		return poolEntry;
 	}
 
 	/**

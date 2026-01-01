@@ -156,6 +156,133 @@ public abstract class Settings {
     private static final Map<String, Properties> defaults = new ConcurrentHashMap<>();
 
     /**
+     * Clears all loaded properties and defaults for a domain.
+     * 
+     * <p>
+     * Does not unregister Settings instances; they remain registered but
+     * will resolve to their coded defaults.
+     * </p>
+     *
+     * @param domain the domain to clear
+     */
+    public static void clear(String domain) {
+        global.remove(domain);
+        defaults.remove(domain);
+        invalidateDomainCaches(domain);
+    }
+
+    /**
+     * Gets a property value from the domain's property chain.
+     * 
+     * <p>
+     * Resolution order: global → defaults chain (via Properties parent).
+     * </p>
+     *
+     * @param domain the domain to look up
+     * @param name   the property name
+     * @return the property value, or null if not found
+     */
+    static String getProperty(String domain, String name) {
+        // Check global first (includes defaults via parent chain)
+        Properties props = global.get(domain);
+        if (props != null) {
+            String value = props.getProperty(name);
+            if (value != null) {
+                return value;
+            }
+        }
+
+        // Fall back to defaults only (if no global loaded)
+        props = defaults.get(domain);
+        return props != null ? props.getProperty(name) : null;
+    }
+
+    /**
+     * Returns an unmodifiable view of all registered settings for a domain.
+     *
+     * @param domain the domain to query
+     * @return set of registered settings, or empty set if none
+     */
+    public static Set<Settings> getSettings(String domain) {
+        Set<Settings> domainSettings = registry.get(domain);
+        return domainSettings != null 
+            ? Collections.unmodifiableSet(domainSettings)
+            : Collections.emptySet();
+    }
+
+    /**
+     * Invalidates caches for all properties in the specified domain.
+     */
+    private static void invalidateDomainCaches(String domain) {
+        Set<Settings> domainSettings = registry.get(domain);
+        if (domainSettings != null) {
+            for (Settings settings : domainSettings) {
+                for (Property<?> property : settings.properties) {
+                    property.invalidateCache();
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads session properties for a domain from a file.
+     *
+     * @param file   the file to read properties from
+     * @param domain the domain to load properties for
+     * @throws IOException if an I/O error occurs
+     * @see #load(InputStream, String)
+     */
+    public static void load(File file, String domain) throws IOException {
+        try (InputStream in = new FileInputStream(file)) {
+            load(in, domain);
+        }
+    }
+
+    /**
+     * Loads session properties for a domain, replacing any previous load.
+     * 
+     * <p>
+     * The loaded properties use the domain's defaults chain as a fallback.
+     * Unlike {@link #loadDefaults}, multiple calls to load() replace rather
+     * than layer.
+     * </p>
+     *
+     * @param in     the input stream to read properties from
+     * @param domain the domain to load properties for
+     * @throws IOException if an I/O error occurs
+     */
+    public static void load(InputStream in, String domain) throws IOException {
+        Objects.requireNonNull(in, "input stream cannot be null");
+        Objects.requireNonNull(domain, "domain cannot be null");
+
+        Properties domainDefaults = defaults.get(domain);
+        Properties props = new Properties(domainDefaults); // defaults as parent
+        props.load(in);
+        global.put(domain, props); // replaces any previous
+
+        // Invalidate caches for all properties in this domain
+        invalidateDomainCaches(domain);
+    }
+
+    /**
+     * Loads default properties for a domain from a file.
+     * 
+     * <p>
+     * Convenience method that opens a FileInputStream for the specified file.
+     * </p>
+     *
+     * @param file   the file to read properties from
+     * @param domain the domain to load defaults for
+     * @throws IOException if an I/O error occurs
+     * @see #loadDefaults(InputStream, String)
+     */
+    public static void loadDefaults(File file, String domain) throws IOException {
+        try (InputStream in = new FileInputStream(file)) {
+            loadDefaults(in, domain);
+        }
+    }
+
+    /**
      * Loads default properties for a domain, layering on any previous defaults.
      * 
      * <p>
@@ -190,60 +317,16 @@ public abstract class Settings {
     }
 
     /**
-     * Loads default properties for a domain from a file.
-     * 
-     * <p>
-     * Convenience method that opens a FileInputStream for the specified file.
-     * </p>
+     * Saves all non-transient properties in a domain to a file.
      *
-     * @param file   the file to read properties from
-     * @param domain the domain to load defaults for
+     * @param file   the file to write to
+     * @param domain the domain to save
      * @throws IOException if an I/O error occurs
-     * @see #loadDefaults(InputStream, String)
+     * @see #save(OutputStream, String)
      */
-    public static void loadDefaults(File file, String domain) throws IOException {
-        try (InputStream in = new FileInputStream(file)) {
-            loadDefaults(in, domain);
-        }
-    }
-
-    /**
-     * Loads session properties for a domain, replacing any previous load.
-     * 
-     * <p>
-     * The loaded properties use the domain's defaults chain as a fallback.
-     * Unlike {@link #loadDefaults}, multiple calls to load() replace rather
-     * than layer.
-     * </p>
-     *
-     * @param in     the input stream to read properties from
-     * @param domain the domain to load properties for
-     * @throws IOException if an I/O error occurs
-     */
-    public static void load(InputStream in, String domain) throws IOException {
-        Objects.requireNonNull(in, "input stream cannot be null");
-        Objects.requireNonNull(domain, "domain cannot be null");
-
-        Properties domainDefaults = defaults.get(domain);
-        Properties props = new Properties(domainDefaults); // defaults as parent
-        props.load(in);
-        global.put(domain, props); // replaces any previous
-
-        // Invalidate caches for all properties in this domain
-        invalidateDomainCaches(domain);
-    }
-
-    /**
-     * Loads session properties for a domain from a file.
-     *
-     * @param file   the file to read properties from
-     * @param domain the domain to load properties for
-     * @throws IOException if an I/O error occurs
-     * @see #load(InputStream, String)
-     */
-    public static void load(File file, String domain) throws IOException {
-        try (InputStream in = new FileInputStream(file)) {
-            load(in, domain);
+    public static void save(File file, String domain) throws IOException {
+        try (OutputStream out = new FileOutputStream(file)) {
+            save(out, domain);
         }
     }
 
@@ -288,20 +371,6 @@ public abstract class Settings {
     }
 
     /**
-     * Saves all non-transient properties in a domain to a file.
-     *
-     * @param file   the file to write to
-     * @param domain the domain to save
-     * @throws IOException if an I/O error occurs
-     * @see #save(OutputStream, String)
-     */
-    public static void save(File file, String domain) throws IOException {
-        try (OutputStream out = new FileOutputStream(file)) {
-            save(out, domain);
-        }
-    }
-
-    /**
      * Writes a single Settings instance to the output.
      */
     private static void writeSettings(BufferedWriter writer, Settings settings) throws IOException {
@@ -338,75 +407,6 @@ public abstract class Settings {
         }
 
         writer.newLine();
-    }
-
-    /**
-     * Gets a property value from the domain's property chain.
-     * 
-     * <p>
-     * Resolution order: global → defaults chain (via Properties parent).
-     * </p>
-     *
-     * @param domain the domain to look up
-     * @param name   the property name
-     * @return the property value, or null if not found
-     */
-    static String getProperty(String domain, String name) {
-        // Check global first (includes defaults via parent chain)
-        Properties props = global.get(domain);
-        if (props != null) {
-            String value = props.getProperty(name);
-            if (value != null) {
-                return value;
-            }
-        }
-
-        // Fall back to defaults only (if no global loaded)
-        props = defaults.get(domain);
-        return props != null ? props.getProperty(name) : null;
-    }
-
-    /**
-     * Invalidates caches for all properties in the specified domain.
-     */
-    private static void invalidateDomainCaches(String domain) {
-        Set<Settings> domainSettings = registry.get(domain);
-        if (domainSettings != null) {
-            for (Settings settings : domainSettings) {
-                for (Property<?> property : settings.properties) {
-                    property.invalidateCache();
-                }
-            }
-        }
-    }
-
-    /**
-     * Clears all loaded properties and defaults for a domain.
-     * 
-     * <p>
-     * Does not unregister Settings instances; they remain registered but
-     * will resolve to their coded defaults.
-     * </p>
-     *
-     * @param domain the domain to clear
-     */
-    public static void clear(String domain) {
-        global.remove(domain);
-        defaults.remove(domain);
-        invalidateDomainCaches(domain);
-    }
-
-    /**
-     * Returns an unmodifiable view of all registered settings for a domain.
-     *
-     * @param domain the domain to query
-     * @return set of registered settings, or empty set if none
-     */
-    public static Set<Settings> getSettings(String domain) {
-        Set<Settings> domainSettings = registry.get(domain);
-        return domainSettings != null 
-            ? Collections.unmodifiableSet(domainSettings)
-            : Collections.emptySet();
     }
 
     // =========================================================================
@@ -478,15 +478,6 @@ public abstract class Settings {
     // =========================================================================
 
     /**
-     * Returns the domain this settings belongs to.
-     *
-     * @return the domain name, or null if standalone
-     */
-    public final String domain() {
-        return domain;
-    }
-
-    /**
      * Returns the base name prefix for this settings instance.
      *
      * @return the base name, never null
@@ -496,12 +487,14 @@ public abstract class Settings {
     }
 
     /**
-     * Returns an unmodifiable view of all properties in this settings instance.
+     * Creates a new boolean property with the specified name and default value.
      *
-     * @return unmodifiable list of properties
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new BooleanProperty instance
      */
-    public final List<Property<?>> properties() {
-        return Collections.unmodifiableList(properties);
+    protected final BooleanProperty booleanProperty(String name, boolean defaultValue) {
+        return register(new BooleanProperty(qualifiedName(name), defaultValue, domain));
     }
 
     /**
@@ -514,19 +507,81 @@ public abstract class Settings {
     }
 
     /**
-     * Sets a comment describing this settings instance.
-     * 
-     * <p>
-     * Comments are written to configuration files as a header above this
-     * settings' properties.
-     * </p>
+     * Returns the domain this settings belongs to.
      *
-     * @param comment the comment text
-     * @return this settings instance for method chaining
+     * @return the domain name, or null if standalone
      */
-    public Settings setComment(String comment) {
-        this.comment = comment;
-        return this;
+    public final String domain() {
+        return domain;
+    }
+
+    /**
+     * Creates a new double property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new DoubleProperty instance
+     */
+    protected final DoubleProperty doubleProperty(String name, double defaultValue) {
+        return register(new DoubleProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new enum property with the specified name and default value.
+     *
+     * @param <E>          the enum type
+     * @param name         the property name
+     * @param defaultValue the default value (also determines the enum type)
+     * @return a new EnumProperty instance
+     */
+    protected final <E extends Enum<E>> EnumProperty<E> enumProperty(String name, E defaultValue) {
+        return register(new EnumProperty<>(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new float property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new FloatProperty instance
+     */
+    protected final FloatProperty floatProperty(String name, float defaultValue) {
+        return register(new FloatProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Creates a new integer property with the specified name and default value.
+     *
+     * @param name         the property name (e.g., "timeout")
+     * @param defaultValue the default value
+     * @return a new IntProperty instance
+     */
+    protected final IntProperty intProperty(String name, int defaultValue) {
+        return register(new IntProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    // =========================================================================
+    // Property Factory Methods
+    // =========================================================================
+
+    /**
+     * Creates a new long property with the specified name and default value.
+     *
+     * @param name         the property name
+     * @param defaultValue the default value
+     * @return a new LongProperty instance
+     */
+    protected final LongProperty longProperty(String name, long defaultValue) {
+        return register(new LongProperty(qualifiedName(name), defaultValue, domain));
+    }
+
+    /**
+     * Returns an unmodifiable view of all properties in this settings instance.
+     *
+     * @return unmodifiable list of properties
+     */
+    public final List<Property<?>> properties() {
+        return Collections.unmodifiableList(properties);
     }
 
     /**
@@ -561,41 +616,20 @@ public abstract class Settings {
         }
     }
 
-    // =========================================================================
-    // Property Factory Methods
-    // =========================================================================
-
     /**
-     * Creates a new integer property with the specified name and default value.
+     * Sets a comment describing this settings instance.
+     * 
+     * <p>
+     * Comments are written to configuration files as a header above this
+     * settings' properties.
+     * </p>
      *
-     * @param name         the property name (e.g., "timeout")
-     * @param defaultValue the default value
-     * @return a new IntProperty instance
+     * @param comment the comment text
+     * @return this settings instance for method chaining
      */
-    protected final IntProperty intProperty(String name, int defaultValue) {
-        return register(new IntProperty(qualifiedName(name), defaultValue, domain));
-    }
-
-    /**
-     * Creates a new long property with the specified name and default value.
-     *
-     * @param name         the property name
-     * @param defaultValue the default value
-     * @return a new LongProperty instance
-     */
-    protected final LongProperty longProperty(String name, long defaultValue) {
-        return register(new LongProperty(qualifiedName(name), defaultValue, domain));
-    }
-
-    /**
-     * Creates a new boolean property with the specified name and default value.
-     *
-     * @param name         the property name
-     * @param defaultValue the default value
-     * @return a new BooleanProperty instance
-     */
-    protected final BooleanProperty booleanProperty(String name, boolean defaultValue) {
-        return register(new BooleanProperty(qualifiedName(name), defaultValue, domain));
+    public Settings setComment(String comment) {
+        this.comment = comment;
+        return this;
     }
 
     /**
@@ -609,61 +643,9 @@ public abstract class Settings {
         return register(new StringProperty(qualifiedName(name), defaultValue, domain));
     }
 
-    /**
-     * Creates a new double property with the specified name and default value.
-     *
-     * @param name         the property name
-     * @param defaultValue the default value
-     * @return a new DoubleProperty instance
-     */
-    protected final DoubleProperty doubleProperty(String name, double defaultValue) {
-        return register(new DoubleProperty(qualifiedName(name), defaultValue, domain));
-    }
-
-    /**
-     * Creates a new float property with the specified name and default value.
-     *
-     * @param name         the property name
-     * @param defaultValue the default value
-     * @return a new FloatProperty instance
-     */
-    protected final FloatProperty floatProperty(String name, float defaultValue) {
-        return register(new FloatProperty(qualifiedName(name), defaultValue, domain));
-    }
-
-    /**
-     * Creates a new enum property with the specified name and default value.
-     *
-     * @param <E>          the enum type
-     * @param name         the property name
-     * @param defaultValue the default value (also determines the enum type)
-     * @return a new EnumProperty instance
-     */
-    protected final <E extends Enum<E>> EnumProperty<E> enumProperty(String name, E defaultValue) {
-        return register(new EnumProperty<>(qualifiedName(name), defaultValue, domain));
-    }
-
     // =========================================================================
     // Object Methods
     // =========================================================================
-
-    /**
-     * Returns a string representation of this settings instance.
-     *
-     * @return string representation including class name, domain, and base name
-     */
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(getClass().getSimpleName());
-        sb.append("[");
-        if (domain != null) {
-            sb.append("domain=").append(domain).append(", ");
-        }
-        sb.append("baseName=").append(baseName);
-        sb.append("]");
-        return sb.toString();
-    }
 
     /**
      * Returns a detailed string representation including all property values.
@@ -683,6 +665,24 @@ public abstract class Settings {
             sb.append("  ").append(property.toString()).append("\n");
         }
         sb.append("}");
+        return sb.toString();
+    }
+
+    /**
+     * Returns a string representation of this settings instance.
+     *
+     * @return string representation including class name, domain, and base name
+     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getClass().getSimpleName());
+        sb.append("[");
+        if (domain != null) {
+            sb.append("domain=").append(domain).append(", ");
+        }
+        sb.append("baseName=").append(baseName);
+        sb.append("]");
         return sb.toString();
     }
 }

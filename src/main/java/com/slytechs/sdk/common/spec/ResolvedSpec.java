@@ -58,7 +58,7 @@ package com.slytechs.sdk.common.spec;
  * ResolvedPacketPolicy resolved = PacketPolicyService.resolve(packetPolicy, backendContext);
  * 
  * // Backend context provides constraints
- * // - NTAPI: pool max 64K, native descriptor format
+ * // - NTAPI: freeListPool max 64K, native descriptor format
  * // - DPDK: hugepage alignment, mbuf limits
  * // - PCAP: single packet for sync dispatch
  * }</pre>
@@ -67,10 +67,10 @@ package com.slytechs.sdk.common.spec;
  * <table border="1">
  * <caption>Example backend constraints applied during resolution</caption>
  * <tr><th>Backend</th><th>Constraint</th><th>Resolution Action</th></tr>
- * <tr><td>NTAPI</td><td>Pool max 64K entries</td><td>Clamp capacity to 65536</td></tr>
+ * <tr><td>NTAPI</td><td>FreeListPool max 64K entries</td><td>Clamp capacity to 65536</td></tr>
  * <tr><td>NTAPI</td><td>Native descriptor format</td><td>Use NTAPI descriptor type</td></tr>
- * <tr><td>DPDK</td><td>Hugepage alignment</td><td>Align pool size to 2MB boundary</td></tr>
- * <tr><td>PCAP</td><td>Synchronous dispatch</td><td>Pool capacity 1 sufficient</td></tr>
+ * <tr><td>DPDK</td><td>Hugepage alignment</td><td>Align freeListPool size to 2MB boundary</td></tr>
+ * <tr><td>PCAP</td><td>Synchronous dispatch</td><td>FreeListPool capacity 1 sufficient</td></tr>
  * <tr><td>jNetPcap</td><td>L4 cap</td><td>Limit dissector depth to L4</td></tr>
  * </table>
  * 

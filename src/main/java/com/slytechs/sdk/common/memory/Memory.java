@@ -61,8 +61,8 @@ import java.nio.ByteBuffer;
  * <h2>Usage Example</h2>
  * 
  * <pre>{@code
- * // Allocate from pool
- * Memory memory = pool.allocate();
+ * // Allocate from freeListPool
+ * Memory memory = freeListPool.allocate();
  * 
  * // Write data
  * MemorySegment segment = memory.segment();
@@ -164,7 +164,7 @@ public interface Memory extends MemoryWindow, MemoryRefCounter {
 	 * 
 	 * <p>
 	 * Call this method when done using the memory. When the count reaches 0, the
-	 * memory is automatically released back to its pool or freed.
+	 * memory is automatically released back to its freeListPool or freed.
 	 * </p>
 	 * 
 	 * @return the new reference count

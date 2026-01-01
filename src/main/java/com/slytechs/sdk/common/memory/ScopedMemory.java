@@ -21,7 +21,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Scoped memory implementation with pool-controlled lifecycle and backend
+ * Scoped memory implementation with freeListPool-controlled lifecycle and backend
  * binding.
  * 
  * <p>
@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * references</li>
  * <li><strong>Backend-aware:</strong> Designed for integration with native
  * libraries</li>
- * <li><strong>Pool-managed:</strong> Allocated from and returned to specialized
+ * <li><strong>FreeListPool-managed:</strong> Allocated from and returned to specialized
  * pools</li>
  * </ul>
  * 
@@ -62,10 +62,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * ScopedMemory objects are typically allocated from a ScopedMemoryPool:
  * </p>
  * <ol>
- * <li>Allocated from pool (refCount = 1)</li>
+ * <li>Allocated from freeListPool (refCount = 1)</li>
  * <li>Bound to native segment</li>
  * <li>Used for processing</li>
- * <li>Unbound and returned to pool when refCount reaches 0</li>
+ * <li>Unbound and returned to freeListPool when refCount reaches 0</li>
  * </ol>
  * 
  * <h2>Backend Integration</h2>
@@ -82,8 +82,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * <h2>Usage Example</h2>
  * 
  * <pre>{@code
- * // Allocate from pool
- * ScopedMemory memory = pool.allocate();
+ * // Allocate from freeListPool
+ * ScopedMemory memory = freeListPool.allocate();
  * 
  * // Bind to native segment
  * MemorySegment mbuf = dpdkReceive();
@@ -92,7 +92,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * // Process packet
  * processPacket(memory);
  * 
- * // Release (unbinds and returns to pool)
+ * // Release (unbinds and returns to freeListPool)
  * memory.decrementRef();
  * }</pre>
  * 
@@ -114,10 +114,6 @@ public class ScopedMemory extends AbstractMemory {
 	/** Current scope ID for stale detection */
 	protected volatile long scopeId;
 
-	/** The owning pool - using raw type to avoid circular dependency */
-	@SuppressWarnings("rawtypes")
-	protected ScopedMemoryPool pool;
-
 	/** Whether this memory is currently pinned */
 	protected boolean isPinned;
 
@@ -131,23 +127,6 @@ public class ScopedMemory extends AbstractMemory {
 	 */
 	public ScopedMemory() {
 		// Start unbound
-		this.scopeId = 0;
-		this.isPinned = false;
-	}
-
-	/**
-	 * Constructs a ScopedMemory with pool reference.
-	 * 
-	 * <p>
-	 * Used by pools to create instances that will automatically return to the pool
-	 * when their reference count reaches zero.
-	 * </p>
-	 * 
-	 * @param pool the owning pool
-	 */
-	@SuppressWarnings("rawtypes")
-	public ScopedMemory(ScopedMemoryPool pool) {
-		this.pool = pool;
 		this.scopeId = 0;
 		this.isPinned = false;
 	}
@@ -219,21 +198,8 @@ public class ScopedMemory extends AbstractMemory {
 		// Set segment bounds - the entire bound region
 		setSegmentBounds(offset, length);
 
-		// Set initial data boundaries
-		// If pool has defaultHeadroom, apply it
-		if (pool != null) {
-			long headroom = pool.getDefaultHeadroom();
-			if (headroom > 0 && length > headroom) {
-				dataStart = offset + headroom;
-				dataEnd = offset + length +  tailroom(); // Empty initially
-			} else {
-				dataStart = offset;
-				dataEnd = offset + length;
-			}
-		} else {
-			dataStart = offset;
-			dataEnd = offset + length;
-		}
+		dataStart = offset;
+		dataEnd = offset + length;
 
 		updateView();
 		onBind();
@@ -323,7 +289,7 @@ public class ScopedMemory extends AbstractMemory {
 	 * 
 	 * <p>
 	 * Pinning increments the reference count to prevent the memory from being
-	 * returned to the pool even when other references are released. Useful for
+	 * returned to the freeListPool even when other references are released. Useful for
 	 * keeping memory alive during asynchronous operations.
 	 * </p>
 	 * 
@@ -429,30 +395,6 @@ public class ScopedMemory extends AbstractMemory {
 	}
 
 	/**
-	 * Sets the owning pool.
-	 * 
-	 * <p>
-	 * Package-private method used by pools to establish ownership.
-	 * </p>
-	 * 
-	 * @param pool the pool that owns this memory
-	 */
-	@SuppressWarnings("rawtypes")
-	void setPool(ScopedMemoryPool pool) {
-		this.pool = pool;
-	}
-
-	/**
-	 * Returns the owning pool.
-	 * 
-	 * @return the pool that owns this memory, or null if not pooled
-	 */
-	@SuppressWarnings("rawtypes")
-	public ScopedMemoryPool getScopedPool() {
-		return pool;
-	}
-
-	/**
 	 * {@inheritDoc}
 	 * 
 	 * <p>
@@ -471,12 +413,11 @@ public class ScopedMemory extends AbstractMemory {
 	 * {@inheritDoc}
 	 * 
 	 * <p>
-	 * Returns this memory to its pool when reference count reaches zero. Handles
+	 * Returns this memory to its freeListPool when reference count reaches zero. Handles
 	 * unpinning if necessary and ensures proper cleanup.
 	 * </p>
 	 */
 	@Override
-	@SuppressWarnings("unchecked")
 	protected void onRefCountZero() {
 		// Clear any chain references first
 		if (next != null) {
@@ -490,10 +431,8 @@ public class ScopedMemory extends AbstractMemory {
 			// Don't decrement again - we're already at 0
 		}
 
-		// Return to pool if we have one
-		if (pool != null) {
-			pool.release(this);
-		}
+		// Return to freeListPool if we have one
+		super.recycle();
 	}
 
 	/**

@@ -34,7 +34,7 @@ import java.lang.foreign.MemorySegment;
  * <ul>
  * <li><strong>Immutable segment:</strong> The memory segment is final and set
  * at construction</li>
- * <li><strong>Pool-managed:</strong> Typically allocated from and returned to
+ * <li><strong>FreeListPool-managed:</strong> Typically allocated from and returned to
  * memory pools</li>
  * <li><strong>Chainable:</strong> Supports linking multiple segments for
  * scatter-gather</li>
@@ -44,16 +44,16 @@ import java.lang.foreign.MemorySegment;
  * 
  * <h2>Usage Patterns</h2>
  * 
- * <h3>Pool Allocation</h3>
+ * <h3>FreeListPool Allocation</h3>
  * 
  * <pre>{@code
- * // Allocate from pool
- * FixedMemory memory = pool.allocate();
+ * // Allocate from freeListPool
+ * FixedMemory memory = freeListPool.allocate();
  * 
  * // Use the memory
  * memory.segment().set(ValueLayout.JAVA_INT, memory.start(), value);
  * 
- * // Memory automatically returns to pool at refCount=0
+ * // Memory automatically returns to freeListPool at refCount=0
  * memory.decrementRef();
  * }</pre>
  * 
@@ -111,28 +111,6 @@ public class FixedMemory extends AbstractMemory {
 		setSegmentBounds(offset, length);
 	}
 
-	/**
-	 * Constructs a FixedMemory with pool reference.
-	 * 
-	 * <p>
-	 * Used by memory pools to create instances that will automatically return to
-	 * the pool when their reference count reaches zero.
-	 * </p>
-	 * 
-	 * @param pool    the owning pool
-	 * @param segment the memory segment
-	 * @param offset  starting offset within segment
-	 * @param length  length of the memory region
-	 */
-	public FixedMemory(MemoryPool<? extends FixedMemory> pool, MemorySegment segment, long offset, long length) {
-		this(segment, offset, length);
-
-		this.owningPool = pool;
-
-		// Pooled objects start at refCount=0, not 1
-		this.refCount.set(0);
-	}
-
 	public FixedMemory(MemoryLayout layout, Arena arena) {
 		this(arena.allocate(layout.byteSize()));
 	}
@@ -162,26 +140,8 @@ public class FixedMemory extends AbstractMemory {
 	 * {@inheritDoc}
 	 * 
 	 * <p>
-	 * Resets the memory for reuse by restoring data boundaries to the full segment
-	 * bounds and clearing chain references.
-	 * </p>
-	 */
-	@Override
-	protected void onRecycle() {
-		// Cast owningPool when needed
-		if (owningPool != null && owningPool instanceof FixedMemoryPool) {
-			long headroom = ((FixedMemoryPool) owningPool).getDefaultHeadroom();
-			dataStart = segmentOffset + headroom;
-			dataEnd = segmentOffset + headroom; // Empty initially
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * Called when reference count reaches zero. If this memory is pool-managed, it
-	 * automatically returns to the pool. Otherwise, it simply clears chain
+	 * Called when reference count reaches zero. If this memory is freeListPool-managed, it
+	 * automatically returns to the freeListPool. Otherwise, it simply clears chain
 	 * references.
 	 * </p>
 	 */
@@ -194,12 +154,8 @@ public class FixedMemory extends AbstractMemory {
 			nextMem.decrementRef();
 		}
 
-		// Now return to pool (if we have one)
-		if (owningPool != null) {
-			@SuppressWarnings("unchecked")
-			MemoryPool<FixedMemory> pool = (MemoryPool<FixedMemory>) owningPool;
-			pool.release(this);
-		}
+		// Now return to freeListPool (if we have one)
+		super.recycle();
 	}
 
 	/**
@@ -212,5 +168,11 @@ public class FixedMemory extends AbstractMemory {
 		return String.format("FixedMemory[offset=%d, size=%d, start=%d, end=%d, refCount=%d]",
 				byteOffset(), byteSize(), start(), end(), refCount());
 	}
+
+	/**
+	 * @see com.slytechs.sdk.common.memory.AbstractMemory#onRecycle()
+	 */
+	@Override
+	protected void onRecycle() {}
 
 }

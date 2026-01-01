@@ -41,7 +41,7 @@ package com.slytechs.sdk.common.memory;
  * <h3>Extension Example</h3>
  * 
  * <pre>{@code
- * public class ByteBuf extends BoundView {
+ * public class MemoryBuffer extends BoundView {
  * 	// Inherits all binding functionality
  * 
  * 	public void readData() {
@@ -129,12 +129,9 @@ public class BoundView implements BindableView {
 	 */
 	protected Memory boundSource;
 
-	// Package-private fields for pool management
-	/** Next view in pool's free list - package-private for pool access */
+	// Package-private fields for freeListPool management
+	/** Next view in freeListPool's free list - package-private for freeListPool access */
 	BoundView poolNext;
-
-	/** Owning pool if this view is pooled - package-private */
-	ViewPool<?> owningPool;
 
 	/**
 	 * Constructs an unbound BoundView.
@@ -165,7 +162,7 @@ public class BoundView implements BindableView {
 	}
 
 	/**
-	 * Recycles this view for pool reuse.
+	 * Recycles this view for freeListPool reuse.
 	 * 
 	 * <p>
 	 * Package-private method called by pools when returning this view to the free
@@ -185,7 +182,7 @@ public class BoundView implements BindableView {
 	 * 
 	 * <p>
 	 * Package-private method that subclasses can override to perform additional
-	 * cleanup when being returned to a pool.
+	 * cleanup when being returned to a freeListPool.
 	 * </p>
 	 */
 	void onRecycle() {

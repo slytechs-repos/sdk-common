@@ -114,7 +114,7 @@
  * <li><b>Early validation:</b> Errors caught at resolve time, not runtime</li>
  * <li><b>Backend optimization:</b> SPI can optimize for specific backends</li>
  * <li><b>Immutability:</b> Resolved specs are frozen, preventing runtime surprises</li>
- * <li><b>Resource management:</b> Clear lifecycle for pool allocation/cleanup</li>
+ * <li><b>Resource management:</b> Clear lifecycle for freeListPool allocation/cleanup</li>
  * <li><b>Consistency:</b> Same pattern across all configurable components</li>
  * </ul>
  * 

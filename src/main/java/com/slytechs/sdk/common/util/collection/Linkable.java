@@ -61,7 +61,7 @@ public interface Linkable<T extends Linkable<T>> {
 
 	/**
 	 * Example usage demonstrating how to create a {@code LinkableList} for a memory
-	 * pool.
+	 * freeListPool.
 	 */
 	static void example() {
 		LinkableList<Memory> freeList = new LinkableList<>(Memory::nextSegment, Memory::nextSegment);

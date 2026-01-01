@@ -113,16 +113,16 @@ import java.util.concurrent.TimeUnit;
  * <b>Example Usage:</b>
  * 
  * <pre>{@code
- * ResourcePool<Packet> pool = ...; // e.g., from PacketStream
+ * ResourcePool<Packet> freeListPool = ...; // e.g., from PacketStream
  * ClientSession session = ...;     // if applicable
  * 
  * try {
  *     while (true) {
- *         Packet packet = pool.take();
+ *         Packet packet = freeListPool.take();
  *         try {
  *             // Process packet
  *         } finally {
- *             pool.release(packet);
+ *             freeListPool.release(packet);
  *         }
  *     }
  * } catch (SessionShutdownException e) {
@@ -134,7 +134,7 @@ import java.util.concurrent.TimeUnit;
  * 
  * // Or using non-blocking tryTake with yield:
  * while (session.isActive()) {
- *     if (pool.tryTake(this::processPacket)) {
+ *     if (freeListPool.tryTake(this::processPacket)) {
  *         // Processed successfully
  *     } else {
  *         // Temporarily empty, yield to avoid busy-wait

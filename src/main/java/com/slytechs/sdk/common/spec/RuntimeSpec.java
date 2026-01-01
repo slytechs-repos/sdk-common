@@ -42,7 +42,7 @@ package com.slytechs.sdk.common.spec;
  * During build, the SPI performs:
  * </p>
  * <ul>
- * <li><b>Pool allocation:</b> Create memory pools, view pools</li>
+ * <li><b>FreeListPool allocation:</b> Create memory pools, view pools</li>
  * <li><b>Pre-binding:</b> Pre-allocate and bind packet/descriptor objects</li>
  * <li><b>State initialization:</b> Initialize tables, counters, dissectors</li>
  * <li><b>Resource registration:</b> Register with lifecycle management</li>
@@ -129,7 +129,7 @@ package com.slytechs.sdk.common.spec;
  *     
  *     @Override
  *     public void close() {
- *         // Release pool resources
+ *         // Release freeListPool resources
  *     }
  * }
  * }</pre>

@@ -78,7 +78,7 @@ import java.util.List;
  * ShortHandle length = new ShortHandle(IP4_LAYOUT, "hdr_total_length");
  * 
  * // Access through Memory
- * Memory packet = pool.allocate();
+ * Memory packet = freeListPool.allocate();
  * int src = srcAddr.getInt(packet);
  * 
  * // Access through MemoryView  
