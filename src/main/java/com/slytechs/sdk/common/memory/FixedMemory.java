@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -34,8 +34,8 @@ import java.lang.foreign.MemorySegment;
  * <ul>
  * <li><strong>Immutable segment:</strong> The memory segment is final and set
  * at construction</li>
- * <li><strong>FreeListPool-managed:</strong> Typically allocated from and returned to
- * memory pools</li>
+ * <li><strong>FreeListPool-managed:</strong> Typically allocated from and
+ * returned to memory pools</li>
  * <li><strong>Chainable:</strong> Supports linking multiple segments for
  * scatter-gather</li>
  * <li><strong>Reusable:</strong> Can be recycled and reused without
@@ -124,6 +124,14 @@ public class FixedMemory extends AbstractMemory {
 	}
 
 	/**
+	 * @see com.slytechs.sdk.common.memory.Memory#isFixed()
+	 */
+	@Override
+	public boolean isFixed() {
+		return true;
+	}
+
+	/**
 	 * {@inheritDoc}
 	 * 
 	 * <p>
@@ -140,9 +148,9 @@ public class FixedMemory extends AbstractMemory {
 	 * {@inheritDoc}
 	 * 
 	 * <p>
-	 * Called when reference count reaches zero. If this memory is freeListPool-managed, it
-	 * automatically returns to the freeListPool. Otherwise, it simply clears chain
-	 * references.
+	 * Called when reference count reaches zero. If this memory is
+	 * freeListPool-managed, it automatically returns to the freeListPool.
+	 * Otherwise, it simply clears chain references.
 	 * </p>
 	 */
 	@Override
@@ -155,7 +163,7 @@ public class FixedMemory extends AbstractMemory {
 		}
 
 		// Now return to freeListPool (if we have one)
-		super.recycle();
+		super.poolRecycle();
 	}
 
 	/**

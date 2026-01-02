@@ -37,6 +37,7 @@ import java.util.function.Supplier;
  * For objects that don't need memory allocation, use the {@link Supplier}
  * constructor:
  * </p>
+ * 
  * <pre>{@code
  * FreeListPool<MyObject> pool = new FreeListPool<>(settings, MyObject::new);
  * }</pre>
@@ -45,14 +46,15 @@ import java.util.function.Supplier;
  * 
  * <p>
  * For objects that need memory segments allocated during construction, use the
- * {@link PoolableFactory} constructor. The factory receives a {@link SegmentAllocator}
- * backed by a {@link SlabAllocator}:
+ * {@link PoolableFactory} constructor. The factory receives a
+ * {@link SegmentAllocator} backed by a {@link SlabAllocator}:
  * </p>
+ * 
  * <pre>{@code
  * FreeListPool<Packet> pool = new FreeListPool<>(settings, allocator -> {
- *     MemorySegment data = allocator.allocate(9000, 8);
- *     MemorySegment desc = allocator.allocate(128, 8);
- *     return Packet.ofFixed(DescriptorType.NET, data, desc);
+ * 	MemorySegment data = allocator.allocate(9000, 8);
+ * 	MemorySegment desc = allocator.allocate(128, 8);
+ * 	return Packet.ofFixed(DescriptorType.NET, data, desc);
  * });
  * }</pre>
  * 
@@ -67,8 +69,8 @@ import java.util.function.Supplier;
  * <h2>Thread Safety</h2>
  * 
  * <p>
- * All public methods are thread-safe. The free-list uses CAS operations
- * via VarHandle for lock-free push/pop.
+ * All public methods are thread-safe. The free-list uses CAS operations via
+ * VarHandle for lock-free push/pop.
  * </p>
  *
  * @param <T> the type of poolable objects
@@ -81,352 +83,371 @@ import java.util.function.Supplier;
  */
 public class FreeListPool<T extends Poolable> implements Pool<T> {
 
-    private static final VarHandle HEAD;
-    
-    static {
-        try {
-            HEAD = MethodHandles.lookup().findVarHandle(
-                    FreeListPool.class, "head", PoolEntry.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
+	private static final VarHandle HEAD;
 
-    /** Null allocator for non-memory pools - throws on use */
-    private static final SegmentAllocator NULL_ALLOCATOR = (byteSize, byteAlignment) -> {
-        throw new UnsupportedOperationException(
-                "This pool was created without memory allocation support. " +
-                "Use PoolableFactory constructor for objects requiring memory.");
-    };
+	static {
+		try {
+			HEAD = MethodHandles.lookup().findVarHandle(
+					FreeListPool.class, "head", PoolEntry.class);
+		} catch (ReflectiveOperationException e) {
+			throw new ExceptionInInitializerError(e);
+		}
+	}
 
-    private final PoolSettings settings;
-    private final PoolableFactory<T> factory;
-    private final ContractionStrategy contraction;
-    private final int slabSize;
-    private final Metrics metrics;
+	/** Null allocator for non-memory pools - throws on use */
+	private static final SlabAllocator NULL_ALLOCATOR = new SlabAllocator(); // Special, closed arena constructor
 
-    private volatile PoolEntry head;
-    private volatile long capacity;
-    private volatile boolean closed;
-    
-    private SlabAllocator currentSlab;
+	private final PoolSettings settings;
+	private final PoolableFactory<T> factory;
+	private final ContractionStrategy contraction;
+	private final int slabSize;
+	private final Metrics metrics;
 
-    /**
-     * Creates a free-list pool with a simple factory.
-     * 
-     * <p>
-     * Use this constructor for objects that don't need memory allocation.
-     * </p>
-     *
-     * @param settings pool configuration
-     * @param factory simple factory to create poolable objects
-     */
-    public FreeListPool(PoolSettings settings, Supplier<T> factory) {
-        this(settings, PoolableFactory.of(factory));
-    }
+	private volatile PoolEntry head;
+	private volatile long capacity;
+	private volatile boolean closed;
 
-    /**
-     * Creates a free-list pool with a memory-aware factory.
-     * 
-     * <p>
-     * Use this constructor for objects that need memory segments allocated
-     * during construction. The factory receives a {@link SegmentAllocator}
-     * backed by a {@link SlabAllocator}.
-     * </p>
-     *
-     * @param settings pool configuration
-     * @param factory factory that receives allocator for memory allocation
-     */
-    public FreeListPool(PoolSettings settings, PoolableFactory<T> factory) {
-        this.settings = settings;
-        this.factory = factory;
-        this.contraction = settings.createContractionStrategy();
-        this.slabSize = computeSlabSize(settings);
-        this.metrics = new Metrics();
-        this.capacity = 0;
-        this.closed = false;
-        
-        // Preallocate min capacity
-        grow(settings.minCapacity());
-    }
+	private SlabAllocator currentSlab;
 
-    @Override
-    public T allocate() {
-        contraction.onAllocate(this);
-        
-        // Try to pop from free-list
-        PoolEntry entry = pop();
-        
-        if (entry == null) {
-            // Try to grow
-            if (capacity < settings.maxCapacity()) {
-                grow(slabSize);
-                entry = pop();
-            }
-        }
-        
-        if (entry == null) {
-            metrics.exhaustions++;
-            return null;
-        }
-        
-        entry.onAllocate();
-        metrics.allocations++;
-        
-        @SuppressWarnings("unchecked")
-        T item = (T) entry.owner;
-        return item;
-    }
+	/**
+	 * Creates a free-list pool with a simple factory.
+	 * 
+	 * <p>
+	 * Use this constructor for objects that don't need memory allocation.
+	 * </p>
+	 *
+	 * @param settings pool configuration
+	 * @param factory  simple factory to create poolable objects
+	 */
+	public FreeListPool(PoolSettings settings, Supplier<T> factory) {
+		this(settings, PoolableFactory.of(factory));
+	}
 
-    @Override
-    public void releaseEntry(PoolEntry entry) {
-        if (entry == null || closed) {
-            return;
-        }
-        
-        entry.onRecycle();
-        push(entry);
-        metrics.releases++;
-        
-        contraction.onRelease(this);
-    }
+	/**
+	 * Creates a free-list pool with a memory-aware factory.
+	 * 
+	 * <p>
+	 * Use this constructor for objects that need memory segments allocated during
+	 * construction. The factory receives a {@link SegmentAllocator} backed by a
+	 * {@link SlabAllocator}.
+	 * </p>
+	 *
+	 * @param settings pool configuration
+	 * @param factory  factory that receives allocator for memory allocation
+	 */
+	public FreeListPool(PoolSettings settings, PoolableFactory<T> factory) {
+		this.settings = settings;
+		this.factory = factory;
+		this.contraction = settings.createContractionStrategy();
+		this.slabSize = computeSlabSize(settings);
+		this.metrics = new Metrics();
+		this.capacity = 0;
+		this.closed = false;
 
-    @Override
-    public long grow(long count) {
-        if (closed) {
-            return 0;
-        }
-        
-        long maxGrowth = settings.maxCapacity() - capacity;
-        long actualGrowth = Math.min(count, maxGrowth);
-        
-        if (actualGrowth <= 0) {
-            return 0;
-        }
-        
-        // Create slab allocator for this growth batch
-        SlabAllocator growthSlab = createSlabIfNeeded();
-        SegmentAllocator allocator = growthSlab != null ? growthSlab : NULL_ALLOCATOR;
-        
-        long grown = 0;
-        for (int i = 0; i < actualGrowth; i++) {
-            // Ensure slab has capacity, create new if exhausted
-            if (growthSlab != null && !growthSlab.hasCapacity()) {
-                growthSlab = new SlabAllocator(settings.segmentSize(), slabSize);
-                currentSlab = growthSlab;
-                allocator = growthSlab;
-            }
-            
-            // Factory creates object, may allocate from slab
-            T item = factory.create(allocator);
-            
-            PoolEntry entry = item.poolEntry();
-            entry.owner = item;
-            entry.owningPool = this;
-            
-            // Track slab for eviction if memory was allocated
-            if (growthSlab != null) {
-                // Entry tracks the slab it was created with
-                entry.bindSlab(growthSlab, null); // Segment tracked internally by slab
-            }
-            
-            push(entry);
-            grown++;
-        }
-        
-        capacity += grown;
-        if (grown > 0) {
-            metrics.growthEvents++;
-        }
-        
-        return grown;
-    }
+		// Preallocate min capacity
+		grow(settings.minCapacity());
+	}
 
-    /**
-     * Creates a slab allocator if memory allocation is needed.
-     */
-    private SlabAllocator createSlabIfNeeded() {
-        if (settings.segmentSize() <= 0) {
-            return null; // No memory allocation needed
-        }
-        
-        if (currentSlab == null || !currentSlab.hasCapacity()) {
-            currentSlab = new SlabAllocator(settings.segmentSize(), slabSize);
-        }
-        return currentSlab;
-    }
+	@Override
+	public T allocate() {
+		contraction.onAllocate(this);
 
-    @Override
-    public long contractUnused(float percent) {
-        long available = available();
-        long count = (long) (available * percent);
-        return contractUnused(count);
-    }
+		// Try to pop from free-list
+		PoolEntry entry = pop();
 
-    @Override
-    public long contractUnused(long count) {
-        if (closed || count <= 0) {
-            return 0;
-        }
-        
-        long available = available();
-        long excess = capacity - settings.minCapacity();
-        long maxContractable = Math.min(available, excess);
-        long actualContract = Math.min(count, maxContractable);
-        
-        if (actualContract <= 0) {
-            return 0;
-        }
-        
-        long contracted = 0;
-        for (int i = 0; i < actualContract; i++) {
-            PoolEntry entry = pop();
-            if (entry == null) {
-                break;
-            }
-            
-            entry.onEvict();
-            contracted++;
-        }
-        
-        capacity -= contracted;
-        if (contracted > 0) {
-            metrics.contractions++;
-            metrics.evictions += contracted;
-        }
-        
-        return contracted;
-    }
+		if (entry == null) {
+			// Try to grow
+			if (capacity < settings.maxCapacity()) {
+				grow(slabSize);
+				entry = pop();
+			}
+		}
 
-    @Override
-    public long minCapacity() {
-        return settings.minCapacity();
-    }
+		if (entry == null) {
+			metrics.exhaustions++;
+			return null;
+		}
 
-    @Override
-    public long maxCapacity() {
-        return settings.maxCapacity();
-    }
+		entry.onAllocate();
+		metrics.allocations++;
 
-    @Override
-    public long capacity() {
-        return capacity;
-    }
+		@SuppressWarnings("unchecked")
+		T item = (T) entry.owner;
+		return item;
+	}
 
-    @Override
-    public long available() {
-        long count = 0;
-        PoolEntry e = head;
-        while (e != null) {
-            count++;
-            e = e.next;
-        }
-        return count;
-    }
+	@Override
+	public void releaseEntry(PoolEntry entry) {
+		if (entry == null || closed) {
+			return;
+		}
 
-    @Override
-    public long maxByteSize() {
-        return settings.segmentSize();
-    }
+		entry.onRecycle();
+		push(entry);
+		metrics.releases++;
 
-    @Override
-    public PoolMetrics metrics() {
-        return metrics;
-    }
+		contraction.onRelease(this);
+	}
 
-    @Override
-    public boolean isClosed() {
-        return closed;
-    }
+	@Override
+	public long grow(long count) {
+		if (closed) {
+			return 0;
+		}
 
-    @Override
-    public void close() {
-        if (closed) {
-            return;
-        }
-        closed = true;
-        
-        // Evict all entries
-        PoolEntry entry;
-        while ((entry = pop()) != null) {
-            entry.onEvict();
-        }
-        
-        // Close current slab if any
-        if (currentSlab != null) {
-            currentSlab.close();
-            currentSlab = null;
-        }
-        
-        capacity = 0;
-    }
+		long maxGrowth = settings.maxCapacity() - capacity;
+		long actualGrowth = Math.min(count, maxGrowth);
 
-    /**
-     * Pushes an entry onto the free-list (CAS).
-     */
-    private void push(PoolEntry entry) {
-        PoolEntry oldHead;
-        do {
-            oldHead = head;
-            entry.next = oldHead;
-        } while (!HEAD.compareAndSet(this, oldHead, entry));
-    }
+		if (actualGrowth <= 0) {
+			return 0;
+		}
 
-    /**
-     * Pops an entry from the free-list (CAS).
-     */
-    private PoolEntry pop() {
-        PoolEntry oldHead;
-        PoolEntry newHead;
-        do {
-            oldHead = head;
-            if (oldHead == null) {
-                return null;
-            }
-            newHead = oldHead.next;
-        } while (!HEAD.compareAndSet(this, oldHead, newHead));
-        
-        oldHead.next = null;
-        return oldHead;
-    }
+		// Create slab allocator for this growth batch
+		SlabAllocator growthSlab = createSlabIfNeeded();
+		SlabAllocator allocator = growthSlab != null ? growthSlab : NULL_ALLOCATOR;
 
-    /**
-     * Computes optimal slab size.
-     */
-    private static int computeSlabSize(PoolSettings settings) {
-        if (settings.segmentSize() <= 0) {
-            return 64; // Non-memory pool, arbitrary batch size
-        }
-        
-        int tenPercent = settings.maxCapacity() / 10;
-        int oneMbWorth = (int) (1024 * 1024 / settings.segmentSize());
-        int slabSize = Math.min(tenPercent, oneMbWorth);
-        
-        return Math.max(slabSize, 16); // Floor at 16
-    }
+		long grown = 0;
+		for (int i = 0; i < actualGrowth; i++) {
+			// Ensure slab has capacity, create new if exhausted
+			if (growthSlab != null && !growthSlab.hasCapacity()) {
+				growthSlab = new SlabAllocator(settings.segmentSize(), slabSize);
+				currentSlab = growthSlab;
+				allocator = growthSlab;
+			}
 
-    /**
-     * Internal metrics implementation.
-     */
-    private class Metrics implements PoolMetrics {
-        volatile long allocations;
-        volatile long releases;
-        volatile long exhaustions;
-        volatile long growthEvents;
-        volatile long contractions;
-        volatile long evictions;
+			// Factory creates object, may allocate from slab
+			T item = factory.create(allocator);
 
-        @Override public long allocations() { return allocations; }
-        @Override public long releases() { return releases; }
-        @Override public long exhaustions() { return exhaustions; }
-        @Override public long growthEvents() { return growthEvents; }
-        @Override public long contractions() { return contractions; }
-        @Override public long evictions() { return evictions; }
-    }
+			PoolEntry entry = item.poolEntry();
+			entry.owner = item;
+			entry.owningPool = this;
 
-    @Override
-    public String toString() {
-        return String.format("FreeListPool[capacity=%d/%d, available=%d, segment=%d]",
-                capacity, settings.maxCapacity(), available(), settings.segmentSize());
-    }
+			// Track slab for eviction if memory was allocated
+			if (growthSlab != null) {
+				// Entry tracks the slab it was created with
+				entry.bindSlab(growthSlab, null); // Segment tracked internally by slab
+			}
+
+			push(entry);
+			grown++;
+		}
+
+		capacity += grown;
+		if (grown > 0) {
+			metrics.growthEvents++;
+		}
+
+		return grown;
+	}
+
+	/**
+	 * Creates a slab allocator if memory allocation is needed.
+	 */
+	private SlabAllocator createSlabIfNeeded() {
+		if (settings.segmentSize() <= 0) {
+			return null; // No memory allocation needed
+		}
+
+		if (currentSlab == null || !currentSlab.hasCapacity()) {
+			currentSlab = new SlabAllocator(settings.segmentSize(), slabSize);
+		}
+		return currentSlab;
+	}
+
+	@Override
+	public long contractUnused(float percent) {
+		long available = available();
+		long count = (long) (available * percent);
+		return contractUnused(count);
+	}
+
+	@Override
+	public long contractUnused(long count) {
+		if (closed || count <= 0) {
+			return 0;
+		}
+
+		long available = available();
+		long excess = capacity - settings.minCapacity();
+		long maxContractable = Math.min(available, excess);
+		long actualContract = Math.min(count, maxContractable);
+
+		if (actualContract <= 0) {
+			return 0;
+		}
+
+		long contracted = 0;
+		for (int i = 0; i < actualContract; i++) {
+			PoolEntry entry = pop();
+			if (entry == null) {
+				break;
+			}
+
+			entry.onEvict();
+			contracted++;
+		}
+
+		capacity -= contracted;
+		if (contracted > 0) {
+			metrics.contractions++;
+			metrics.evictions += contracted;
+		}
+
+		return contracted;
+	}
+
+	@Override
+	public long minCapacity() {
+		return settings.minCapacity();
+	}
+
+	@Override
+	public long maxCapacity() {
+		return settings.maxCapacity();
+	}
+
+	@Override
+	public long capacity() {
+		return capacity;
+	}
+
+	@Override
+	public long available() {
+		long count = 0;
+		PoolEntry e = head;
+		while (e != null) {
+			count++;
+			e = e.next;
+		}
+		return count;
+	}
+
+	@Override
+	public long maxByteSize() {
+		return settings.segmentSize();
+	}
+
+	@Override
+	public PoolMetrics metrics() {
+		return metrics;
+	}
+
+	@Override
+	public boolean isClosed() {
+		return closed;
+	}
+
+	@Override
+	public void close() {
+		if (closed) {
+			return;
+		}
+		closed = true;
+
+		// Evict all entries
+		PoolEntry entry;
+		while ((entry = pop()) != null) {
+			entry.onEvict();
+		}
+
+		// Close current slab if any
+		if (currentSlab != null) {
+			currentSlab.close();
+			currentSlab = null;
+		}
+
+		capacity = 0;
+	}
+
+	/**
+	 * Pushes an entry onto the free-list (CAS).
+	 */
+	private void push(PoolEntry entry) {
+		PoolEntry oldHead;
+		do {
+			oldHead = head;
+			entry.next = oldHead;
+		} while (!HEAD.compareAndSet(this, oldHead, entry));
+	}
+
+	/**
+	 * Pops an entry from the free-list (CAS).
+	 */
+	private PoolEntry pop() {
+		PoolEntry oldHead;
+		PoolEntry newHead;
+		do {
+			oldHead = head;
+			if (oldHead == null) {
+				return null;
+			}
+			newHead = oldHead.next;
+		} while (!HEAD.compareAndSet(this, oldHead, newHead));
+
+		oldHead.next = null;
+		return oldHead;
+	}
+
+	/**
+	 * Computes optimal slab size.
+	 */
+	private static int computeSlabSize(PoolSettings settings) {
+		if (settings.segmentSize() <= 0) {
+			return 64; // Non-memory pool, arbitrary batch size
+		}
+
+		int tenPercent = settings.maxCapacity() / 10;
+		int oneMbWorth = (int) (1024 * 1024 / settings.segmentSize());
+		int slabSize = Math.min(tenPercent, oneMbWorth);
+
+		return Math.max(slabSize, 16); // Floor at 16
+	}
+
+	/**
+	 * Internal metrics implementation.
+	 */
+	private class Metrics implements PoolMetrics {
+		volatile long allocations;
+		volatile long releases;
+		volatile long exhaustions;
+		volatile long growthEvents;
+		volatile long contractions;
+		volatile long evictions;
+
+		@Override
+		public long allocations() {
+			return allocations;
+		}
+
+		@Override
+		public long releases() {
+			return releases;
+		}
+
+		@Override
+		public long exhaustions() {
+			return exhaustions;
+		}
+
+		@Override
+		public long growthEvents() {
+			return growthEvents;
+		}
+
+		@Override
+		public long contractions() {
+			return contractions;
+		}
+
+		@Override
+		public long evictions() {
+			return evictions;
+		}
+	}
+
+	@Override
+	public String toString() {
+		return String.format("FreeListPool[capacity=%d/%d, available=%d, segment=%d]",
+				capacity, settings.maxCapacity(), available(), settings.segmentSize());
+	}
 }

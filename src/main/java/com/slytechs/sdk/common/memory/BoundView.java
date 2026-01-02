@@ -162,22 +162,6 @@ public class BoundView implements BindableView {
 	}
 
 	/**
-	 * Recycles this view for freeListPool reuse.
-	 * 
-	 * <p>
-	 * Package-private method called by pools when returning this view to the free
-	 * list. Ensures the view is unbound and ready for reuse.
-	 * </p>
-	 */
-	void recycle() {
-		if (isBound()) {
-			unbind();
-		}
-		// Subclasses can override for additional cleanup
-		onRecycle();
-	}
-
-	/**
 	 * Hook for subclass-specific recycling.
 	 * 
 	 * <p>

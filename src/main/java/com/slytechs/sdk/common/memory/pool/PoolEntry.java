@@ -249,7 +249,7 @@ public class PoolEntry {
      * @param slab the slab that provided the memory
      * @param segment the allocated memory segment
      */
-    final void bindSlab(SlabAllocator slab, MemorySegment segment) {
+    public final void bindSlab(SlabAllocator slab, MemorySegment segment) {
         this.slab = slab;
         this.segment = segment;
     }

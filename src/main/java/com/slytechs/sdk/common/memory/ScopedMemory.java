@@ -432,7 +432,7 @@ public class ScopedMemory extends AbstractMemory {
 		}
 
 		// Return to freeListPool if we have one
-		super.recycle();
+		super.poolRecycle();
 	}
 
 	/**

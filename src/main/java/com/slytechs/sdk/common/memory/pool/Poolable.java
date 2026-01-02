@@ -60,7 +60,7 @@ package com.slytechs.sdk.common.memory.pool;
  * <h2>Pooled vs Non-Pooled Usage</h2>
  * 
  * <p>
- * The {@link #recycle()} method works identically for pooled and non-pooled objects.
+ * The {@link #poolRecycle()} method works identically for pooled and non-pooled objects.
  * If the object was allocated from a pool, it returns to that pool. If not, the
  * method does nothing. This allows user code to work without checking pool status:
  * </p>
@@ -112,7 +112,7 @@ public interface Poolable {
      * and non-pooled objects without requiring explicit checks.
      * </p>
      */
-    default void recycle() {
+    default void poolRecycle() {
         poolEntry().recycle();
     }
 }

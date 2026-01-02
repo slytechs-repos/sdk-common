@@ -77,7 +77,7 @@ public interface PoolableFactory<T extends Poolable> {
      * @param allocator segment allocator for memory allocation, never null
      * @return a new poolable instance
      */
-    T create(SegmentAllocator allocator);
+    T create(SlabAllocator allocator);
 
     /**
      * Creates a PoolableFactory from a simple Supplier.
@@ -92,6 +92,6 @@ public interface PoolableFactory<T extends Poolable> {
      * @return a PoolableFactory wrapping the supplier
      */
     static <T extends Poolable> PoolableFactory<T> of(java.util.function.Supplier<T> supplier) {
-        return allocator -> supplier.get();
+        return _ -> supplier.get();
     }
 }

@@ -31,7 +31,7 @@ package com.slytechs.sdk.common.memory.pool;
  * 
  * <p>
  * Objects are allocated via {@link #allocate()} or {@link #allocate(long)} and
- * returned via {@link Poolable#recycle()} or {@link #release(Poolable)}. The
+ * returned via {@link Poolable#poolRecycle()} or {@link #release(Poolable)}. The
  * pool maintains a free-list of available objects, growing on demand up to
  * {@link #maxCapacity()}.
  * </p>
@@ -116,14 +116,14 @@ public interface Pool<T extends Poolable> extends AutoCloseable {
      * Releases an object back to the pool.
      * 
      * <p>
-     * Equivalent to calling {@link Poolable#recycle()} on the object.
+     * Equivalent to calling {@link Poolable#poolRecycle()} on the object.
      * </p>
      *
      * @param item the object to release
      */
     default void release(T item) {
         if (item != null) {
-            item.recycle();
+            item.poolRecycle();
         }
     }
 

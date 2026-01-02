@@ -1,7 +1,7 @@
 /*
  * Apache License, Version 2.0
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2005-2025 Sly Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -70,6 +70,11 @@ public class SlabAllocator implements SegmentAllocator, AutoCloseable {
     private long offset;
     private int allocated;
     private int outstanding;
+    
+    SlabAllocator() {
+    	capacity = 0;
+    	segmentSize = 0;
+    }
 
     /**
      * Creates a slab allocator and allocates memory immediately.
