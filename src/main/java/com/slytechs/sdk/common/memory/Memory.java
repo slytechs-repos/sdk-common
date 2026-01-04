@@ -164,6 +164,14 @@ public interface Memory extends MemoryWindow, MemoryRefCounter {
 	default void unbindIfScoped() {
 
 	}
+	
+	default ScopedMemory asScopedMemory() {
+		return (ScopedMemory) this;
+	}
+	
+	default FixedMemory asFixedMemory() {
+		return (FixedMemory) this;
+	}
 
 	/**
 	 * Returns the underlying memory segment.
