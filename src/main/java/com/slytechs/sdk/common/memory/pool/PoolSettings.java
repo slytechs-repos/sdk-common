@@ -200,8 +200,18 @@ public class PoolSettings extends Settings {
 
     /**
      * Returns the memory segment size.
+     * 
+     * <p>
+     * <b>Note:</b> This setting is primarily for direct {@link FreeListPool} usage.
+     * When using {@link com.slytechs.sdk.protocol.core.stack.PacketPool} factory
+     * methods, pass segment size directly to the factory method instead:
+     * </p>
+     * <ul>
+     * <li>{@code PacketPool.ofFixedSize(segmentSize)} - single-size pools</li>
+     * <li>{@code PacketPool.ofBucketed(bucketSizes)} - bucketed pools</li>
+     * </ul>
      *
-     * @return segment size in bytes, or 0 for non-memory pools
+     * @return segment size in bytes, or 0 if not set
      */
     public long segmentSize() {
         return segmentSize.getLong();
@@ -211,8 +221,14 @@ public class PoolSettings extends Settings {
      * Sets the memory segment size.
      * 
      * <p>
-     * For memory-backed pools, this is the size of each backing segment.
-     * Set to 0 for non-memory pools.
+     * For memory-backed pools created directly via {@link FreeListPool}, this
+     * specifies the size of each backing segment.
+     * </p>
+     * 
+     * <p>
+     * <b>Note:</b> This setting is ignored by {@code PacketPool.ofBucketed()} and
+     * {@code PacketPool.ofDefaultBuckets()} which use bucket sizes instead.
+     * For {@code PacketPool.ofFixedSize()}, pass the size directly to the factory.
      * </p>
      *
      * @param segmentSize segment size in bytes
