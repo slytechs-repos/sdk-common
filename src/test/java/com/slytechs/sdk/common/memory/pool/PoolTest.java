@@ -128,7 +128,7 @@ class PoolTest {
             TestObject obj = pool.allocate();
             assertEquals(9, pool.available());
 
-            obj.poolRecycle();
+            obj.recycle();
             assertEquals(10, pool.available());
         }
 
@@ -138,7 +138,7 @@ class PoolTest {
             TestObject obj = pool.allocate();
             obj.data = "test";
 
-            obj.poolRecycle();
+            obj.recycle();
             assertEquals(1, obj.recycleCount.get());
             assertNull(obj.data);
         }
@@ -161,7 +161,7 @@ class PoolTest {
         void testReuse() {
             TestObject obj1 = pool.allocate();
             obj1.data = "first";
-            obj1.poolRecycle();
+            obj1.recycle();
 
             TestObject obj2 = pool.allocate();
             assertNull(obj2.data);
@@ -371,7 +371,7 @@ class PoolTest {
 
             TestObject obj1 = pool.allocate();
             pool.allocate();
-            obj1.poolRecycle();
+            obj1.recycle();
 
             assertEquals(2, pool.metrics().allocations());
             assertEquals(1, pool.metrics().releases());
@@ -503,7 +503,7 @@ class PoolTest {
                     TestObject obj = pool.allocate();
                     if (obj != null) {
                         allocations.incrementAndGet();
-                        obj.poolRecycle();
+                        obj.recycle();
                         recycles.incrementAndGet();
                     }
                 }
@@ -515,7 +515,7 @@ class PoolTest {
                     TestObject obj = pool.allocate();
                     if (obj != null) {
                         allocations.incrementAndGet();
-                        obj.poolRecycle();
+                        obj.recycle();
                         recycles.incrementAndGet();
                     }
                 }
@@ -543,7 +543,7 @@ class PoolTest {
             TestObject obj = new TestObject();
             assertFalse(obj.poolEntry().isPooled());
 
-            assertDoesNotThrow(obj::poolRecycle);
+            assertDoesNotThrow(obj::recycle);
         }
 
         @Test
@@ -666,7 +666,7 @@ class PoolTest {
             SizedTestObject obj = bucketPool.allocate(100);
             assertEquals(4, bucket0.available());
 
-            obj.poolRecycle();
+            obj.recycle();
             assertEquals(5, bucket0.available());
         }
 

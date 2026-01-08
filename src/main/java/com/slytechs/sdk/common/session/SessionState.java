@@ -147,7 +147,7 @@ import java.util.concurrent.TimeUnit;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public sealed interface SessionState permits SessionStateImpl {
+public sealed interface SessionState permits StateMachine {
 
 	/**
 	 * Returns the name of the session.

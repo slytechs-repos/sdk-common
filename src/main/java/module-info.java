@@ -31,6 +31,6 @@ module com.slytechs.sdk.common {
     exports com.slytechs.sdk.common.session;
     exports com.slytechs.sdk.common.spec;
 
-    requires java.logging;
+    requires org.slf4j;
     requires lexactivator;
 }

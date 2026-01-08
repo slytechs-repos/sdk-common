@@ -136,8 +136,8 @@ public interface Session {
 	 *                                  invalid state).
 	 */
 	default Session shutdownAfter(Duration duration) {
-		if (state() instanceof SessionStateImpl sessionStateImpl)
-			sessionStateImpl.shutdownAfter(duration);
+		if (state() instanceof StateMachine stateMachine)
+			stateMachine.shutdownAfter(duration);
 		else
 			throw new IllegalStateException("invalid session state type");
 
@@ -155,8 +155,8 @@ public interface Session {
 	 *                              invalid state).
 	 */
 	default Session shutdownAt(Instant when) {
-		if (state() instanceof SessionStateImpl sessionStateImpl)
-			sessionStateImpl.shutdownAt(when);
+		if (state() instanceof StateMachine stateMachine)
+			stateMachine.shutdownAt(when);
 		else
 			throw new IllegalStateException("invalid session state type");
 
@@ -172,8 +172,8 @@ public interface Session {
 	 *                          invalid state).
 	 */
 	default Session cancelShutdown() {
-		if (state() instanceof SessionStateImpl sessionStateImpl)
-			sessionStateImpl.cancelScheduledShutdown();
+		if (state() instanceof StateMachine stateMachine)
+			stateMachine.cancelScheduledShutdown();
 		else
 			throw new IllegalStateException("invalid session state type");
 
@@ -232,8 +232,8 @@ public interface Session {
 	 *                              state inconsistency).
 	 */
 	default void awaitCompletion() throws InterruptedException {
-		if (state() instanceof SessionStateImpl sessionStateImpl)
-			sessionStateImpl.await();
+		if (state() instanceof StateMachine stateMachine)
+			stateMachine.await();
 		else
 			throw new IllegalStateException("invalid session state type");
 	}
@@ -254,14 +254,14 @@ public interface Session {
 	 *                                  session state inconsistency).
 	 */
 	default boolean awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException {
-		if (state() instanceof SessionStateImpl sessionStateImpl)
-			return sessionStateImpl.await(timeout, unit);
+		if (state() instanceof StateMachine stateMachine)
+			return stateMachine.await(timeout, unit);
 		else
 			throw new IllegalStateException("invalid session state type");
 	}
 
 	/**
-	 * Returns the {@link SessionStateImpl} managing this session's lifecycle flags.
+	 * Returns the {@link StateMachine} managing this session's lifecycle flags.
 	 *
 	 * @return the net state instance for this session.
 	 */

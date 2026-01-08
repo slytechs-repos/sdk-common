@@ -150,7 +150,7 @@ class MemoryPoolTest {
             FixedMemory memory = pool.allocate();
             assertEquals(9, pool.available());
 
-            memory.poolRecycle();
+            memory.recycle();
             assertEquals(10, pool.available());
         }
 
@@ -170,7 +170,7 @@ class MemoryPoolTest {
         void testReuse() {
             FixedMemory memory1 = pool.allocate();
             memory1.segment().set(ValueLayout.JAVA_INT, 0, 12345);
-            memory1.poolRecycle();
+            memory1.recycle();
 
             FixedMemory memory2 = pool.allocate();
             assertNotNull(memory2);
@@ -268,7 +268,7 @@ class MemoryPoolTest {
             memory.end(500);
 
             // Recycle
-            memory.poolRecycle();
+            memory.recycle();
 
             // Allocate again - should get reset bounds
             FixedMemory memory2 = pool.allocate();
@@ -427,7 +427,7 @@ class MemoryPoolTest {
             pool.allocate();
             pool.allocate();
             FixedMemory m3 = pool.allocate();
-            m3.poolRecycle();
+            m3.recycle();
 
             assertEquals(3, pool.metrics().allocations());
             assertEquals(1, pool.metrics().releases());

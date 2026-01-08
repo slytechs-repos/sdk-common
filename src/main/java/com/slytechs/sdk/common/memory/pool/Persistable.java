@@ -176,7 +176,7 @@ import com.slytechs.sdk.common.memory.ScopedMemory;
  * 
  * <p>
  * Default {@link #persist()} and {@link #copy()} create non-pooled objects with
- * auto-managed memory. Calling {@link Poolable#poolRecycle()} on these objects
+ * auto-managed memory. Calling {@link Poolable#recycle()} on these objects
  * is a safe no-op.
  * </p>
  * 

@@ -28,10 +28,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Logger;
 
 import com.slytechs.sdk.common.util.Named;
 import com.slytechs.sdk.common.util.Registration;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manages the lifecycle of a {@link Session} in the jNetworks SDK, tracking
@@ -63,17 +65,17 @@ import com.slytechs.sdk.common.util.Registration;
  * Supports dynamic registration of components (e.g., sub-sessions) via
  * {@link #register()} and {@link #deregister()}. Lower tiers can register with
  * a parent via {@link #registerWithParent(Session)} or
- * {@link #addChild(SessionStateImpl)}, enabling upper tiers to wait for children.
- * Simple sessions (e.g., Config) may return constant states or no-op for
- * shutdown.
+ * {@link #addChild(StateMachine)}, enabling upper tiers to wait for
+ * children. Simple sessions (e.g., Config) may return constant states or no-op
+ * for shutdown.
  * </p>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public final class SessionStateImpl implements Named, SessionState {
+public final class StateMachine implements Named, SessionState {
 
-	private static final Logger logger = Logger.getLogger(SessionStateImpl.class.getName());
+	private static final Logger logger = LoggerFactory.getLogger(StateMachine.class);
 
 	private static Thread createDaemonThread(Runnable r) {
 		Thread t = new Thread(r);
@@ -91,49 +93,50 @@ public final class SessionStateImpl implements Named, SessionState {
 	private final ReentrantLock lock = new ReentrantLock();
 	private final Condition completed = lock.newCondition();
 	private final AtomicReference<ScheduledFuture<Boolean>> future = new AtomicReference<>();
-	private final AtomicReference<SessionStateImpl> parent = new AtomicReference<>();
+	private final AtomicReference<StateMachine> parent = new AtomicReference<>();
 	private final ScheduledExecutorService scheduler = Executors
-			.newSingleThreadScheduledExecutor(SessionStateImpl::createDaemonThread);
+			.newSingleThreadScheduledExecutor(StateMachine::createDaemonThread);
 
 	/**
-	 * Constructs a new SessionStateImpl with an initial number of components and no parent.
+	 * Constructs a new StateMachine with an initial number of components and no
+	 * parent.
 	 *
 	 * @param name           the name of the session
 	 * @param count          the initial number of components
 	 * @param shutdownAction executed when scheduled shutdowns are triggered
 	 */
-	public SessionStateImpl(String name, int count, Runnable shutdownAction) {
+	public StateMachine(String name, int count, Runnable shutdownAction) {
 		this.name = name;
 		this.action = shutdownAction;
 		this.activeComponents = new AtomicInteger(count);
 	}
 
 	/**
-	 * Constructs a new SessionStateImpl with no initial components and no parent.
+	 * Constructs a new StateMachine with no initial components and no parent.
 	 *
 	 * @param name           the name of the session
 	 * @param shutdownAction executed when scheduled shutdowns are triggered
 	 */
-	public SessionStateImpl(String name, Runnable shutdownAction) {
+	public StateMachine(String name, Runnable shutdownAction) {
 		this(name, 0, shutdownAction);
 	}
 
 	/**
-	 * Registers a child SessionStateImpl with this SessionStateImpl, setting its parent to this
-	 * instance.
+	 * Registers a child StateMachine with this StateMachine, setting its
+	 * parent to this instance.
 	 *
-	 * @param child the child SessionStateImpl
+	 * @param child the child StateMachine
 	 * @return a Registration to unregister the child
 	 * @throws IllegalStateException if this session is terminated or the child
 	 *                               already has a parent
 	 */
-	public SessionStateImpl addChild(SessionStateImpl child) {
+	public StateMachine addChild(StateMachine child) {
 		lock.lock();
 		try {
 			if (isTerminated.get()) {
 				throw new IllegalStateException("Cannot add child to terminated session: " + name);
 			}
-			logger.info("Adding child " + child.name() + " to parent " + name);
+			logger.trace("Adding child {} to parent '{}'", child.name(), name);
 			activeComponents.incrementAndGet();
 			if (!child.parent.compareAndSet(null, this)) {
 				throw new IllegalStateException("Child already has a parent: " + child.name());
@@ -153,12 +156,13 @@ public final class SessionStateImpl implements Named, SessionState {
 	@Override
 	public void await() throws InterruptedException {
 		lock.lock();
+
 		try {
 			while (!isTerminated.get()) {
-				logger.fine("Awaiting completion for " + name + ": activeComponents=" + activeComponents.get());
+				logger.debug("Awaiting termination of session '{}' (active components: {})", name, activeComponents.get());
 				completed.await();
 			}
-			logger.fine("Completed awaiting for " + name);
+			logger.debug("Session '{}' has terminated", name);
 		} finally {
 			lock.unlock();
 		}
@@ -175,19 +179,21 @@ public final class SessionStateImpl implements Named, SessionState {
 	@Override
 	public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
 		lock.lock();
+
 		try {
 			if (isTerminated.get()) {
-				logger.fine("Already terminated for " + name);
+				logger.debug("Session '{}' already terminated", name);
 				return true;
 			}
-			logger.fine("Awaiting completion for " + name + " with timeout " + timeout + " " + unit);
-			boolean completed = this.completed.await(timeout, unit);
-			if (completed && activeComponents.get() == 0) {
+			logger.debug("Awaiting termination of session '{}' with timeout {} {}", name, timeout, unit);
+
+			boolean signalled = completed.await(timeout, unit);
+			if (signalled && activeComponents.get() == 0) {
 				isTerminated.set(true);
-				logger.fine("Completed awaiting for " + name);
+				logger.debug("Session '{}' terminated within timeout", name);
 				return true;
 			}
-			logger.fine("Timeout elapsed for " + name + ": activeComponents=" + activeComponents.get());
+			logger.debug("Timeout elapsed awaiting session '{}' termination (active components: {})", name, activeComponents.get());
 			return false;
 		} finally {
 			lock.unlock();
@@ -201,9 +207,10 @@ public final class SessionStateImpl implements Named, SessionState {
 		if (!isShutdownScheduled.compareAndSet(true, false))
 			return;
 
-		if (future.get() != null) {
-			future.get().cancel(false);
-			future.set(null);
+		ScheduledFuture<Boolean> f = future.getAndSet(null);
+		if (f != null) {
+			f.cancel(false);
+			logger.debug("Cancelled scheduled shutdown for session '{}'", name);
 		}
 	}
 
@@ -212,6 +219,7 @@ public final class SessionStateImpl implements Named, SessionState {
 	 */
 	public void close() {
 		scheduler.shutdownNow();
+		logger.debug("Scheduler shutdown for session '{}'", name);
 	}
 
 	/**
@@ -220,22 +228,23 @@ public final class SessionStateImpl implements Named, SessionState {
 	 */
 	public void deregister() {
 		int remaining = activeComponents.decrementAndGet();
-		logger.info("Deregistering component for " + name + ": remaining=" + remaining);
+		logger.trace("Component deregistered from session '{}' (remaining: {})", name, remaining);
+
 		if (remaining == 0) {
 			lock.lock();
 			try {
 				isTerminated.set(true);
 				completed.signalAll();
-				
-				logger.info("SessionStateImpl terminated changed from false to true " + toString());
-				logger.info("All components terminated for " + name);
+
+				logger.info("Session '{}' has fully terminated (all components complete)", name);
 
 			} finally {
 				lock.unlock();
 			}
-			SessionStateImpl parentState = parent.get();
+
+			StateMachine parentState = parent.get();
 			if (parentState != null) {
-				logger.info("Notifying parent " + parentState.name() + " of termination");
+				logger.debug("Notifying parent session '{}' of child termination", parentState.name());
 				parentState.deregister();
 			}
 		}
@@ -246,14 +255,14 @@ public final class SessionStateImpl implements Named, SessionState {
 	 *
 	 * @return true if the running state was enabled, false if already running
 	 */
-	public SessionStateImpl enable() {
+	public StateMachine enable() {
 		start();
 
 		return this;
 	}
 
 	private IllegalArgumentException invalidSessionError() {
-		return new IllegalArgumentException("Invalid session state, must be of type SessionStateImpl");
+		return new IllegalArgumentException("Invalid session state, must be of type StateMachine");
 	}
 
 	/**
@@ -311,39 +320,39 @@ public final class SessionStateImpl implements Named, SessionState {
 	 */
 	public void register() {
 		if (!isTerminated.get()) {
-			activeComponents.incrementAndGet();
-			logger.fine("Registered component for " + name + ": activeComponents=" + activeComponents.get());
+			int count = activeComponents.incrementAndGet();
+			logger.trace("Component registered with session '{}' (active components: {})", name, count);
 		}
 	}
 
 	/**
-	 * Registers this SessionStateImpl with a parent Session.
+	 * Registers this StateMachine with a parent Session.
 	 *
 	 * @param parent the parent Session
 	 * @return a Registration to unregister from the parent
-	 * @throws IllegalArgumentException if the parent is not a SessionStateImpl-based
-	 *                                  session
+	 * @throws IllegalArgumentException if the parent is not a
+	 *                                  StateMachine-based session
 	 * @throws IllegalStateException    if this session already has a parent or the
 	 *                                  parent is terminated
 	 */
-	public SessionStateImpl registerWithParent(SessionStateImpl parent) {
+	public StateMachine registerWithParent(StateMachine parent) {
 		parent.addChild(this);
 
 		return this;
 	}
 
 	/**
-	 * Registers this SessionStateImpl with a parent Session.
+	 * Registers this StateMachine with a parent Session.
 	 *
 	 * @param parent the parent Session
 	 * @return a Registration to unregister from the parent
-	 * @throws IllegalArgumentException if the parent is not a SessionStateImpl-based
-	 *                                  session
+	 * @throws IllegalArgumentException if the parent is not a
+	 *                                  StateMachine-based session
 	 * @throws IllegalStateException    if this session already has a parent or the
 	 *                                  parent is terminated
 	 */
-	public SessionStateImpl registerWithParent(SessionState parent) {
-		return registerWithParent((SessionStateImpl) parent);
+	public StateMachine registerWithParent(SessionState parent) {
+		return registerWithParent((StateMachine) parent);
 	}
 
 	/**
@@ -368,10 +377,20 @@ public final class SessionStateImpl implements Named, SessionState {
 		boolean wasShutdown = isShutdown.compareAndSet(false, true);
 		if (wasShutdown) {
 			isRunning.set(false);
+			logger.info("Graceful shutdown initiated for session {}", name);
 		}
 
-		if (wasShutdown)
-			logger.info("SessionStateImpl shutdown changed from false to true " + toString());
+		// Auto-terminate if nothing registered
+		if (wasShutdown && activeComponents.get() == 0) {
+			lock.lock();
+			try {
+				isTerminated.set(true);
+				completed.signalAll();
+				logger.info("Session {} auto-terminated (no active components)", name);
+			} finally {
+				lock.unlock();
+			}
+		}
 
 		return wasShutdown;
 	}
@@ -408,6 +427,8 @@ public final class SessionStateImpl implements Named, SessionState {
 		}, duration.toMillis(), TimeUnit.MILLISECONDS);
 
 		this.future.set(scheduledFuture);
+
+		logger.debug("Scheduled shutdown for session {} in {} ms", name, duration.toMillis());
 
 		return () -> {
 			if (this.future.get() != scheduledFuture)
@@ -460,17 +481,21 @@ public final class SessionStateImpl implements Named, SessionState {
 			lock.unlock();
 		}
 
-		logger.info("SessionStateImpl shutdown changed from false to true " + toString());
+		logger.info("Immediate shutdown executed for session {}", name);
 
 		return true;
 	}
 
+	/**
+	 * Starts the session, transitioning to the running state.
+	 *
+	 * @return true if started successfully, false if already running
+	 */
 	public boolean start() {
 		if (!isRunning.compareAndSet(false, true))
 			return false;
 
-		logger.info("SessionStateImpl running changed from false to true " + toString());
-
+		logger.debug("Session {} started (now running)", name);
 		cancelScheduledShutdown();
 
 		isShutdown.set(false);
@@ -481,13 +506,13 @@ public final class SessionStateImpl implements Named, SessionState {
 
 	@Override
 	public String toString() {
-		return "SessionStateImpl ["
+		return "StateMachine ["
 				+ "name=" + name
 				+ ", running=" + isRunning
 				+ ", shutdownScheduled=" + isShutdownScheduled
 				+ ", shutdown=" + isShutdown
 				+ ", terminated=" + isTerminated
-				+ ", registered=" + activeComponents
+				+ ", activeComponents=" + activeComponents
 				+ (parent.get() != null ? ", parent=" + parent.get().name() : "")
 				+ "]";
 	}

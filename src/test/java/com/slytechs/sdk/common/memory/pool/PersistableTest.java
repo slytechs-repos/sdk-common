@@ -543,7 +543,7 @@ class PersistableTest {
             TestPersistable obj = createFixedWithData();
             
             // Should not throw
-            assertDoesNotThrow(() -> obj.poolRecycle());
+            assertDoesNotThrow(() -> obj.recycle());
         }
 
         @Test
@@ -555,7 +555,7 @@ class PersistableTest {
             TestPersistable obj = pool.allocate();
             long availableAfterAllocate = pool.available();
             
-            obj.poolRecycle();
+            obj.recycle();
             long availableAfterRecycle = pool.available();
             
             assertEquals(availableBefore - 1, availableAfterAllocate);
@@ -572,7 +572,7 @@ class PersistableTest {
             original.writeTestData(TEST_DATA);
             
             TestPersistable copy = original.copy();
-            original.poolRecycle();
+            original.recycle();
             
             // Copy should still be valid and contain data
             assertArrayEquals(TEST_DATA, copy.readData(DATA_SIZE), 
@@ -603,7 +603,7 @@ class PersistableTest {
             
             // Recycle
             long availableBefore = persistPool.available();
-            keeper.poolRecycle();
+            keeper.recycle();
             assertEquals(availableBefore + 1, persistPool.available());
             
             persistPool.close();

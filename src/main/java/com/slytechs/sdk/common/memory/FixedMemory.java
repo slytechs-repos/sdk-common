@@ -163,7 +163,7 @@ public class FixedMemory extends AbstractMemory {
 		}
 
 		// Now return to freeListPool (if we have one)
-		super.poolRecycle();
+		super.recycle();
 	}
 
 	/**

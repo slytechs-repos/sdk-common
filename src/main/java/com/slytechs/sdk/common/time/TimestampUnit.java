@@ -29,13 +29,13 @@ import java.util.function.LongUnaryOperator;
  *
  * @author Mark Bednarczyk
  */
-public enum TimestampUnit implements TimestampPrecisionInfo {
+public enum TimestampUnit implements TimestampPrecisionInfo, TimestampType {
 
 	/**
 	 * Native UNIX format is based on a 1 us unit with a 64-bit unit counter. The
 	 * start time is January 1st 1970.
 	 */
-	EPOCH_MICRO(Constants.TIMESTAMP_UNIT_EPOCH_MICRO,
+	EPOCH_MICRO(TimestampType.EPOCH_MICRO,
 			6,
 			ts -> (ts / TS_MICROS_PER_SECOND),
 			ts -> (ts % TS_MICROS_PER_SECOND) * 1000l, (msb, lsb) -> ((msb * TS_MICROS_PER_SECOND) + lsb)) {
@@ -49,7 +49,7 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * Native UNIX format is based on a 1 ns unit with a 64-bit unit counter. The
 	 * start time is January 1st 1970.
 	 */
-	EPOCH_NANO(Constants.TIMESTAMP_UNIT_EPOCH_NANO,
+	EPOCH_NANO(TimestampType.EPOCH_NANO,
 			9,
 			ts -> (ts / TS_NANOS_IN_SECOND),
 			ts -> (ts % TS_NANOS_IN_SECOND), (msb, lsb) -> ((msb * TS_NANOS_IN_SECOND) + lsb)) {
@@ -63,7 +63,7 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * Native UNIX format is based on a 10 ns unit with a 64-bit unit counter. The
 	 * start time is January 1st 1970.
 	 */
-	EPOCH_10NANO(Constants.TIMESTAMP_UNIT_EPOCH_10NANO,
+	EPOCH_10NANO(TimestampType.EPOCH_10NANO,
 			8,
 			ts -> (ts / TS_TENS_NANOS_PER_SECOND),
 			ts -> (ts % TS_TENS_NANOS_PER_SECOND) * 10l, (msb, lsb) -> ((msb * TS_TENS_NANOS_PER_SECOND) + lsb)) {
@@ -77,7 +77,7 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * Native UNIX format is based on a 1 ms unit with a 64-bit unit counter. The
 	 * start time is January 1st 1970.
 	 */
-	EPOCH_MILLI(Constants.TIMESTAMP_UNIT_EPOCH_MILLI,
+	EPOCH_MILLI(TimestampType.EPOCH_MILLI,
 			3,
 			ts -> (ts / TS_MILLIS_PER_SECOND),
 			ts -> (ts % TS_MILLIS_PER_SECOND) * 1000_000l, (msb, lsb) -> ((msb * TS_MILLIS_PER_SECOND) + lsb)) {
@@ -92,7 +92,7 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * in MSBs of the time stamp descriptor field, and a 32-bit second counter in
 	 * LSBs of the time stamp descriptor field. The start time is January 1st 1970.
 	 */
-	PCAP_MICRO(Constants.TIMESTAMP_UNIT_PCAP_MICRO,
+	PCAP_MICRO(TimestampType.PCAP_MICRO,
 			6,
 			ts -> ((ts >> TS_MSB_SHIFT) & TS_LSB_MASK),
 			ts -> (ts & TS_LSB_MASK) * 1000l, (msb, lsb) -> (msb << TS_MSB_SHIFT) | (lsb & TS_LSB_MASK)) {
@@ -108,7 +108,7 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	 * time stamp descriptor field, so the time resolution is 1 ns. The start time
 	 * is January 1st 1970.
 	 */
-	PCAP_NANO(Constants.TIMESTAMP_UNIT_PCAP_NANO,
+	PCAP_NANO(TimestampType.PCAP_NANO,
 			9,
 			ts -> ((ts >> TS_MSB_SHIFT) & TS_LSB_MASK),
 			ts -> (ts & TS_LSB_MASK), (msb, lsb) -> (msb << TS_MSB_SHIFT) | (lsb & TS_LSB_MASK)) {
@@ -119,15 +119,6 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 	},
 
 	;
-
-	public interface Constants {
-		int TIMESTAMP_UNIT_EPOCH_MICRO = 0;
-		int TIMESTAMP_UNIT_EPOCH_NANO = 1;
-		int TIMESTAMP_UNIT_EPOCH_10NANO = 2;
-		int TIMESTAMP_UNIT_EPOCH_MILLI = 3;
-		int TIMESTAMP_UNIT_PCAP_MICRO = 4;
-		int TIMESTAMP_UNIT_PCAP_NANO = 5;
-	}
 
 	/** The encoder. */
 	private final LongBinaryOperator encoder;
@@ -419,4 +410,12 @@ public enum TimestampUnit implements TimestampPrecisionInfo {
 		return new Timestamp(ts, this);
 	}
 
+	@Override
+	public int timestampType() {
+		return this.ordinal();
+	}
+
+	public static TimestampUnit valueOf(int timestampType) {
+		return values()[timestampType];
+	}
 }

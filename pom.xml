@@ -35,10 +35,17 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-		    <groupId>com.cryptlex.lexactivator</groupId>
-		    <artifactId>lexactivator</artifactId>
-		</dependency>
-
+            <groupId>com.cryptlex.lexactivator</groupId>
+            <artifactId>lexactivator</artifactId>
+            <!-- Optional: specify version if not in BOM; latest is 3.33.0 -->
+            <!-- <version>3.33.0</version> -->
+        </dependency>
+        <!-- Logging facade dependencies -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.17</version>  <!-- Latest stable as of early 2026 -->
+        </dependency>
     </dependencies>
 
     <build>
@@ -46,6 +53,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>  <!-- Latest as of early 2026 -->
                 <configuration>
                     <argLine>
                         --add-opens com.slytechs.sdk.common/com.slytechs.sdk.common.memory=ALL-UNNAMED
@@ -53,14 +61,14 @@
                 </configuration>
             </plugin>
             <plugin>
-				<groupId>org.sonatype.central</groupId>
-				<artifactId>central-publishing-maven-plugin</artifactId>
-				<version>0.9.0</version>  <!-- Latest as of early 2026 -->
-				<extensions>true</extensions>
-				<configuration>
-					<publishingServerId>central</publishingServerId>
-				</configuration>
-			</plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.9.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

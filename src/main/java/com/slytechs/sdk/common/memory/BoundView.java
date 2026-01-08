@@ -130,7 +130,10 @@ public class BoundView implements BindableView {
 	protected Memory boundSource;
 
 	// Package-private fields for freeListPool management
-	/** Next view in freeListPool's free list - package-private for freeListPool access */
+	/**
+	 * Next view in freeListPool's free list - package-private for freeListPool
+	 * access
+	 */
 	BoundView poolNext;
 
 	/**
@@ -243,6 +246,7 @@ public class BoundView implements BindableView {
 	 */
 	@Override
 	public void bind(Memory memory, long offset, long length) {
+
 		if (memory == null) {
 			throw new NullPointerException("Cannot bind to null memory");
 		}
@@ -336,7 +340,7 @@ public class BoundView implements BindableView {
 	 */
 	public long length() {
 		checkIfBound();
-		
+
 		return view.length;
 	}
 

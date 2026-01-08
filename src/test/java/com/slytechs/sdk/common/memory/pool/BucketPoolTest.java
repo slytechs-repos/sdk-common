@@ -349,17 +349,17 @@ class BucketPoolTest {
             assertEquals(4, pool.bucket(1).available());
             assertEquals(4, pool.bucket(2).available());
 
-            obj1024.poolRecycle();
+            obj1024.recycle();
             assertEquals(4, pool.bucket(0).available());
             assertEquals(5, pool.bucket(1).available());
             assertEquals(4, pool.bucket(2).available());
 
-            obj256.poolRecycle();
+            obj256.recycle();
             assertEquals(5, pool.bucket(0).available());
             assertEquals(5, pool.bucket(1).available());
             assertEquals(4, pool.bucket(2).available());
 
-            obj4096.poolRecycle();
+            obj4096.recycle();
             assertEquals(5, pool.bucket(0).available());
             assertEquals(5, pool.bucket(1).available());
             assertEquals(5, pool.bucket(2).available());
@@ -371,7 +371,7 @@ class BucketPoolTest {
             TestPoolable obj = pool.allocate(100);
             assertEquals(0, obj.recycleCount);
 
-            obj.poolRecycle();
+            obj.recycle();
             assertEquals(1, obj.recycleCount);
         }
 
@@ -380,12 +380,12 @@ class BucketPoolTest {
         void testMultipleRecycles() {
             TestPoolable obj = pool.allocate(100);
 
-            obj.poolRecycle();
+            obj.recycle();
             assertEquals(5, pool.bucket(0).available());
 
             // Allocate same object again
             TestPoolable obj2 = pool.allocate(100);
-            obj2.poolRecycle();
+            obj2.recycle();
             assertEquals(5, pool.bucket(0).available());
         }
     }
@@ -501,8 +501,8 @@ class BucketPoolTest {
             TestPoolable obj2 = pool.allocate(500);
             pool.allocate(2000);
 
-            obj1.poolRecycle();
-            obj2.poolRecycle();
+            obj1.recycle();
+            obj2.recycle();
 
             assertEquals(2, pool.metrics().releases());
         }
@@ -752,7 +752,7 @@ class BucketPoolTest {
                             TestPoolable obj = pool.allocate(reqSize);
                             if (obj != null) {
                                 allocations.incrementAndGet();
-                                obj.poolRecycle();
+                                obj.recycle();
                             }
                         }
                         doneLatch.countDown();
