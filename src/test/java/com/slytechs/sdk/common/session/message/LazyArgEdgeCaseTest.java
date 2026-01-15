@@ -23,6 +23,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
+import com.slytechs.sdk.common.session.state.RenderMode;
+import com.slytechs.sdk.common.session.text.LazyArg;
+
 /**
  * Edge case tests for {@link LazyArg}.
  */

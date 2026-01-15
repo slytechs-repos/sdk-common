@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.session.state;
 
 /**
  * 
@@ -21,10 +21,17 @@ package com.slytechs.sdk.common.session;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface ClientSession {
+public interface CountableState {
 
-	boolean isActive();
-	
-	LifecycleSession parentSession();
-	
+	CountableState INSTANCE = new CountableState() {
+		@Override
+		public void increment() {}
+
+		@Override
+		public void decrement() {}
+	};
+
+	void increment();
+
+	void decrement();
 }

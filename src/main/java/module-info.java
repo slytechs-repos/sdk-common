@@ -29,6 +29,9 @@ module com.slytechs.sdk.common {
     exports com.slytechs.sdk.common.detail.render;
     exports com.slytechs.sdk.common.license;
     exports com.slytechs.sdk.common.session;
+    exports com.slytechs.sdk.common.session.message;
+    exports com.slytechs.sdk.common.session.state;
+    exports com.slytechs.sdk.common.session.state.recorder;
     exports com.slytechs.sdk.common.spec;
 
     requires org.slf4j;

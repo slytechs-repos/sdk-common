@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
+import com.slytechs.sdk.common.session.state.RenderMode;
+
 /**
  * Unit tests for {@link RenderMode} enum.
  */

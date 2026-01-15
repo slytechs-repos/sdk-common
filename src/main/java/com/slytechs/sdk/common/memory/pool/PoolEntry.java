@@ -18,6 +18,7 @@
 package com.slytechs.sdk.common.memory.pool;
 
 import java.lang.foreign.MemorySegment;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Holds pool management state for a {@link Poolable} object.
@@ -34,9 +35,9 @@ import java.lang.foreign.MemorySegment;
  * 
  * <p>
  * For memory-backed poolables, the entry tracks which {@link SlabAllocator}
- * provided the memory segment. This enables automatic slab lifecycle management:
- * when an entry is evicted during pool contraction, it notifies its slab, which
- * may auto-close when all its segments are freed.
+ * provided the memory segment. This enables automatic slab lifecycle
+ * management: when an entry is evicted during pool contraction, it notifies its
+ * slab, which may auto-close when all its segments are freed.
  * </p>
  * 
  * <h2>Lifecycle Callbacks</h2>
@@ -48,11 +49,11 @@ import java.lang.foreign.MemorySegment;
  * 
  * <ul>
  * <li>{@link #onAllocate()} - Called after removal from free-list, before
- *     returning to user. Use to initialize or reset object for new use.</li>
+ * returning to user. Use to initialize or reset object for new use.</li>
  * <li>{@link #onRecycle()} - Called before adding to free-list. Use to clear
- *     object state and release any held resources.</li>
+ * object state and release any held resources.</li>
  * <li>{@link #onEvict()} - Called when entry is permanently removed from pool
- *     during contraction. Use to release slab memory.</li>
+ * during contraction. Use to release slab memory.</li>
  * </ul>
  * 
  * <h2>Inner Class Pattern</h2>
@@ -62,31 +63,31 @@ import java.lang.foreign.MemorySegment;
  * PoolEntry. This gives the callbacks access to the enclosing object's fields:
  * </p>
  * 
- * <pre>{@code
- * public class MyObject implements Poolable {
- *     private String data;
- *     private List<Item> items = new ArrayList<>();
- *     
- *     private final PoolEntry poolEntry = new PoolEntry() {
- *         @Override
- *         protected void onRecycle() {
- *             data = null;
- *             items.clear();
- *         }
- *     };
- *     
- *     @Override
- *     public PoolEntry poolEntry() {
- *         return poolEntry;
- *     }
+ * {@snippet :
+ * 	public class MyObject implements Poolable {
+ * 		private String data;
+ * 		private List<Item> items = new ArrayList<>();
+ * 
+ * 		private final PoolEntry poolEntry = new PoolEntry() {
+ * 			&#64;Override
+ * 			protected void onRecycle() {
+ * 				data = null;
+ * 				items.clear();
+ * 			}
+ * 		};
+ * 
+ * 		@Override
+ * 		public PoolEntry poolEntry() {
+ * 			return poolEntry;
+ * 		}
+ * 	}
  * }
- * }</pre>
  * 
  * <h2>Thread Safety</h2>
  * 
  * <p>
- * The {@link #next} field is accessed only by the owning {@link Pool} using
- * CAS operations. The callbacks are invoked while the entry is not on the
+ * The {@link #next} field is accessed only by the owning {@link Pool} using CAS
+ * operations. The callbacks are invoked while the entry is not on the
  * free-list, so no synchronization is needed within callback implementations.
  * </p>
  *
@@ -98,159 +99,193 @@ import java.lang.foreign.MemorySegment;
  */
 public class PoolEntry {
 
-    /** Next entry in free-list. Package-private for Pool access. */
-    PoolEntry next;
+	/** Next entry in free-list. Package-private for Pool access. */
+	PoolEntry next;
 
-    /** Owning pool reference. Null if not allocated from a pool. */
-    Pool<?> owningPool;
+	/** Owning pool reference. Null if not allocated from a pool. */
+	Pool<?> owningPool;
 
-    /** Back-reference to the Poolable object containing this entry. */
-    Poolable owner;
+	/** Back-reference to the Poolable object containing this entry. */
+	Poolable owner;
 
-    /** Slab that allocated memory for this entry. Null if no slab-backed memory. */
-    SlabAllocator slab;
+	/** Slab that allocated memory for this entry. Null if no slab-backed memory. */
+	SlabAllocator slab;
 
-    /** Memory segment from slab. Needed for slab.free() on eviction. */
-    MemorySegment segment;
+	/** Memory segment from slab. Needed for slab.free() on eviction. */
+	MemorySegment segment;
 
-    /**
-     * Constructs an unowned pool entry.
-     * 
-     * <p>
-     * The entry starts with no owning pool. The pool sets ownership when the
-     * containing object is added to the pool.
-     * </p>
-     */
-    public PoolEntry() {
-    }
+	/** Thread waiting for release signal. */
+	private volatile Thread waitingThread;
 
-    /**
-     * Called after allocation from pool, before returning to user.
-     * 
-     * <p>
-     * Subclasses override this method to initialize or reset object state
-     * for a new use cycle. The entry has been removed from the free-list
-     * when this method is called.
-     * </p>
-     * 
-     * <p>
-     * Default implementation does nothing.
-     * </p>
-     */
-    protected void onAllocate() {
-    }
+	/**
+	 * Constructs an unowned pool entry.
+	 * 
+	 * <p>
+	 * The entry starts with no owning pool. The pool sets ownership when the
+	 * containing object is added to the pool.
+	 * </p>
+	 */
+	public PoolEntry() {}
 
-    /**
-     * Called before returning to pool's free-list.
-     * 
-     * <p>
-     * Subclasses override this method to clear object state and release
-     * any held resources before the object is recycled for reuse. This is
-     * called before the entry is added to the free-list.
-     * </p>
-     * 
-     * <p>
-     * Default implementation does nothing.
-     * </p>
-     */
-    protected void onRecycle() {
-    }
+	/**
+	 * Called after allocation from pool, before returning to user.
+	 * 
+	 * <p>
+	 * Subclasses override this method to initialize or reset object state for a new
+	 * use cycle. The entry has been removed from the free-list when this method is
+	 * called.
+	 * </p>
+	 * 
+	 * <p>
+	 * Default implementation does nothing.
+	 * </p>
+	 */
+	protected void onAllocate() {}
 
-    /**
-     * Called when this entry is permanently evicted from the pool.
-     * 
-     * <p>
-     * This occurs during pool contraction when excess capacity is being
-     * released. The entry will not be reused. This method releases the
-     * slab memory segment, which may trigger slab auto-close.
-     * </p>
-     * 
-     * <p>
-     * Subclasses may override to perform additional cleanup, but must
-     * call {@code super.onEvict()}.
-     * </p>
-     */
-    protected void onEvict() {
-        freeSlab();
-        owningPool = null;
-        owner = null;
-    }
+	/**
+	 * Called before returning to pool's free-list.
+	 * 
+	 * <p>
+	 * Subclasses override this method to clear object state and release any held
+	 * resources before the object is recycled for reuse. This is called before the
+	 * entry is added to the free-list.
+	 * </p>
+	 * 
+	 * <p>
+	 * Default implementation does nothing.
+	 * </p>
+	 */
+	protected void onRecycle() {}
 
-    /**
-     * Returns this entry's object to its owning pool.
-     * 
-     * <p>
-     * If this entry has an owning pool, the containing object is returned
-     * to that pool. The {@link #onRecycle()} callback is invoked as part
-     * of the release process.
-     * </p>
-     * 
-     * <p>
-     * If this entry has no owning pool (object was not allocated from a pool),
-     * this method does nothing.
-     * </p>
-     */
-    public final void recycle() {
-        if (owningPool != null) {
-            owningPool.releaseEntry(this);
-        }
-    }
+	/**
+	 * Called when this entry is permanently evicted from the pool.
+	 * 
+	 * <p>
+	 * This occurs during pool contraction when excess capacity is being released.
+	 * The entry will not be reused. This method releases the slab memory segment,
+	 * which may trigger slab auto-close.
+	 * </p>
+	 * 
+	 * <p>
+	 * Subclasses may override to perform additional cleanup, but must call
+	 * {@code super.onEvict()}.
+	 * </p>
+	 */
+	protected void onEvict() {
+		freeSlab();
+		owningPool = null;
+		owner = null;
+	}
 
-    /**
-     * Returns the owning pool.
-     *
-     * @return the pool that owns this entry, or null if not pooled
-     */
-    public final Pool<?> owningPool() {
-        return owningPool;
-    }
+	/**
+	 * Blocks until recycle() is called or thread is interrupted.
+	 * 
+	 * <p>
+	 * Used for zero-copy handoff where the producer must wait for the consumer to
+	 * finish before recycling the buffer.
+	 * </p>
+	 * <p>
+	 * Warning, this is a low level call intended for advanced use as it may disrupt
+	 * packet distribution and cause resource exhaustion.
+	 * </p>
+	 */
+	public void awaitRecycle() {
+		waitingThread = Thread.currentThread();
+		LockSupport.park();
+		waitingThread = null;
+	}
 
-    /**
-     * Checks if this entry is owned by a pool.
-     *
-     * @return true if this entry belongs to a pool
-     */
-    public final boolean isPooled() {
-        return owningPool != null;
-    }
+	/**
+	 * Returns this entry's object to its owning pool.
+	 * 
+	 * <p>
+	 * If this entry has an owning pool, the containing object is returned to that
+	 * pool. The {@link #onRecycle()} callback is invoked as part of the release
+	 * process.
+	 * </p>
+	 * 
+	 * <p>
+	 * If this entry has no owning pool (object was not allocated from a pool), this
+	 * method does nothing.
+	 * </p>
+	 * <p>
+	 * If this entry has a waiting thread for release, sends a release signal. Safe
+	 * to call even if no thread is waiting - unpark is "sticky" so a subsequent
+	 * park() will return immediately.
+	 * </p>
+	 * 
+	 */
+	public final void recycle() {
+		if (owningPool != null) {
+			owningPool.releaseEntry(this);
+		}
 
-    /**
-     * Checks if this entry has slab-backed memory.
-     *
-     * @return true if memory was allocated from a slab
-     */
-    public final boolean hasSlabMemory() {
-        return slab != null && segment != null;
-    }
+		/*
+		 * Signal any waiting threads on release for backends that block their producer
+		 * thread and wait for the packet to be released. This is faster and more
+		 * efficient than object monitor, locking or other synchronization methods.
+		 */
+		Thread waiter = waitingThread;
+		if (waiter != null) {
+			LockSupport.unpark(waiter);
+		}
+	}
 
-    /**
-     * Frees the slab memory segment.
-     * 
-     * <p>
-     * Called during eviction to release memory back to the slab.
-     * May trigger slab auto-close if this was the last outstanding segment.
-     * </p>
-     */
-    final void freeSlab() {
-        if (slab != null && segment != null) {
-            slab.free(segment);
-            slab = null;
-            segment = null;
-        }
-    }
+	/**
+	 * Returns the owning pool.
+	 *
+	 * @return the pool that owns this entry, or null if not pooled
+	 */
+	public final Pool<?> owningPool() {
+		return owningPool;
+	}
 
-    /**
-     * Binds this entry to a slab and its allocated segment.
-     * 
-     * <p>
-     * Called by the pool when growing capacity using slab allocation.
-     * </p>
-     *
-     * @param slab the slab that provided the memory
-     * @param segment the allocated memory segment
-     */
-    public final void bindSlab(SlabAllocator slab, MemorySegment segment) {
-        this.slab = slab;
-        this.segment = segment;
-    }
+	/**
+	 * Checks if this entry is owned by a pool.
+	 *
+	 * @return true if this entry belongs to a pool
+	 */
+	public final boolean isPooled() {
+		return owningPool != null;
+	}
+
+	/**
+	 * Checks if this entry has slab-backed memory.
+	 *
+	 * @return true if memory was allocated from a slab
+	 */
+	public final boolean hasSlabMemory() {
+		return slab != null && segment != null;
+	}
+
+	/**
+	 * Frees the slab memory segment.
+	 * 
+	 * <p>
+	 * Called during eviction to release memory back to the slab. May trigger slab
+	 * auto-close if this was the last outstanding segment.
+	 * </p>
+	 */
+	final void freeSlab() {
+		if (slab != null && segment != null) {
+			slab.free(segment);
+			slab = null;
+			segment = null;
+		}
+	}
+
+	/**
+	 * Binds this entry to a slab and its allocated segment.
+	 * 
+	 * <p>
+	 * Called by the pool when growing capacity using slab allocation.
+	 * </p>
+	 *
+	 * @param slab    the slab that provided the memory
+	 * @param segment the allocated memory segment
+	 */
+	public final void bindSlab(SlabAllocator slab, MemorySegment segment) {
+		this.slab = slab;
+		this.segment = segment;
+	}
 }

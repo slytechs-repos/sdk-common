@@ -26,8 +26,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import com.slytechs.sdk.common.session.state.LifecycleStateMachine;
+
 /**
- * Tests for {@link Session} interface default methods.
+ * Tests for {@link LifecycleSession} interface default methods.
  */
 class SessionTest {
 
@@ -36,12 +38,12 @@ class SessionTest {
 	@BeforeEach
 	void setUp() {
 		session = new TestSession("test-session");
-		session.state.enable();
+		session.state.start();
 	}
 
 	@AfterEach
 	void tearDown() {
-		session.state.close();
+		session.state.shutdown();
 	}
 
 	@Test
@@ -78,21 +80,21 @@ class SessionTest {
 
 	@Test
 	void shutdownAfterReturnsThis() {
-		Session result = session.shutdownAfter(Duration.ofSeconds(10));
+		LifecycleSession result = session.shutdownAfter(Duration.ofSeconds(10));
 		assertSame(session, result);
 	}
 
 	@Test
 	void shutdownAtReturnsThis() {
-		Session result = session.shutdownAt(Instant.now().plusSeconds(10));
+		LifecycleSession result = session.shutdownAt(Instant.now().plusSeconds(10));
 		assertSame(session, result);
 	}
 
 	@Test
 	void cancelShutdownReturnsThis() {
 		session.shutdownAfter(Duration.ofSeconds(10));
-		Session result = session.cancelShutdown();
-		assertSame(session, result);
+		session.cancelShutdown();
+		assertFalse(session.isShutdownScheduled());
 	}
 
 	@Test
@@ -120,28 +122,36 @@ class SessionTest {
 	}
 
 	/**
-	 * Simple Session implementation for testing.
+	 * Simple LifecycleSession implementation for testing.
 	 */
-	static class TestSession implements Session {
-		final StateMachine state;
+	static class TestSession implements LifecycleSession {
+		final LifecycleStateMachine state;
 
 		TestSession(String name) {
-		    this.state = new StateMachine(name, () -> {});
+			this.state = new LifecycleStateMachine(name, () -> {});
 		}
 
 		@Override
-		public void shutdown() {
-			state.shutdown();
+		public boolean shutdown() {
+			return state.shutdown();
 		}
 
 		@Override
 		public void shutdownNow() {
-			state.shutdownNow();
+			state.shutdown();
 		}
 
 		@Override
-		public SessionState state() {
+		public LifecycleStateMachine state() {
 			return state;
+		}
+
+		/**
+		 * @see com.slytechs.sdk.common.session.Session#isActive()
+		 */
+		@Override
+		public boolean isActive() {
+			return state.isRunning();
 		}
 	}
 }

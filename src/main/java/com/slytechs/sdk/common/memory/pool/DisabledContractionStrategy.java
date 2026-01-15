@@ -13,18 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.memory.pool;
 
 /**
- * 
- *
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc.
+ * No-op contraction strategy - JIT eliminates entirely.
  */
-public interface ClientSession {
+final class DisabledContractionStrategy implements ContractionStrategy {
 
-	boolean isActive();
-	
-	LifecycleSession parentSession();
-	
+    static final DisabledContractionStrategy INSTANCE = new DisabledContractionStrategy();
+
+    private DisabledContractionStrategy() {
+    }
+
+    @Override
+    public void onAllocate(Pool<?> pool) {
+        // No-op - JIT eliminates
+    }
+
+    @Override
+    public void onRelease(Pool<?> pool) {
+        // No-op - JIT eliminates
+    }
 }

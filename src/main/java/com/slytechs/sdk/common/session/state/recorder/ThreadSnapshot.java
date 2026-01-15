@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.session.state.recorder;
 
 /**
  * 
@@ -21,10 +21,16 @@ package com.slytechs.sdk.common.session;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface ClientSession {
+public record ThreadSnapshot(String name, long id, int priority,
+		boolean isAlive, boolean isDaemon, boolean isInterrupted, boolean isVirtual) {
 
-	boolean isActive();
-	
-	LifecycleSession parentSession();
-	
+	public ThreadSnapshot(Thread thread) {
+		this(thread.getName(),
+				thread.threadId(),
+				thread.getPriority(),
+				thread.isAlive(),
+				thread.isDaemon(),
+				thread.isInterrupted(),
+				thread.isVirtual());
+	}
 }

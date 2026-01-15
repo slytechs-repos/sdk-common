@@ -67,8 +67,8 @@ public enum Detail {
 	/** The debug level detail. */
 	DEBUG,
 
-	/** The hexdump level detail. */
-	HEXDUMP,;
+	/** The trace level detail. */
+	TRACE,;
 
 	/** The Constant DEFAULT. */
 	public static final Detail DEFAULT = HIGH;
@@ -124,7 +124,7 @@ public enum Detail {
 	 * @return true, if is debug
 	 */
 	public boolean isTrace() {
-		return compareTo(HEXDUMP) == 0;
+		return compareTo(TRACE) == 0;
 	}
 
 }

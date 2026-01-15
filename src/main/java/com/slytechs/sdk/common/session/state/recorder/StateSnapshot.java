@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.session.state.recorder;
+
+import com.slytechs.sdk.common.session.state.State;
+import com.slytechs.sdk.common.session.state.StateMachine;
 
 /**
  * 
@@ -21,10 +24,20 @@ package com.slytechs.sdk.common.session;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface ClientSession {
+public record StateSnapshot<T extends Enum<T> & State<T>>(
+		String name,
+		long generationId,
+		State<T> initialState,
+		State<T> previousState,
+		State<T> currentState,
+		Class<?> classInfo) {
 
-	boolean isActive();
-	
-	LifecycleSession parentSession();
-	
+	public StateSnapshot(StateMachine<T> state) {
+		this(state.name(), state.generationId(),
+				state.initialState(),
+				state.previousState(),
+				state.currentState(),
+				state.getClass());
+	}
+
 }

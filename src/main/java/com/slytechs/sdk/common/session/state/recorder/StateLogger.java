@@ -13,18 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.session.state.recorder;
 
-/**
- * 
- *
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc.
- */
-public interface ClientSession {
+import java.util.function.Supplier;
 
-	boolean isActive();
-	
-	LifecycleSession parentSession();
-	
+import com.slytechs.sdk.common.session.text.LazyArg;
+
+public interface StateLogger {
+
+	static <T> Supplier<T> lazy(Supplier<T> supplier) {
+		return supplier;
+	}
+
+	static <T> LazyArg<T> lazyArg(Supplier<T> supplier) {
+		return LazyArg.of(supplier);
+	}
+
+	<R extends StateRecord> R logRecord(R newRecord);
+
+	<R extends StateRecord> R logRecord(LogLevel level, R newRecord);
+
+	StateRecord log(String template, Object... args);
+
+	StateRecord log(LogLevel level, String template, Object... args);
 }

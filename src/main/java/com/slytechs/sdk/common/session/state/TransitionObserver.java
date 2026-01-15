@@ -13,18 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.session.state;
 
-/**
- * 
- *
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc.
- */
-public interface ClientSession {
-
-	boolean isActive();
-	
-	LifecycleSession parentSession();
-	
+public interface TransitionObserver<T extends Enum<T> & State<T>> {
+	void onStateTransition(StateMachine<T> source, T oldState, T newState);
 }

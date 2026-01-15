@@ -144,7 +144,7 @@ public class TextRenderer {
     }
     
     private void renderData(StringBuilder sb, DataDetail d, int depth) {
-        if (detailLevel.compareTo(Detail.HEXDUMP) < 0) return;
+        if (detailLevel.compareTo(Detail.TRACE) < 0) return;
         
         String prefix = style.dataIndent(currentHeaderAbbr, currentSectionAbbr, depth);
         sb.append(prefix);

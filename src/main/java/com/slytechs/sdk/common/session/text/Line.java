@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.session.text;
+
+import java.util.List;
 
 /**
+ * Text line representation with nested sublines.
  * 
- *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface ClientSession {
+public interface Line {
 
-	boolean isActive();
-	
-	LifecycleSession parentSession();
-	
+	List<? extends Line> children();
 }

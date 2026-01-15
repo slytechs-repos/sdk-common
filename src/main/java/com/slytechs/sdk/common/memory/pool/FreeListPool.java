@@ -50,11 +50,11 @@ import java.util.function.Supplier;
  * {@link SegmentAllocator} backed by a {@link SlabAllocator}:
  * </p>
  * 
- * <pre>{@code
+ * <pre>{@snippet :
  * FreeListPool<Packet> pool = new FreeListPool<>(settings, allocator -> {
  * 	MemorySegment data = allocator.allocate(9000, 8);
  * 	MemorySegment desc = allocator.allocate(128, 8);
- * 	return Packet.ofFixed(DescriptorType.NET, data, desc);
+ * 	return Packet.ofFixed(DescriptorType.TYPE2, data, desc);
  * });
  * }</pre>
  * 

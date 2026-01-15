@@ -16,8 +16,8 @@
 package com.slytechs.sdk.common.session;
 
 /**
- * General runtime exception for session-related errors, such as invalid state
- * or operation failures.
+ * General runtime exception for lifecycleSession-related errors, such as
+ * invalid state or operation failures.
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
@@ -30,7 +30,7 @@ public class SessionException extends RuntimeException {
 	/**
 	 * Constructs a new exception.
 	 *
-	 * @param session the associated session
+	 * @param session the associated lifecycleSession
 	 * @param message the detail message
 	 */
 	public SessionException(Session session) {
@@ -41,7 +41,7 @@ public class SessionException extends RuntimeException {
 	/**
 	 * Constructs a new exception.
 	 *
-	 * @param session the associated session
+	 * @param session the associated lifecycleSession
 	 * @param message the detail message
 	 */
 	public SessionException(Session session, String message) {
@@ -52,7 +52,7 @@ public class SessionException extends RuntimeException {
 	/**
 	 * Constructs a new exception with cause.
 	 *
-	 * @param session the associated session
+	 * @param session the associated lifecycleSession
 	 * @param message the detail message
 	 * @param cause   the cause
 	 */
@@ -62,9 +62,9 @@ public class SessionException extends RuntimeException {
 	}
 
 	/**
-	 * Returns the associated session.
+	 * Returns the associated Session.
 	 *
-	 * @return the session
+	 * @return the lifecycleSession
 	 */
 	public Session session() {
 		return session;

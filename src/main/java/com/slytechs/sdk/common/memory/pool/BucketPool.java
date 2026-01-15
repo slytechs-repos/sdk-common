@@ -31,7 +31,7 @@ import java.util.function.Supplier;
  * 
  * <h2>Simple Objects</h2>
  * 
- * <pre>{@code
+ * {@snippet :
  * long[] sizes = {
  * 		1518,
  * 		9000,
@@ -39,18 +39,18 @@ import java.util.function.Supplier;
  * 		65536
  * };
  * BucketPool<MyObject> pool = new BucketPool<>(settings, sizes, MyObject::new);
- * }</pre>
+ * }
  * 
  * <h2>Objects with Memory Components</h2>
  * 
- * <pre>{@code
+ * {@snippet :
  * // Factory receives allocator AND bucket size
  * BucketPool<Packet> pool = new BucketPool<>(settings, sizes, (allocator, bucketSize) -> {
  * 	MemorySegment data = allocator.allocate(bucketSize, 8);
  * 	MemorySegment desc = allocator.allocate(128, 8);
- * 	return Packet.ofFixed(DescriptorType.NET, data, desc);
+ * 	return Packet.ofFixed(DescriptorType.TYPE2, data, desc);
  * });
- * }</pre>
+ * }
  *
  * @param <T> the type of poolable objects managed by this pool
  * @author Mark Bednarczyk [mark@slytechs.com]
