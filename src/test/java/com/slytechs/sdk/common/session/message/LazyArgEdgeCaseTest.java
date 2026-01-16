@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
-import com.slytechs.sdk.common.session.state.RenderMode;
 import com.slytechs.sdk.common.session.text.LazyArg;
+import com.slytechs.sdk.common.session.text.LazyArg.Mode;
 
 /**
  * Edge case tests for {@link LazyArg}.
@@ -72,7 +72,7 @@ class LazyArgEdgeCaseTest {
 
 		assertNull(arg.snapshot());
 		assertNull(arg.current());
-		assertEquals("null", arg.render(RenderMode.CURRENT));
+		assertEquals("null", arg.render(Mode.CURRENT));
 	}
 
 	@Test
@@ -92,7 +92,7 @@ class LazyArgEdgeCaseTest {
 
 		ref.set("now has value");
 
-		assertEquals("(null→now has value)", arg.render(RenderMode.TRANSITION));
+		assertEquals("(null→now has value)", arg.render(Mode.TRANSITION));
 	}
 
 	@Test
@@ -102,7 +102,7 @@ class LazyArgEdgeCaseTest {
 
 		ref.set(null);
 
-		assertEquals("(had value→null)", arg.render(RenderMode.TRANSITION));
+		assertEquals("(had value→null)", arg.render(Mode.TRANSITION));
 	}
 
 	@Test
@@ -119,16 +119,16 @@ class LazyArgEdgeCaseTest {
 		}, frozen);
 
 		value.set(200);
-		assertEquals("(100→200)", arg.render(RenderMode.TRANSITION));
+		assertEquals("(100→200)", arg.render(Mode.TRANSITION));
 
 		// Now supplier fails
 		shouldThrow.set(true);
 		// Should still show snapshot fallback
-		assertTrue(arg.render(RenderMode.CURRENT).contains("100"));
+		assertTrue(arg.render(Mode.CURRENT).contains("100"));
 
 		// Freeze it
 		frozen.set(true);
-		String rendered = arg.render(RenderMode.CURRENT);
+		String rendered = arg.render(Mode.CURRENT);
 		assertTrue(rendered.contains("100"));
 		assertTrue(rendered.contains("frozen"));
 	}
@@ -163,7 +163,7 @@ class LazyArgEdgeCaseTest {
 			threads[i] = new Thread(() -> {
 				for (int j = 0; j < 100; j++) {
 					arg.current(); // Should not throw
-					arg.render(RenderMode.TRANSITION);
+					arg.render(Mode.TRANSITION);
 				}
 			});
 		}
@@ -186,14 +186,14 @@ class LazyArgEdgeCaseTest {
 
 		assertEquals("", arg.snapshot());
 		assertEquals("", arg.current());
-		assertEquals("", arg.render(RenderMode.CURRENT));
+		assertEquals("", arg.render(Mode.CURRENT));
 	}
 
 	@Test
 	void renderSpecialCharacters() {
 		LazyArg<String> arg = LazyArg.of(() -> "line1\nline2\ttab");
 
-		String rendered = arg.render(RenderMode.CURRENT);
+		String rendered = arg.render(Mode.CURRENT);
 		assertTrue(rendered.contains("\n"));
 		assertTrue(rendered.contains("\t"));
 	}
@@ -203,7 +203,7 @@ class LazyArgEdgeCaseTest {
 		String longString = "x".repeat(10000);
 		LazyArg<String> arg = LazyArg.of(() -> longString);
 
-		assertEquals(10000, arg.render(RenderMode.CURRENT).length());
+		assertEquals(10000, arg.render(Mode.CURRENT).length());
 	}
 
 	@Test
@@ -217,7 +217,7 @@ class LazyArgEdgeCaseTest {
 
 		LazyArg<CustomObject> arg = LazyArg.of(() -> new CustomObject(42, "test"));
 
-		assertEquals("Custom[42:test]", arg.render(RenderMode.CURRENT));
+		assertEquals("Custom[42:test]", arg.render(Mode.CURRENT));
 	}
 
 	@Test

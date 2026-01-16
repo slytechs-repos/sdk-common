@@ -19,32 +19,32 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-import com.slytechs.sdk.common.session.state.RenderMode;
+import com.slytechs.sdk.common.session.text.LazyArg.Mode;
 
 /**
- * Unit tests for {@link RenderMode} enum.
+ * Unit tests for {@link Mode} enum.
  */
 class RenderModeTest {
 
 	@Test
 	void allValuesExist() {
-		assertEquals(3, RenderMode.values().length);
-		assertNotNull(RenderMode.CURRENT);
-		assertNotNull(RenderMode.SNAPSHOT);
-		assertNotNull(RenderMode.TRANSITION);
+		assertEquals(3, Mode.values().length);
+		assertNotNull(Mode.CURRENT);
+		assertNotNull(Mode.SNAPSHOT);
+		assertNotNull(Mode.TRANSITION);
 	}
 
 	@Test
 	void valueOfWorks() {
-		assertEquals(RenderMode.CURRENT, RenderMode.valueOf("CURRENT"));
-		assertEquals(RenderMode.SNAPSHOT, RenderMode.valueOf("SNAPSHOT"));
-		assertEquals(RenderMode.TRANSITION, RenderMode.valueOf("TRANSITION"));
+		assertEquals(Mode.CURRENT, Mode.valueOf("CURRENT"));
+		assertEquals(Mode.SNAPSHOT, Mode.valueOf("SNAPSHOT"));
+		assertEquals(Mode.TRANSITION, Mode.valueOf("TRANSITION"));
 	}
 
 	@Test
 	void ordinalOrder() {
-		assertEquals(0, RenderMode.CURRENT.ordinal());
-		assertEquals(1, RenderMode.SNAPSHOT.ordinal());
-		assertEquals(2, RenderMode.TRANSITION.ordinal());
+		assertEquals(0, Mode.CURRENT.ordinal());
+		assertEquals(1, Mode.SNAPSHOT.ordinal());
+		assertEquals(2, Mode.TRANSITION.ordinal());
 	}
 }

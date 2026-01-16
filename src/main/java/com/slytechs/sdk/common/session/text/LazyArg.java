@@ -19,27 +19,25 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
-import com.slytechs.sdk.common.session.state.RenderMode;
-
 /**
  * A lazy argument wrapper that captures a snapshot at creation time and
  * supports dynamic evaluation with graceful fallback.
  * 
  * <p>
  * LazyArg enables deferred evaluation of values in log messages and diagnostic
- * output. When created, it immediately captures a snapshot of the current value.
- * On subsequent evaluations, it attempts to get the current value from the
- * supplier, falling back to the snapshot if the supplier throws an exception
- * or if the LazyArg has been frozen.
+ * output. When created, it immediately captures a snapshot of the current
+ * value. On subsequent evaluations, it attempts to get the current value from
+ * the supplier, falling back to the snapshot if the supplier throws an
+ * exception or if the LazyArg has been frozen.
  * </p>
  * 
  * <p>
  * The snapshot serves multiple purposes:
  * <ul>
  * <li>Provides a baseline for transition rendering (showing change from initial
- *     to current state)</li>
+ * to current state)</li>
  * <li>Acts as a fallback when the supplier becomes invalid (e.g., referenced
- *     object is garbage collected or session is closed)</li>
+ * object is garbage collected or session is closed)</li>
  * <li>Ensures diagnostic output always produces meaningful values</li>
  * </ul>
  * </p>
@@ -55,6 +53,52 @@ import com.slytechs.sdk.common.session.state.RenderMode;
  * @author Sly Technologies Inc.
  */
 public final class LazyArg<T> {
+
+	/**
+	 * Controls how {@link LazyArg} and {@link MessageRecord} values are rendered.
+	 * 
+	 * <p>
+	 * The render mode determines what information is included in the output:
+	 * <ul>
+	 * <li>{@link #CURRENT} - Shows only the current value</li>
+	 * <li>{@link #SNAPSHOT} - Shows only the snapshot (initial) value</li>
+	 * <li>{@link #TRANSITION} - Shows the change from snapshot to current</li>
+	 * </ul>
+	 * </p>
+	 *
+	 * @author Mark Bednarczyk [mark@slytechs.com]
+	 * @author Sly Technologies Inc.
+	 */
+	public enum Mode {
+
+		/**
+		 * Render only the current value.
+		 * <p>
+		 * Example output: {@code "draining 3 packets"}
+		 * </p>
+		 */
+		CURRENT,
+
+		/**
+		 * Render only the snapshot (initial) value.
+		 * <p>
+		 * Example output: {@code "draining 15 packets"}
+		 * </p>
+		 */
+		SNAPSHOT,
+
+		/**
+		 * Render the transition from snapshot to current value.
+		 * <p>
+		 * If the values are equal, shows just the current value. If different, shows
+		 * the transition: {@code "(15→3)"}
+		 * </p>
+		 * <p>
+		 * Example output: {@code "draining (15→3) packets"}
+		 * </p>
+		 */
+		TRANSITION
+	}
 
 	private final Supplier<T> supplier;
 	private final T snapshot;
@@ -101,8 +145,8 @@ public final class LazyArg<T> {
 	}
 
 	/**
-	 * Returns the current value from the supplier, or the snapshot if frozen or
-	 * if evaluation fails.
+	 * Returns the current value from the supplier, or the snapshot if frozen or if
+	 * evaluation fails.
 	 *
 	 * @return the current value or snapshot fallback
 	 */
@@ -150,28 +194,28 @@ public final class LazyArg<T> {
 	 * @param mode the render mode
 	 * @return the rendered string representation
 	 */
-	public String render(RenderMode mode) {
-		if (frozen.get() && mode != RenderMode.SNAPSHOT) {
+	public String render(Mode mode) {
+		if (frozen.get() && mode != Mode.SNAPSHOT) {
 			return String.valueOf(snapshot) + "(frozen)";
 		}
 
 		T now = current();
 
 		return switch (mode) {
-			case CURRENT -> String.valueOf(now);
-			case SNAPSHOT -> String.valueOf(snapshot);
-			case TRANSITION -> {
-				if (Objects.equals(snapshot, now)) {
-					yield String.valueOf(now);
-				} else {
-					yield "(" + snapshot + "→" + now + ")";
-				}
+		case CURRENT -> String.valueOf(now);
+		case SNAPSHOT -> String.valueOf(snapshot);
+		case TRANSITION -> {
+			if (Objects.equals(snapshot, now)) {
+				yield String.valueOf(now);
+			} else {
+				yield "(" + snapshot + "→" + now + ")";
 			}
+		}
 		};
 	}
 
 	@Override
 	public String toString() {
-		return render(RenderMode.TRANSITION);
+		return render(Mode.TRANSITION);
 	}
 }

@@ -22,8 +22,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
-import com.slytechs.sdk.common.session.state.RenderMode;
 import com.slytechs.sdk.common.session.text.LazyArg;
+import com.slytechs.sdk.common.session.text.LazyArg.Mode;
 
 /**
  * Unit tests for {@link LazyArg} rendering functionality.
@@ -36,7 +36,7 @@ class LazyArgRenderTest {
 		LazyArg<Integer> arg = LazyArg.of(counter::get);
 
 		counter.set(20);
-		assertEquals("20", arg.render(RenderMode.CURRENT));
+		assertEquals("20", arg.render(Mode.CURRENT));
 	}
 
 	@Test
@@ -45,7 +45,7 @@ class LazyArgRenderTest {
 		LazyArg<Integer> arg = LazyArg.of(counter::get);
 
 		counter.set(20);
-		assertEquals("10", arg.render(RenderMode.SNAPSHOT));
+		assertEquals("10", arg.render(Mode.SNAPSHOT));
 	}
 
 	@Test
@@ -54,7 +54,7 @@ class LazyArgRenderTest {
 		LazyArg<Integer> arg = LazyArg.of(counter::get);
 
 		counter.set(20);
-		assertEquals("(10→20)", arg.render(RenderMode.TRANSITION));
+		assertEquals("(10→20)", arg.render(Mode.TRANSITION));
 	}
 
 	@Test
@@ -62,7 +62,7 @@ class LazyArgRenderTest {
 		AtomicInteger counter = new AtomicInteger(10);
 		LazyArg<Integer> arg = LazyArg.of(counter::get);
 
-		assertEquals("10", arg.render(RenderMode.TRANSITION));
+		assertEquals("10", arg.render(Mode.TRANSITION));
 	}
 
 	@Test
@@ -83,7 +83,7 @@ class LazyArgRenderTest {
 		counter.set(20);
 		frozen.set(true);
 
-		String rendered = arg.render(RenderMode.CURRENT);
+		String rendered = arg.render(Mode.CURRENT);
 		assertTrue(rendered.contains("frozen"));
 		assertTrue(rendered.contains("10")); // Shows snapshot, not current
 	}
@@ -94,6 +94,6 @@ class LazyArgRenderTest {
 		AtomicInteger counter = new AtomicInteger(10);
 		LazyArg<Integer> arg = LazyArg.of(counter::get, frozen);
 
-		assertEquals("10", arg.render(RenderMode.SNAPSHOT));
+		assertEquals("10", arg.render(Mode.SNAPSHOT));
 	}
 }

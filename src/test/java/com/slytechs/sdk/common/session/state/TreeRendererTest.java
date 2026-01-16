@@ -29,29 +29,29 @@ class TreeRendererTest {
 		// Simulate: Net -> Capture, Channel -> Task, Task
 		
 		// Root: PcapBackend
-		LifecycleStateMachine net = new LifecycleStateMachine("PcapBackend", () -> {});
+		SessionStateMachine net = new SessionStateMachine("PcapBackend", () -> {});
 		net.start();
 		net.register(); // Count for self
 		
 		// Child: Capture
-		LifecycleStateMachine capture = new LifecycleStateMachine("hello-capture", () -> {});
+		SessionStateMachine capture = new SessionStateMachine("hello-capture", () -> {});
 		capture.registerParent(net);
 		capture.start();
 		capture.register();
 		
 		// Child: Channel
-		LifecycleStateMachine channel = new LifecycleStateMachine("hello-channel", () -> {});
+		SessionStateMachine channel = new SessionStateMachine("hello-channel", () -> {});
 		channel.registerParent(net);
 		channel.start();
 		channel.register();
 		
 		// Grandchildren: Tasks under Channel
-		LifecycleStateMachine worker0 = new LifecycleStateMachine("worker-0", () -> {});
+		SessionStateMachine worker0 = new SessionStateMachine("worker-0", () -> {});
 		worker0.registerParent(channel);
 		worker0.start();
 		worker0.register();
 		
-		LifecycleStateMachine worker1 = new LifecycleStateMachine("worker-1", () -> {});
+		SessionStateMachine worker1 = new SessionStateMachine("worker-1", () -> {});
 		worker1.registerParent(channel);
 		worker1.start();
 		worker1.register();
@@ -93,7 +93,7 @@ class TreeRendererTest {
 	
 	@Test
 	void renderShowsComponentCount() {
-		LifecycleStateMachine parent = new LifecycleStateMachine("parent", () -> {});
+		SessionStateMachine parent = new SessionStateMachine("parent", () -> {});
 		parent.start();
 		parent.register();
 		parent.register();
@@ -108,7 +108,7 @@ class TreeRendererTest {
 	
 	@Test
 	void renderShowsStateTransition() {
-		LifecycleStateMachine machine = new LifecycleStateMachine("test", () -> {});
+		SessionStateMachine machine = new SessionStateMachine("test", () -> {});
 		machine.start();
 		machine.register();
 		machine.shutdown();
