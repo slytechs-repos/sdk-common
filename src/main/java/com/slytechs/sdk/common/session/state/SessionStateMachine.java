@@ -21,7 +21,8 @@ import java.util.concurrent.TimeUnit;
 
 import com.slytechs.sdk.common.session.SessionState;
 import com.slytechs.sdk.common.session.state.ComponentTree.ZeroCountCallback;
-import com.slytechs.sdk.common.session.state.LifecycleStateMachine.LifecycleState;
+import com.slytechs.sdk.common.session.state.SessionStateMachine.LifecycleState;
+import com.slytechs.sdk.common.session.state.recorder.LogLevel;
 import com.slytechs.sdk.common.util.Registration;
 
 /**
@@ -38,13 +39,13 @@ import com.slytechs.sdk.common.util.Registration;
  * <ul>
  * <li>{@link ComponentTree} - parent/child tracking and component counting</li>
  * <li>{@link TransitionScheduler} - scheduled shutdown (shutdownAfter/At)</li>
- * <li>{@link StateZeroCountBarrier} - await termination</li>
+ * <li>{@link StateWaitBarrier} - await termination</li>
  * </ul>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class LifecycleStateMachine
+public class SessionStateMachine
 		extends StateMachine<LifecycleState>
 		implements SessionState, HierarchalState, CountableState {
 
@@ -88,7 +89,7 @@ public class LifecycleStateMachine
 
 	private final ComponentTree<LifecycleState> components;
 	private final TransitionScheduler<LifecycleState> shutdownScheduler;
-	private final StateZeroCountBarrier<LifecycleState> terminatedBarrier;
+	private final StateWaitBarrier<LifecycleState> terminatedBarrier;
 
 	/**
 	 * Creates a lifecycle state machine.
@@ -96,7 +97,7 @@ public class LifecycleStateMachine
 	 * @param name                    the session name
 	 * @param scheduledShutdownAction action to execute on shutdown transition
 	 */
-	public LifecycleStateMachine(String name, ZeroCountCallback scheduledShutdownAction) {
+	public SessionStateMachine(String name, ZeroCountCallback scheduledShutdownAction) {
 		super(name, LifecycleState.CREATED);
 
 		// On zero, transition to TERMINATED
@@ -106,7 +107,7 @@ public class LifecycleStateMachine
 		this.shutdownScheduler = new TransitionScheduler<>(this, scheduledShutdownAction);
 
 		// Trigger signal, and awake barrier when terminated is reached
-		this.terminatedBarrier = new StateZeroCountBarrier<>(this, LifecycleState.TERMINATED);
+		this.terminatedBarrier = new StateWaitBarrier<>(this, LifecycleState.TERMINATED);
 	}
 
 	/**
@@ -183,7 +184,7 @@ public class LifecycleStateMachine
 	 * @param parent the parent lifecycle
 	 * @return registration to detach from parent
 	 */
-	public Registration registerParent(LifecycleStateMachine parent) {
+	public Registration registerParent(SessionStateMachine parent) {
 		return components.registerParent(parent.components); // Correct - passes ComponentTree
 	}
 
@@ -237,7 +238,20 @@ public class LifecycleStateMachine
 	 * @return formatted tree string
 	 */
 	public String renderTree() {
-		return TreeRenderer.render(components);
+		return renderTree(LogLevel.INFO);
+	}
+
+	/**
+	 * Renders this lifecycle and its children as an ASCII tree.
+	 *
+	 * @return formatted tree string
+	 */
+	public String renderTree(LogLevel level) {
+		return StateTreeRenderer.builder()
+				.showRecords(true)
+				.showThreadInfo(true)
+				.threshold(level)
+				.render(components);
 	}
 
 	@Override

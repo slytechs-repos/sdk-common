@@ -1059,7 +1059,7 @@ public abstract class MemoryHandle<T> {
 		if (layout == null) {
 			throw new NullPointerException("MemoryLayout cannot be null");
 		}
-		this.handle = layout.varHandle(path);
+		this.handle = layout.varHandle(path).withInvokeExactBehavior();
 	}
 
 	/**

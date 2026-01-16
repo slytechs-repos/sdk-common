@@ -63,7 +63,7 @@
  *     with transition rules</li>
  * <li>{@link com.slytechs.sdk.common.session.state.StateMachine} - Generic state machine
  *     base with observers and actions</li>
- * <li>{@link com.slytechs.sdk.common.session.state.LifecycleStateMachine} - Standard
+ * <li>{@link com.slytechs.sdk.common.session.state.SessionStateMachine} - Standard
  *     CREATED/RUNNING/SHUTDOWN/TERMINATED lifecycle</li>
  * <li>{@link com.slytechs.sdk.common.session.state.ComponentTree} - Parent-child hierarchy
  *     with counter-based tracking</li>
@@ -75,7 +75,7 @@
  *     state transitions</li>
  * <li>{@link com.slytechs.sdk.common.session.state.TransitionScheduler} - Scheduled
  *     state transitions (shutdown after duration)</li>
- * <li>{@link com.slytechs.sdk.common.session.state.StateZeroCountBarrier} - Concurrent
+ * <li>{@link com.slytechs.sdk.common.session.state.StateWaitBarrier} - Concurrent
  *     barrier that waits for zero count</li>
  * <li>{@link com.slytechs.sdk.common.session.state.StateTreeRenderer} - ASCII tree
  *     visualization with filtered log records</li>
@@ -331,6 +331,6 @@
  * @see com.slytechs.sdk.common.session.Session
  * @see com.slytechs.sdk.common.session.SessionState
  * @see com.slytechs.sdk.common.session.state.StateMachine
- * @see com.slytechs.sdk.common.session.state.LifecycleStateMachine
+ * @see com.slytechs.sdk.common.session.state.SessionStateMachine
  */
 package com.slytechs.sdk.common.session;

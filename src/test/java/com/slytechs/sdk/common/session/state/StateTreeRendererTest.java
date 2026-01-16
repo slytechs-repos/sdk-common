@@ -27,7 +27,7 @@ class StateTreeRendererTest {
 	@Test
 	void renderHierarchyWithRecords() {
 		// Build hierarchy
-		LifecycleStateMachine net = new LifecycleStateMachine("PcapBackend", () -> {});
+		SessionStateMachine net = new SessionStateMachine("PcapBackend", () -> {});
 		net.start();
 		net.register();
 		
@@ -35,7 +35,7 @@ class StateTreeRendererTest {
 		net.recorder().info("Backend initialized with {} ports", 4);
 		net.recorder().debug("Port discovery completed");
 
-		LifecycleStateMachine capture = new LifecycleStateMachine("hello-capture", () -> {});
+		SessionStateMachine capture = new SessionStateMachine("hello-capture", () -> {});
 		capture.registerParent(net);
 		capture.start();
 		capture.register();
@@ -44,7 +44,7 @@ class StateTreeRendererTest {
 		capture.recorder().info("Capture started on port {}", "en0");
 		capture.recorder().trace("Dispatch loop entered");
 
-		LifecycleStateMachine channel = new LifecycleStateMachine("hello-channel", () -> {});
+		SessionStateMachine channel = new SessionStateMachine("hello-channel", () -> {});
 		channel.registerParent(net);
 		channel.start();
 		channel.register();
@@ -95,7 +95,7 @@ class StateTreeRendererTest {
 
 	@Test
 	void renderNestedRecords() {
-		LifecycleStateMachine machine = new LifecycleStateMachine("test-machine", () -> {});
+		SessionStateMachine machine = new SessionStateMachine("test-machine", () -> {});
 		machine.start();
 		machine.register();
 
@@ -121,7 +121,7 @@ class StateTreeRendererTest {
 
 	@Test
 	void renderWithThreadInfo() {
-		LifecycleStateMachine machine = new LifecycleStateMachine("threaded", () -> {});
+		SessionStateMachine machine = new SessionStateMachine("threaded", () -> {});
 		machine.start();
 		machine.register();
 
@@ -140,12 +140,12 @@ class StateTreeRendererTest {
 
 	@Test
 	void renderDuringShutdown() {
-		LifecycleStateMachine net = new LifecycleStateMachine("PcapBackend", () -> {});
+		SessionStateMachine net = new SessionStateMachine("PcapBackend", () -> {});
 		net.start();
 		net.register();
 		net.recorder().info("Backend started");
 
-		LifecycleStateMachine worker = new LifecycleStateMachine("worker-0", () -> {});
+		SessionStateMachine worker = new SessionStateMachine("worker-0", () -> {});
 		worker.registerParent(net);
 		worker.start();
 		worker.register();

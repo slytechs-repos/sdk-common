@@ -48,7 +48,7 @@ import com.slytechs.sdk.common.util.Registration;
  * <p>
  * Subclasses define domain-specific state enums and compose with helper
  * components like {@link ComponentTree}, {@link TransitionScheduler}, and
- * {@link StateZeroCountBarrier}.
+ * {@link StateWaitBarrier}.
  * </p>
  *
  * @param <T> the state enum type

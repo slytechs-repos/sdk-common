@@ -15,12 +15,14 @@
  */
 
 /**
- * Generic state machine infrastructure with hierarchical tracking and diagnostics.
+ * Generic state machine infrastructure with hierarchical tracking and
+ * diagnostics.
  * 
  * <h2>Overview</h2>
  * 
  * <p>
- * This package provides a flexible, type-safe state machine framework that supports:
+ * This package provides a flexible, type-safe state machine framework that
+ * supports:
  * </p>
  * <ul>
  * <li>Generic state types via {@link State}&lt;T&gt; interface</li>
@@ -38,7 +40,8 @@
  * </p>
  * <ul>
  * <li>{@code canTransition(T newState)} - validates state transitions</li>
- * <li>{@code futureTense()}, {@code presentTense()}, {@code pastTense()} - human-readable descriptions</li>
+ * <li>{@code futureTense()}, {@code presentTense()}, {@code pastTense()} -
+ * human-readable descriptions</li>
  * </ul>
  * 
  * <h3>StateMachine</h3>
@@ -66,16 +69,17 @@
  * 
  * <h2>Pre-built State Machines</h2>
  * 
- * <h3>LifecycleStateMachine</h3>
+ * <h3>SessionStateMachine</h3>
  * <p>
  * Standard session lifecycle with states:
  * </p>
+ * 
  * <pre>
  * CREATED ──► RUNNING ──► SHUTDOWN ──► TERMINATED
  * </pre>
  * <p>
  * Used by Net, Capture, Channel, TaskExecutor, and other session types.
- * Provides convenience methods: {@code start()}, {@code shutdown()}, 
+ * Provides convenience methods: {@code start()}, {@code shutdown()},
  * {@code isRunning()}, {@code isShutdown()}, {@code isTerminated()}.
  * </p>
  * 
@@ -83,42 +87,47 @@
  * <p>
  * Task execution lifecycle with error handling:
  * </p>
+ * 
  * <pre>
  * CREATED ──► ACTIVE ──► TERMINATED (normal completion)
  *                    └──► ERROR (exception thrown)
  * </pre>
  * <p>
- * Both ERROR and TERMINATED are terminal states. Supports reset for task restart.
+ * Both ERROR and TERMINATED are terminal states. Supports reset for task
+ * restart.
  * </p>
  * 
  * <h2>Supporting Classes</h2>
  * 
  * <table border="1" cellpadding="5">
  * <caption>Supporting Classes</caption>
- * <tr><th>Class</th><th>Purpose</th></tr>
  * <tr>
- *   <td>{@link TransitionObserver}</td>
- *   <td>Callback interface for state transition notifications</td>
+ * <th>Class</th>
+ * <th>Purpose</th>
  * </tr>
  * <tr>
- *   <td>{@link TransitionScheduler}</td>
- *   <td>Schedules future state transitions (e.g., shutdown after duration)</td>
+ * <td>{@link TransitionObserver}</td>
+ * <td>Callback interface for state transition notifications</td>
  * </tr>
  * <tr>
- *   <td>{@link StateZeroCountBarrier}</td>
- *   <td>Concurrent barrier that awaits zero count for termination</td>
+ * <td>{@link TransitionScheduler}</td>
+ * <td>Schedules future state transitions (e.g., shutdown after duration)</td>
  * </tr>
  * <tr>
- *   <td>{@link CountableState}</td>
- *   <td>Interface for states supporting increment/decrement</td>
+ * <td>{@link StateWaitBarrier}</td>
+ * <td>Concurrent barrier that awaits zero count for termination</td>
  * </tr>
  * <tr>
- *   <td>{@link HierarchalState}</td>
- *   <td>Interface for states with parent-child relationships</td>
+ * <td>{@link CountableState}</td>
+ * <td>Interface for states supporting increment/decrement</td>
  * </tr>
  * <tr>
- *   <td>{@link RenderMode}</td>
- *   <td>Output format control: CURRENT, SNAPSHOT, TRANSITION</td>
+ * <td>{@link HierarchalState}</td>
+ * <td>Interface for states with parent-child relationships</td>
+ * </tr>
+ * <tr>
+ * <td>{@link Mode}</td>
+ * <td>Output format control: CURRENT, SNAPSHOT, TRANSITION</td>
  * </tr>
  * </table>
  * 
@@ -128,15 +137,18 @@
  * <p>
  * Renders component hierarchy with filtered log records:
  * </p>
+ * 
  * <pre>{@code
  * StateTreeRenderer renderer = new StateTreeRenderer()
- *     .threshold(LogLevel.DEBUG)
- *     .showRecords(true);
+ * 		.threshold(LogLevel.DEBUG)
+ * 		.showRecords(true);
  * 
  * System.out.println(renderer.render(rootComponent));
  * }</pre>
  * 
- * <p>Output example:</p>
+ * <p>
+ * Output example:
+ * </p>
  * {@snippet :
  * PcapBackend [name=pcap, state=RUNNING→SHUTDOWN, count=2]
  * │   [DEBUG] PcapBackend changed state RUNNING -> SHUTDOWN
@@ -163,49 +175,49 @@
  * <h3>Creating a Custom State Machine</h3>
  * {@snippet :
  * public enum ChannelState implements State<ChannelState> {
- *     CREATED(true),
- *     ATTACHED(true),
- *     DRAINING(true) {
- *         @Override
- *         public boolean canTransition(ChannelState newState) {
- *             return newState == DRAINED;
- *         }
- *     },
- *     DRAINED(true),
- *     DETACHED(false);
- *     
- *     private final boolean transitionsAllowed;
- *     
- *     ChannelState(boolean transitionsAllowed) {
- *         this.transitionsAllowed = transitionsAllowed;
- *     }
- *     
- *     @Override
- *     public boolean canTransition(ChannelState newState) {
- *         return transitionsAllowed;
- *     }
+ * 	CREATED(true),
+ * 	ATTACHED(true),
+ * 	DRAINING(true) {
+ * 		&#64;Override
+ * 		public boolean canTransition(ChannelState newState) {
+ * 			return newState == DRAINED;
+ * 		}
+ * 	},
+ * 	DRAINED(true),
+ * 	DETACHED(false);
+ * 
+ * 	private final boolean transitionsAllowed;
+ * 
+ * 	ChannelState(boolean transitionsAllowed) {
+ * 		this.transitionsAllowed = transitionsAllowed;
+ * 	}
+ * 
+ * 	&#64;Override
+ * 	public boolean canTransition(ChannelState newState) {
+ * 		return transitionsAllowed;
+ * 	}
  * }
  * 
  * public class ChannelStateMachine extends StateMachine<ChannelState> {
- *     public ChannelStateMachine(String name) {
- *         super(name, ChannelState.CREATED);
- *     }
- *     
- *     public boolean attach() {
- *         return transitionTo(ChannelState.ATTACHED);
- *     }
- *     
- *     public boolean drain() {
- *         return transitionTo(ChannelState.DRAINING);
- *     }
+ * 	public ChannelStateMachine(String name) {
+ * 		super(name, ChannelState.CREATED);
+ * 	}
+ * 
+ * 	public boolean attach() {
+ * 		return transitionTo(ChannelState.ATTACHED);
+ * 	}
+ * 
+ * 	public boolean drain() {
+ * 		return transitionTo(ChannelState.DRAINING);
+ * 	}
  * }
  * }
  * 
  * <h3>Parent-Child Registration</h3>
  * {@snippet :
  * // Parent creates child and registers
- * LifecycleStateMachine parent = new LifecycleStateMachine("parent");
- * LifecycleStateMachine child = new LifecycleStateMachine("child");
+ * SessionStateMachine parent = new SessionStateMachine("parent");
+ * SessionStateMachine child = new SessionStateMachine("child");
  * 
  * child.registerParent(parent);  // Increments parent's count
  * child.start();
@@ -219,7 +231,7 @@
  * 
  * <h3>Scheduled Shutdown</h3>
  * {@snippet :
- * LifecycleStateMachine machine = new LifecycleStateMachine("timed");
+ * SessionStateMachine machine = new SessionStateMachine("timed");
  * machine.start();
  * 
  * // Shutdown after 5 minutes
@@ -235,8 +247,8 @@
  * <h3>Transition Observers</h3>
  * {@snippet :
  * machine.observeTransitions((source, oldState, newState) -> {
- *     logger.info("{} transitioned {} -> {}", 
- *         source.name(), oldState, newState);
+ * 	logger.info("{} transitioned {} -> {}",
+ * 			source.name(), oldState, newState);
  * });
  * }
  * 
@@ -258,16 +270,19 @@
  * The {@code recorder} subpackage provides diagnostic logging:
  * </p>
  * <ul>
- * <li>{@link com.slytechs.sdk.common.session.state.recorder.LogLevel} - TRACE, DEBUG, INFO, WARN, ERROR, OFF</li>
- * <li>{@link com.slytechs.sdk.common.session.state.recorder.StateRecorder} - SLF4J-style logging per machine</li>
- * <li>{@link com.slytechs.sdk.common.session.state.recorder.StateRecord} - Hierarchical log entry</li>
+ * <li>{@link com.slytechs.sdk.common.session.state.recorder.LogLevel} - TRACE,
+ * DEBUG, INFO, WARN, ERROR, OFF</li>
+ * <li>{@link com.slytechs.sdk.common.session.state.recorder.StateRecorder} -
+ * SLF4J-style logging per machine</li>
+ * <li>{@link com.slytechs.sdk.common.session.state.recorder.StateRecord} -
+ * Hierarchical log entry</li>
  * </ul>
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see com.slytechs.sdk.common.session.state.State
  * @see com.slytechs.sdk.common.session.state.StateMachine
- * @see com.slytechs.sdk.common.session.state.LifecycleStateMachine
+ * @see com.slytechs.sdk.common.session.state.SessionStateMachine
  * @see com.slytechs.sdk.common.session.state.ComponentTree
  * @see com.slytechs.sdk.common.session.state.StateTreeRenderer
  */

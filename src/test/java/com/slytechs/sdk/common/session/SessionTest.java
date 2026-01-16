@@ -26,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import com.slytechs.sdk.common.session.state.LifecycleStateMachine;
+import com.slytechs.sdk.common.session.state.SessionStateMachine;
 
 /**
  * Tests for {@link LifecycleSession} interface default methods.
@@ -125,10 +125,10 @@ class SessionTest {
 	 * Simple LifecycleSession implementation for testing.
 	 */
 	static class TestSession implements LifecycleSession {
-		final LifecycleStateMachine state;
+		final SessionStateMachine state;
 
 		TestSession(String name) {
-			this.state = new LifecycleStateMachine(name, () -> {});
+			this.state = new SessionStateMachine(name, () -> {});
 		}
 
 		@Override
@@ -142,7 +142,7 @@ class SessionTest {
 		}
 
 		@Override
-		public LifecycleStateMachine state() {
+		public SessionStateMachine state() {
 			return state;
 		}
 

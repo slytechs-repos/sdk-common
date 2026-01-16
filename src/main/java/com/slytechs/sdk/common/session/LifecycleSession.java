@@ -19,7 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
-import com.slytechs.sdk.common.session.state.LifecycleStateMachine;
+import com.slytechs.sdk.common.session.state.SessionStateMachine;
 import com.slytechs.sdk.common.session.state.StateMachine;
 
 /**
@@ -252,5 +252,5 @@ public interface LifecycleSession extends Session {
 	 * @return the net state instance for this session.
 	 */
 	@Override
-	LifecycleStateMachine state();
+	SessionStateMachine state();
 }
