@@ -23,13 +23,26 @@ import java.lang.invoke.VarHandle;
 import java.util.function.Supplier;
 
 /**
- * Lock-free pool implementation using a CAS-based free-list.
+ * Lock-free pool implementation with configurable FIFO or LIFO ordering.
  * 
  * <p>
- * FreeListPool manages a pool of {@link Poolable} objects using an atomic
- * free-list for thread-safe allocation and release without locks. The pool
+ * LockFreePool manages a pool of {@link Poolable} objects using atomic
+ * operations for thread-safe allocation and release without locks. The pool
  * supports dynamic sizing between configurable min/max capacities.
  * </p>
+ * 
+ * <p>
+ * Use the inner {@link Fifo} and {@link Lifo} subclasses to explicitly specify
+ * the allocation order:
+ * </p>
+ * 
+ * <pre>{@code
+ * // LIFO (stack) ordering - most recently recycled objects allocated first
+ * Pool<Packet> lifoPool = new LockFreePool.Lifo<>(settings, Packet::new);
+ * 
+ * // FIFO (queue) ordering - oldest recycled objects allocated first
+ * Pool<Packet> fifoPool = new LockFreePool.Fifo<>(settings, Packet::new);
+ * }</pre>
  * 
  * <h2>Simple Objects</h2>
  * 
@@ -39,7 +52,7 @@ import java.util.function.Supplier;
  * </p>
  * 
  * <pre>{@code
- * FreeListPool<MyObject> pool = new FreeListPool<>(settings, MyObject::new);
+ * LockFreePool<MyObject> pool = new LockFreePool.Lifo<>(settings, MyObject::new);
  * }</pre>
  * 
  * <h2>Objects with Memory Components</h2>
@@ -51,7 +64,7 @@ import java.util.function.Supplier;
  * </p>
  * 
  * <pre>{@snippet :
- * FreeListPool<Packet> pool = new FreeListPool<>(settings, allocator -> {
+ * LockFreePool<Packet> pool = new LockFreePool.Fifo<>(settings, allocator -> {
  * 	MemorySegment data = allocator.allocate(9000, 8);
  * 	MemorySegment desc = allocator.allocate(128, 8);
  * 	return Packet.ofFixed(DescriptorType.TYPE2, data, desc);
@@ -81,21 +94,20 @@ import java.util.function.Supplier;
  * @see PoolableFactory
  * @see SlabAllocator
  */
-public class FreeListPool<T extends Poolable> implements Pool<T> {
+public class LockFreePool<T extends Poolable> implements Pool<T> {
 
-	private static final VarHandle HEAD;
+	protected static final VarHandle HEAD;
 
 	static {
 		try {
 			HEAD = MethodHandles.lookup().findVarHandle(
-					FreeListPool.class, "head", PoolEntry.class);
+					LockFreePool.class, "head", PoolEntry.class);
 		} catch (ReflectiveOperationException e) {
 			throw new ExceptionInInitializerError(e);
 		}
 	}
 
-	/** Null allocator for non-memory pools - throws on use */
-	private static final SlabAllocator NULL_ALLOCATOR = new SlabAllocator(); // Special, closed arena constructor
+	private static final SlabAllocator NULL_ALLOCATOR = new SlabAllocator();
 
 	private final PoolSettings settings;
 	private final PoolableFactory<T> factory;
@@ -103,39 +115,40 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 	private final int slabSize;
 	private final Metrics metrics;
 
-	private volatile PoolEntry head;
+	protected volatile PoolEntry head;
 	private volatile long capacity;
 	private volatile boolean closed;
 
 	private SlabAllocator currentSlab;
 
 	/**
-	 * Creates a free-list pool with a simple factory.
+	 * Creates a lock-free pool with LIFO ordering and a simple factory.
 	 * 
 	 * <p>
 	 * Use this constructor for objects that don't need memory allocation.
+	 * Consider using {@link Lifo} or {@link Fifo} subclasses for explicit ordering.
 	 * </p>
 	 *
 	 * @param settings pool configuration
 	 * @param factory  simple factory to create poolable objects
 	 */
-	public FreeListPool(PoolSettings settings, Supplier<T> factory) {
+	public LockFreePool(PoolSettings settings, Supplier<T> factory) {
 		this(settings, PoolableFactory.of(factory));
 	}
 
 	/**
-	 * Creates a free-list pool with a memory-aware factory.
+	 * Creates a lock-free pool with LIFO ordering and a memory-aware factory.
 	 * 
 	 * <p>
 	 * Use this constructor for objects that need memory segments allocated during
-	 * construction. The factory receives a {@link SegmentAllocator} backed by a
-	 * {@link SlabAllocator}.
+	 * construction. Consider using {@link Lifo} or {@link Fifo} subclasses for
+	 * explicit ordering.
 	 * </p>
 	 *
 	 * @param settings pool configuration
 	 * @param factory  factory that receives allocator for memory allocation
 	 */
-	public FreeListPool(PoolSettings settings, PoolableFactory<T> factory) {
+	public LockFreePool(PoolSettings settings, PoolableFactory<T> factory) {
 		this.settings = settings;
 		this.factory = factory;
 		this.contraction = settings.createContractionStrategy();
@@ -144,7 +157,6 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 		this.capacity = 0;
 		this.closed = false;
 
-		// Preallocate min capacity
 		grow(settings.minCapacity());
 	}
 
@@ -152,11 +164,9 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 	public T allocate() {
 		contraction.onAllocate(this);
 
-		// Try to pop from free-list
 		PoolEntry entry = pop();
 
 		if (entry == null) {
-			// Try to grow
 			if (capacity < settings.maxCapacity()) {
 				grow(slabSize);
 				entry = pop();
@@ -202,30 +212,25 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 			return 0;
 		}
 
-		// Create slab allocator for this growth batch
 		SlabAllocator growthSlab = createSlabIfNeeded();
 		SlabAllocator allocator = growthSlab != null ? growthSlab : NULL_ALLOCATOR;
 
 		long grown = 0;
 		for (int i = 0; i < actualGrowth; i++) {
-			// Ensure slab has capacity, create new if exhausted
 			if (growthSlab != null && !growthSlab.hasCapacity()) {
 				growthSlab = new SlabAllocator(settings.segmentSize(), slabSize);
 				currentSlab = growthSlab;
 				allocator = growthSlab;
 			}
 
-			// Factory creates object, may allocate from slab
 			T item = factory.create(allocator);
 
 			PoolEntry entry = item.poolEntry();
 			entry.owner = item;
 			entry.owningPool = this;
 
-			// Track slab for eviction if memory was allocated
 			if (growthSlab != null) {
-				// Entry tracks the slab it was created with
-				entry.bindSlab(growthSlab, null); // Segment tracked internally by slab
+				entry.bindSlab(growthSlab, null);
 			}
 
 			push(entry);
@@ -240,12 +245,9 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 		return grown;
 	}
 
-	/**
-	 * Creates a slab allocator if memory allocation is needed.
-	 */
 	private SlabAllocator createSlabIfNeeded() {
 		if (settings.segmentSize() <= 0) {
-			return null; // No memory allocation needed
+			return null;
 		}
 
 		if (currentSlab == null || !currentSlab.hasCapacity()) {
@@ -344,13 +346,11 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 		}
 		closed = true;
 
-		// Evict all entries
 		PoolEntry entry;
 		while ((entry = pop()) != null) {
 			entry.onEvict();
 		}
 
-		// Close current slab if any
 		if (currentSlab != null) {
 			currentSlab.close();
 			currentSlab = null;
@@ -361,8 +361,13 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 
 	/**
 	 * Pushes an entry onto the free-list (CAS).
+	 * 
+	 * <p>
+	 * Default implementation provides LIFO ordering. Override for different
+	 * ordering strategies.
+	 * </p>
 	 */
-	private void push(PoolEntry entry) {
+	protected void push(PoolEntry entry) {
 		PoolEntry oldHead;
 		do {
 			oldHead = head;
@@ -373,7 +378,7 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 	/**
 	 * Pops an entry from the free-list (CAS).
 	 */
-	private PoolEntry pop() {
+	protected PoolEntry pop() {
 		PoolEntry oldHead;
 		PoolEntry newHead;
 		do {
@@ -388,24 +393,18 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 		return oldHead;
 	}
 
-	/**
-	 * Computes optimal slab size.
-	 */
 	private static int computeSlabSize(PoolSettings settings) {
 		if (settings.segmentSize() <= 0) {
-			return 64; // Non-memory pool, arbitrary batch size
+			return 64;
 		}
 
 		int tenPercent = settings.maxCapacity() / 10;
 		int oneMbWorth = (int) (1024 * 1024 / settings.segmentSize());
 		int slabSize = Math.min(tenPercent, oneMbWorth);
 
-		return Math.max(slabSize, 16); // Floor at 16
+		return Math.max(slabSize, 16);
 	}
 
-	/**
-	 * Internal metrics implementation.
-	 */
 	private class Metrics implements PoolMetrics {
 		volatile long allocations;
 		volatile long releases;
@@ -447,7 +446,138 @@ public class FreeListPool<T extends Poolable> implements Pool<T> {
 
 	@Override
 	public String toString() {
-		return String.format("FreeListPool[capacity=%d/%d, available=%d, segment=%d]",
+		return String.format("LockFreePool[capacity=%d/%d, available=%d, segment=%d]",
 				capacity, settings.maxCapacity(), available(), settings.segmentSize());
+	}
+
+	/**
+	 * LIFO (Last-In-First-Out) pool implementation.
+	 * 
+	 * <p>
+	 * Objects most recently recycled are allocated first. This provides better
+	 * cache locality as recently used objects are more likely to still be in CPU
+	 * cache.
+	 * </p>
+	 * 
+	 * <p>
+	 * This is a thin wrapper around the base {@link LockFreePool} which inherently
+	 * uses LIFO ordering via stack-based push/pop operations.
+	 * </p>
+	 *
+	 * @param <T> the type of poolable objects
+	 */
+	public static class Lifo<T extends Poolable> extends LockFreePool<T> {
+
+		/**
+		 * Creates a LIFO pool with a simple factory.
+		 *
+		 * @param settings pool configuration
+		 * @param factory  simple factory to create poolable objects
+		 */
+		public Lifo(PoolSettings settings, Supplier<T> factory) {
+			super(settings, factory);
+		}
+
+		/**
+		 * Creates a LIFO pool with a memory-aware factory.
+		 *
+		 * @param settings pool configuration
+		 * @param factory  factory that receives allocator for memory allocation
+		 */
+		public Lifo(PoolSettings settings, PoolableFactory<T> factory) {
+			super(settings, factory);
+		}
+
+		@Override
+		public String toString() {
+			return String.format("LockFreePool.Lifo[capacity=%d/%d, available=%d, segment=%d]",
+					capacity(), maxCapacity(), available(), maxByteSize());
+		}
+	}
+
+	/**
+	 * FIFO (First-In-First-Out) pool implementation.
+	 * 
+	 * <p>
+	 * Objects are allocated in the order they were recycled. The oldest available
+	 * object is allocated first. This provides more predictable aging behavior and
+	 * allows objects to be pre-filled and reused after the initial allocation.
+	 * </p>
+	 * 
+	 * <p>
+	 * Internally maintains both head and tail pointers to enable efficient queue
+	 * operations using CAS.
+	 * </p>
+	 *
+	 * @param <T> the type of poolable objects
+	 */
+	public static class Fifo<T extends Poolable> extends LockFreePool<T> {
+
+		private static final VarHandle TAIL;
+
+		static {
+			try {
+				TAIL = MethodHandles.lookup().findVarHandle(
+						Fifo.class, "tail", PoolEntry.class);
+			} catch (ReflectiveOperationException e) {
+				throw new ExceptionInInitializerError(e);
+			}
+		}
+
+		private volatile PoolEntry tail;
+
+		/**
+		 * Creates a FIFO pool with a simple factory.
+		 *
+		 * @param settings pool configuration
+		 * @param factory  simple factory to create poolable objects
+		 */
+		public Fifo(PoolSettings settings, Supplier<T> factory) {
+			super(settings, factory);
+		}
+
+		/**
+		 * Creates a FIFO pool with a memory-aware factory.
+		 *
+		 * @param settings pool configuration
+		 * @param factory  factory that receives allocator for memory allocation
+		 */
+		public Fifo(PoolSettings settings, PoolableFactory<T> factory) {
+			super(settings, factory);
+		}
+
+		@Override
+		protected void push(PoolEntry entry) {
+			entry.next = null;
+
+			while (true) {
+				PoolEntry currentTail = tail;
+				
+				if (currentTail == null) {
+					if (HEAD.compareAndSet(this, null, entry)) {
+						TAIL.compareAndSet(this, null, entry);
+						return;
+					}
+				} else {
+					PoolEntry next = currentTail.next;
+					if (currentTail == tail) {
+						if (next == null) {
+							if (TAIL.compareAndSet(this, currentTail, entry)) {
+								currentTail.next = entry;
+								return;
+							}
+						} else {
+							TAIL.compareAndSet(this, currentTail, next);
+						}
+					}
+				}
+			}
+		}
+
+		@Override
+		public String toString() {
+			return String.format("LockFreePool.Fifo[capacity=%d/%d, available=%d, segment=%d]",
+					capacity(), maxCapacity(), available(), maxByteSize());
+		}
 	}
 }
