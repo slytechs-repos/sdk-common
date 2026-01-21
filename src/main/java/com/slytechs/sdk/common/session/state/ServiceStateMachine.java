@@ -17,9 +17,10 @@ package com.slytechs.sdk.common.session.state;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import com.slytechs.sdk.common.session.state.Recovery.Default;
-import com.slytechs.sdk.common.session.state.ServiceStateMachine.PortState;
+import com.slytechs.sdk.common.session.state.ServiceStateMachine.ServiceState;
 import com.slytechs.sdk.common.util.Registration;
 
 /**
@@ -93,15 +94,15 @@ import com.slytechs.sdk.common.util.Registration;
  * @see SessionStateMachine
  * @see TaskStateMachine
  */
-public class ServiceStateMachine extends StateMachine<PortState>
+public class ServiceStateMachine extends StateMachine<ServiceState>
 		implements CountableState, HierarchalState {
 
-	public enum PortState implements State<PortState> {
+	public enum ServiceState implements State<ServiceState> {
 
 		/** Handle allocated, not yet capturing. */
 		CREATED(true) {
 			@Override
-			public boolean canTransistion(PortState newState) {
+			public boolean canTransistion(ServiceState newState) {
 				return newState == ACTIVE || newState == TERMINATED;
 			}
 		},
@@ -109,7 +110,7 @@ public class ServiceStateMachine extends StateMachine<PortState>
 		/** Dispatch/poll loop active, packets flowing. */
 		ACTIVE(true) {
 			@Override
-			public boolean canTransistion(PortState newState) {
+			public boolean canTransistion(ServiceState newState) {
 				return newState == STOPPED || newState == TERMINATED || newState == SHUTDOWN;
 			}
 		},
@@ -117,15 +118,23 @@ public class ServiceStateMachine extends StateMachine<PortState>
 		/** Loop exited via breakloop, handle still open. Can restart. */
 		STOPPED(true) {
 			@Override
-			public boolean canTransistion(PortState newState) {
+			public boolean canTransistion(ServiceState newState) {
 				return newState == ACTIVE || newState == TERMINATED || newState == SHUTDOWN;
 			}
+		},
+
+		ERROR(true) {
+			@Override
+			public boolean canTransistion(ServiceState newState) {
+				return newState == ACTIVE || newState == TERMINATED || newState == SHUTDOWN;
+			}
+
 		},
 
 		/** Indicates the port is shutting down followed by transition to terminated */
 		SHUTDOWN(true) {
 			@Override
-			public boolean canTransistion(PortState newState) {
+			public boolean canTransistion(ServiceState newState) {
 				return newState == TERMINATED;
 			}
 
@@ -150,18 +159,18 @@ public class ServiceStateMachine extends StateMachine<PortState>
 
 		private final boolean transitionsAllowed;
 
-		PortState(boolean transitionsAllowed) {
+		ServiceState(boolean transitionsAllowed) {
 			this.transitionsAllowed = transitionsAllowed;
 		}
 
 		@Override
-		public boolean canTransistion(PortState newState) {
+		public boolean canTransistion(ServiceState newState) {
 			return transitionsAllowed;
 		}
 	}
 
-	private final ComponentTree<PortState> components;
-	private final StateWaitBarrier<PortState> barrier;
+	private final ComponentTree<ServiceState> components;
+	private final StateWaitBarrier<ServiceState> barrier;
 	private final ErrorPolicy<Recovery.Default> errorPolicy;
 
 	/**
@@ -170,88 +179,60 @@ public class ServiceStateMachine extends StateMachine<PortState>
 	 * @param name the source name (e.g., port name)
 	 */
 	public ServiceStateMachine(String name) {
-		super(name, PortState.CREATED);
-		this.components = new ComponentTree<>(this, PortState.TERMINATED);
-		this.barrier = new StateWaitBarrier<>(this, PortState.TERMINATED, PortState.ACTIVE);
+		super(name, ServiceState.CREATED);
+		this.components = new ComponentTree<>(this, ServiceState.TERMINATED);
+		this.barrier = new StateWaitBarrier<>(this, ServiceState.TERMINATED, ServiceState.ACTIVE);
 		this.errorPolicy = new ErrorPolicy<>(this, Default.FAIL);
 	}
 
-	public void awaitTermination() throws InterruptedException {
-		barrier.await(PortState.TERMINATED);
-	}
-
-	public boolean awaitTermination(Duration duration) throws InterruptedException {
-		return barrier.await(PortState.TERMINATED, duration.toNanos(), TimeUnit.NANOSECONDS);
-	}
-
 	public void awaitActive() throws InterruptedException {
-		barrier.await(PortState.ACTIVE);
+		barrier.await(ServiceState.ACTIVE);
 	}
 
 	public void awaitActiveOrShutdown() throws InterruptedException {
-		barrier.await(PortState.SHUTDOWN, PortState.TERMINATED, PortState.ACTIVE);
+		barrier.await(ServiceState.SHUTDOWN, ServiceState.TERMINATED, ServiceState.ACTIVE);
+	}
+
+	public void awaitTermination() throws InterruptedException {
+		barrier.await(ServiceState.TERMINATED);
+	}
+
+	public boolean awaitTermination(Duration duration) throws InterruptedException {
+		return barrier.await(ServiceState.TERMINATED, duration.toNanos(), TimeUnit.NANOSECONDS);
 	}
 
 	/**
-	 * Transitions to ACTIVE state. Starts the capture loop.
-	 *
-	 * @return true if transition succeeded
+	 * @see com.slytechs.sdk.common.session.state.HierarchalState#components()
 	 */
-	public boolean start() {
-		return transitionTo(PortState.ACTIVE);
+	@Override
+	public ComponentTree<?> components() {
+		return components;
+	}
+
+	@Override
+	public void decrement() {
+		components.decrement();
+	}
+
+	public boolean error() {
+		return transitionTo(ServiceState.ERROR);
+	}
+
+	public ErrorPolicy<Recovery.Default> errorPolicy() {
+		return this.errorPolicy;
 	}
 
 	/**
-	 * Transitions to STOPPED state. Pauses capture, handle remains open.
-	 *
-	 * @return true if transition succeeded
+	 * @return
+	 * @see com.slytechs.sdk.common.session.state.ErrorPolicy#hasError()
 	 */
-	public boolean stop() {
-		return transitionTo(PortState.STOPPED);
+	public boolean hasError() {
+		return errorPolicy.hasError();
 	}
 
-	/**
-	 * Transitions from STOPPED back to ACTIVE. Resumes capture loop.
-	 *
-	 * @return true if transition succeeded
-	 */
-	public boolean restart() {
-		return transitionTo(PortState.ACTIVE);
-	}
-
-	/**
-	 * Transitions from STOPPED or ACTIVE to SHUTDOWN. Exits capture loop and
-	 * transitions to TERMINATED.
-	 *
-	 * @return true if transition succeeded
-	 */
-	public boolean shutdown() {
-		return transitionTo(PortState.SHUTDOWN);
-	}
-
-	/**
-	 * Transitions to TERMINATED state. Closes handle, frees resources.
-	 *
-	 * @return true if transition succeeded
-	 */
-	public boolean terminate() {
-		return transitionTo(PortState.TERMINATED);
-	}
-
-	public boolean isShutdown() {
-		return currentState() == PortState.SHUTDOWN;
-	}
-
-	public boolean isCreated() {
-		return currentState() == PortState.CREATED;
-	}
-
-	public boolean isStopped() {
-		return currentState() == PortState.STOPPED;
-	}
-
-	public boolean isTerminated() {
-		return currentState() == PortState.TERMINATED;
+	@Override
+	public void increment() {
+		components.increment();
 	}
 
 	/**
@@ -260,7 +241,11 @@ public class ServiceStateMachine extends StateMachine<PortState>
 	 * @return true if CREATED, ACTIVE, or STOPPED
 	 */
 	public boolean isActive() {
-		return currentState() != PortState.TERMINATED;
+		return currentState() != ServiceState.TERMINATED;
+	}
+
+	public boolean isCreated() {
+		return currentState() == ServiceState.CREATED;
 	}
 
 	/**
@@ -269,22 +254,28 @@ public class ServiceStateMachine extends StateMachine<PortState>
 	 * @return true if ACTIVE
 	 */
 	public boolean isRunning() {
-		return currentState() == PortState.ACTIVE;
+		return currentState() == ServiceState.ACTIVE;
 	}
 
-	@Override
-	public void increment() {
-		components.increment();
+	public boolean isShutdown() {
+		return currentState() == ServiceState.SHUTDOWN;
 	}
 
-	@Override
-	public void decrement() {
-		components.decrement();
+	public boolean isStopped() {
+		return currentState() == ServiceState.STOPPED;
 	}
 
-	@Override
-	public synchronized void reset() {
-		super.reset();
+	public boolean isTerminated() {
+		return currentState() == ServiceState.TERMINATED;
+	}
+
+	/**
+	 * @param handler
+	 * @return
+	 * @see com.slytechs.sdk.common.session.state.ErrorPolicy#onError(java.util.function.Function)
+	 */
+	public ErrorPolicy<Default> onError(Function<ErrorContext, Default> handler) {
+		return errorPolicy.onError(handler);
 	}
 
 	/**
@@ -295,11 +286,71 @@ public class ServiceStateMachine extends StateMachine<PortState>
 		return components.registerParent(parent.components());
 	}
 
-	/**
-	 * @see com.slytechs.sdk.common.session.state.HierarchalState#components()
-	 */
 	@Override
-	public ComponentTree<?> components() {
-		return components;
+	public synchronized void reset() {
+		super.reset();
 	}
+
+	/**
+	 * Transitions from STOPPED back to ACTIVE. Resumes capture loop.
+	 *
+	 * @return true if transition succeeded
+	 */
+	public boolean restart() {
+		return transitionTo(ServiceState.ACTIVE);
+	}
+
+	/**
+	 * Transitions from STOPPED or ACTIVE to SHUTDOWN. Exits capture loop and
+	 * transitions to TERMINATED.
+	 *
+	 * @return true if transition succeeded
+	 */
+	public boolean shutdown() {
+		return transitionTo(ServiceState.SHUTDOWN);
+	}
+
+	/**
+	 * Transitions to ACTIVE state. Starts the capture loop.
+	 *
+	 * @return true if transition succeeded
+	 */
+	public boolean start() {
+		return transitionTo(ServiceState.ACTIVE);
+	}
+
+	/**
+	 * Transitions to STOPPED state. Pauses capture, handle remains open.
+	 *
+	 * @return true if transition succeeded
+	 */
+	public boolean stop() {
+		return transitionTo(ServiceState.STOPPED);
+	}
+
+	/**
+	 * Transitions to TERMINATED state. Closes handle, frees resources.
+	 *
+	 * @return true if transition succeeded
+	 */
+	public boolean terminate() {
+		return transitionTo(ServiceState.TERMINATED);
+	}
+
+	/**
+	 * @return
+	 * @see com.slytechs.sdk.common.session.state.ErrorPolicy#uncaughtException()
+	 */
+	public Throwable uncaughtException() {
+		return errorPolicy.uncaughtException();
+	}
+
+	/**
+	 * @throws InterruptedException
+	 * 
+	 */
+	public void awaitStop() throws InterruptedException {
+		barrier.await(ServiceState.STOPPED);
+	}
+
 }

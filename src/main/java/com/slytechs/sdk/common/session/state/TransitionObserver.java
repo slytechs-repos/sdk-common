@@ -15,6 +15,22 @@
  */
 package com.slytechs.sdk.common.session.state;
 
+/**
+ * An asynchronous update interface for receiving notifications about Transition
+ * information as the Transition is constructed.
+ *
+ * @param <T> the generic type
+ */
 public interface TransitionObserver<T extends Enum<T> & State<T>> {
+
+	/**
+	 * This method is called when information about an Transition which was
+	 * previously requested using an asynchronous interface becomes available.
+	 *
+	 * @param source   the source
+	 * @param oldState the old state
+	 * @param newState the new state
+	 */
 	void onStateTransition(StateMachine<T> source, T oldState, T newState);
+
 }
