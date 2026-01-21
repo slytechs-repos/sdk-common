@@ -138,7 +138,7 @@ class PersistableTest {
                 .segmentSize(9000)
                 .preallocate(true);
         
-        return new FreeListPool<>(settings, this::createFixedWithData);
+        return new LockFreePool<>(settings, this::createFixedWithData);
     }
 
     @Nested

@@ -30,9 +30,10 @@ import java.util.function.Consumer;
  * High-performance buffer for native memory with ByteBuffer-like semantics.
  * 
  * <p>
- * MemoryBuffer provides concrete buffer state management and byte-level data access.
- * It implements BindableView for memory binding and serves as the foundation
- * for composite buffer types while maintaining zero-allocation operation.
+ * MemoryBuffer provides concrete buffer state management and byte-level data
+ * access. It implements BindableView for memory binding and serves as the
+ * foundation for composite buffer types while maintaining zero-allocation
+ * operation.
  * </p>
  * 
  * <h2>Architecture</h2>
@@ -109,8 +110,8 @@ import java.util.function.Consumer;
  * 
  * <h2>Composition Pattern Support</h2>
  * <p>
- * MemoryBuffer supports composite buffers that extend ChainedBuffer. Composite types
- * delegate buffer management operations while providing type-specific
+ * MemoryBuffer supports composite buffers that extend ChainedBuffer. Composite
+ * types delegate buffer management operations while providing type-specific
  * operations:
  * </p>
  * 
@@ -209,7 +210,8 @@ public class MemoryBuffer extends ChainedBuffer implements BindableView {
 	}
 
 	/**
-	 * Allocates a new MemoryBuffer with the specified size using the provided Arena.
+	 * Allocates a new MemoryBuffer with the specified size using the provided
+	 * Arena.
 	 */
 	public static MemoryBuffer allocate(long byteSize, Arena arena) {
 		var mem = new FixedMemory(arena.allocate(byteSize));
@@ -233,6 +235,14 @@ public class MemoryBuffer extends ChainedBuffer implements BindableView {
 	public MemoryBuffer(MemorySegment segment) {
 		super(null); // Terminal doesn't need delegation
 		bind(Memory.of(segment, 0, segment.byteSize()));
+	}
+
+	/**
+	 * Constructs a MemoryBuffer bound to a segment.
+	 */
+	public MemoryBuffer(Memory memory) {
+		super(null); // Terminal doesn't need delegation
+		bind(Memory.of(memory.segment(), memory.start(), memory.length()));
 	}
 
 	// ==================== BindableView Implementation ====================

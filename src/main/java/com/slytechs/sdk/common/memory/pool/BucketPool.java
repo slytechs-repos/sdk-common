@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  * Size-based bucket pool for efficient allocation of variable-sized objects.
  * 
  * <p>
- * BucketPool maintains multiple {@link FreeListPool} instances, each handling
+ * BucketPool maintains multiple {@link LockFreePool} instances, each handling
  * objects of a specific size class. Allocation requests are routed to the
  * smallest bucket that can satisfy the requested size, reducing memory waste
  * while maintaining pool efficiency.
@@ -56,7 +56,7 @@ import java.util.function.Supplier;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see Pool
- * @see FreeListPool
+ * @see LockFreePool
  */
 public class BucketPool<T extends Poolable> implements Pool<T> {
 
@@ -69,7 +69,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 		T create(SlabAllocator allocator, long bucketSize);
 	}
 
-	private final FreeListPool<T>[] buckets;
+	private final LockFreePool<T>[] buckets;
 	private final long[] sizes;
 	private final BucketMetrics metrics;
 	private volatile boolean closed;
@@ -97,7 +97,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 		validateSizes(sizes);
 
 		this.sizes = sizes.clone();
-		this.buckets = new FreeListPool[sizes.length];
+		this.buckets = new LockFreePool[sizes.length];
 		this.metrics = new BucketMetrics();
 		this.closed = false;
 
@@ -114,7 +114,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 					.contractionThreshold(settings.contractionThreshold());
 
 			// Wrap BucketFactory to provide bucket size to factory
-			buckets[i] = new FreeListPool<>(bucketSettings,
+			buckets[i] = new LockFreePool<>(bucketSettings,
 					(SlabAllocator allocator) -> factory.create(allocator, bucketSize));
 		}
 	}
@@ -181,7 +181,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 	@Override
 	public long minCapacity() {
 		long total = 0;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			total += bucket.minCapacity();
 		}
 		return total;
@@ -190,7 +190,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 	@Override
 	public long maxCapacity() {
 		long total = 0;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			total += bucket.maxCapacity();
 		}
 		return total;
@@ -199,7 +199,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 	@Override
 	public long capacity() {
 		long total = 0;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			total += bucket.capacity();
 		}
 		return total;
@@ -208,7 +208,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 	@Override
 	public long available() {
 		long total = 0;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			total += bucket.available();
 		}
 		return total;
@@ -222,7 +222,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 	@Override
 	public long contractUnused(float percent) {
 		long total = 0;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			total += bucket.contractUnused(percent);
 		}
 		if (total > 0) {
@@ -236,7 +236,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 	public long contractUnused(long count) {
 		long perBucket = count / buckets.length;
 		long total = 0;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			total += bucket.contractUnused(perBucket);
 		}
 		if (total > 0) {
@@ -250,7 +250,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 	public long grow(long count) {
 		long perBucket = count / buckets.length;
 		long total = 0;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			total += bucket.grow(perBucket);
 		}
 		if (total > 0) {
@@ -313,7 +313,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 			return;
 		}
 		closed = true;
-		for (FreeListPool<T> bucket : buckets) {
+		for (LockFreePool<T> bucket : buckets) {
 			bucket.close();
 		}
 	}
@@ -356,7 +356,7 @@ public class BucketPool<T extends Poolable> implements Pool<T> {
 		@Override
 		public long releases() {
 			long total = 0;
-			for (FreeListPool<T> bucket : buckets) {
+			for (LockFreePool<T> bucket : buckets) {
 				total += bucket.metrics().releases();
 			}
 			return total;

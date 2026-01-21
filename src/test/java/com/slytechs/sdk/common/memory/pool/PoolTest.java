@@ -79,7 +79,7 @@ class PoolTest {
     }
 
     @Nested
-    @DisplayName("FreeListPool Basic Operations")
+    @DisplayName("LockFreePool Basic Operations")
     class FreeListPoolBasicOperations {
 
         Pool<TestObject> pool;
@@ -90,7 +90,7 @@ class PoolTest {
             settings = new PoolSettings()
                     .minCapacity(10)
                     .maxCapacity(10);
-            pool = new FreeListPool<>(settings, TestObject::new);
+            pool = new LockFreePool<>(settings, TestObject::new);
         }
 
         @AfterEach
@@ -187,7 +187,7 @@ class PoolTest {
     }
 
     @Nested
-    @DisplayName("FreeListPool Dynamic Sizing")
+    @DisplayName("LockFreePool Dynamic Sizing")
     class FreeListPoolDynamicSizing {
 
         @Test
@@ -197,7 +197,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(20);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
             assertEquals(5, pool.capacity());
 
             // Exhaust initial capacity
@@ -221,7 +221,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(10);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             // Allocate all
             List<TestObject> allocated = new ArrayList<>();
@@ -246,7 +246,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(100);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
             assertEquals(5, pool.capacity());
 
             long grown = pool.grow(10);
@@ -263,7 +263,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(100);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
             pool.grow(20); // Now at 25
             assertEquals(25, pool.capacity());
 
@@ -281,7 +281,7 @@ class PoolTest {
                     .minCapacity(10)
                     .maxCapacity(100);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
             pool.grow(10); // Now at 20
             assertEquals(20, pool.capacity());
 
@@ -305,7 +305,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(5);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
             pool.close();
 
             assertTrue(pool.isClosed());
@@ -318,7 +318,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(5);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
             pool.close();
 
             assertNull(pool.allocate());
@@ -331,7 +331,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(5);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
             pool.close();
 
             assertDoesNotThrow(pool::close);
@@ -349,7 +349,7 @@ class PoolTest {
                     .minCapacity(10)
                     .maxCapacity(10);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             pool.allocate();
             pool.allocate();
@@ -367,7 +367,7 @@ class PoolTest {
                     .minCapacity(10)
                     .maxCapacity(10);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             TestObject obj1 = pool.allocate();
             pool.allocate();
@@ -386,7 +386,7 @@ class PoolTest {
                     .minCapacity(2)
                     .maxCapacity(2);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             pool.allocate();
             pool.allocate();
@@ -405,7 +405,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(100);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             pool.grow(10);
             pool.grow(10);
@@ -422,7 +422,7 @@ class PoolTest {
                     .minCapacity(5)
                     .maxCapacity(100);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             pool.grow(20);
             pool.contractUnused(5);
@@ -446,7 +446,7 @@ class PoolTest {
                     .minCapacity(100)
                     .maxCapacity(100);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             int threadCount = 10;
             int allocationsPerThread = 10;
@@ -491,7 +491,7 @@ class PoolTest {
                     .minCapacity(10)
                     .maxCapacity(10);
 
-            Pool<TestObject> pool = new FreeListPool<>(settings, TestObject::new);
+            Pool<TestObject> pool = new LockFreePool<>(settings, TestObject::new);
 
             int iterations = 1000;
             CountDownLatch doneLatch = new CountDownLatch(2);

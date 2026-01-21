@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * references</li>
  * <li><strong>Backend-aware:</strong> Designed for integration with native
  * libraries</li>
- * <li><strong>FreeListPool-managed:</strong> Allocated from and returned to specialized
+ * <li><strong>LockFreePool-managed:</strong> Allocated from and returned to specialized
  * pools</li>
  * </ul>
  * 

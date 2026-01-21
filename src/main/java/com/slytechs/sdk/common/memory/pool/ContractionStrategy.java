@@ -44,12 +44,12 @@ package com.slytechs.sdk.common.memory.pool;
  * 
  * {@snippet :
  * // No contraction overhead for small pools
- * Pool<Packet> smallPool = new FreeListPool<>(
+ * Pool<Packet> smallPool = new LockFreePool<>(
  * 		new PoolSettings().maxCapacity(1000).contractionEnabled(false),
  * 		Packet::new);
  * 
  * // Auto-contraction for large pools
- * Pool<Packet> largePool = new FreeListPool<>(
+ * Pool<Packet> largePool = new LockFreePool<>(
  * 		new PoolSettings().maxCapacity(100_000).contractionEnabled(true),
  * 		Packet::new);
  * }

@@ -57,7 +57,7 @@ package com.slytechs.sdk.common.memory.pool;
  * <h2>Usage Example</h2>
  * 
  * <pre>{@code
- * Pool<Packet> pool = new FreeListPool<>(settings, Packet::new);
+ * Pool<Packet> pool = new LockFreePool<>(settings, Packet::new);
  * 
  * // Allocate from pool
  * Packet packet = pool.allocate();
@@ -76,7 +76,7 @@ package com.slytechs.sdk.common.memory.pool;
  * @author Sly Technologies Inc.
  * @see Poolable
  * @see PoolEntry
- * @see FreeListPool
+ * @see LockFreePool
  */
 public interface Pool<T extends Poolable> extends AutoCloseable {
 
