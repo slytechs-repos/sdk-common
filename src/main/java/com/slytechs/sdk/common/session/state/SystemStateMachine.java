@@ -17,11 +17,9 @@ package com.slytechs.sdk.common.session.state;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.TimeUnit;
 
-import com.slytechs.sdk.common.session.SessionState;
-import com.slytechs.sdk.common.session.state.ComponentTree.ZeroCountCallback;
-import com.slytechs.sdk.common.session.state.SessionStateMachine.LifecycleState;
+import com.slytechs.sdk.common.session.state.StateHierarchyTree.ZeroCountCallback;
+import com.slytechs.sdk.common.session.state.SystemStateMachine.SystemState;
 import com.slytechs.sdk.common.session.state.recorder.LogLevel;
 import com.slytechs.sdk.common.util.Registration;
 
@@ -37,7 +35,7 @@ import com.slytechs.sdk.common.util.Registration;
  * Composes with:
  * </p>
  * <ul>
- * <li>{@link ComponentTree} - parent/child tracking and component counting</li>
+ * <li>{@link StateHierarchyTree} - parent/child tracking and component counting</li>
  * <li>{@link TransitionScheduler} - scheduled shutdown (shutdownAfter/At)</li>
  * <li>{@link StateWaitBarrier} - await termination</li>
  * </ul>
@@ -45,16 +43,16 @@ import com.slytechs.sdk.common.util.Registration;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class SessionStateMachine
-		extends StateMachine<LifecycleState>
+public class SystemStateMachine
+		extends StateMachine<SystemState>
 		implements SessionState, HierarchalState, CountableState {
 
-	public enum LifecycleState implements State<LifecycleState> {
+	public enum SystemState implements State<SystemState> {
 		CREATED(true),
 		RUNNING(true),
 		SHUTDOWN(true) {
 			@Override
-			public boolean canTransistion(LifecycleState newState) {
+			public boolean canTransistion(SystemState newState) {
 				return newState == TERMINATED;
 			}
 		},
@@ -77,19 +75,19 @@ public class SessionStateMachine
 
 		private final boolean transitionsAllowed;
 
-		LifecycleState(boolean transitionsAllowed) {
+		SystemState(boolean transitionsAllowed) {
 			this.transitionsAllowed = transitionsAllowed;
 		}
 
 		@Override
-		public boolean canTransistion(LifecycleState newState) {
+		public boolean canTransistion(SystemState newState) {
 			return transitionsAllowed;
 		}
 	}
 
-	private final ComponentTree<LifecycleState> components;
-	private final TransitionScheduler<LifecycleState> shutdownScheduler;
-	private final StateWaitBarrier<LifecycleState> terminatedBarrier;
+	private final StateHierarchyTree<SystemState> components;
+	private final TransitionScheduler<SystemState> shutdownScheduler;
+	private final StateWaitBarrier<SystemState> terminatedBarrier;
 
 	/**
 	 * Creates a lifecycle state machine.
@@ -97,17 +95,17 @@ public class SessionStateMachine
 	 * @param name                    the session name
 	 * @param scheduledShutdownAction action to execute on shutdown transition
 	 */
-	public SessionStateMachine(String name, ZeroCountCallback scheduledShutdownAction) {
-		super(name, LifecycleState.CREATED);
+	public SystemStateMachine(String name, ZeroCountCallback scheduledShutdownAction) {
+		super(name, SystemState.CREATED);
 
 		// On zero, transition to TERMINATED
-		this.components = new ComponentTree<>(this, LifecycleState.TERMINATED);
+		this.components = new StateHierarchyTree<>(this, SystemState.TERMINATED);
 
 		// When scheduled is triggered, call this action
 		this.shutdownScheduler = new TransitionScheduler<>(this, scheduledShutdownAction);
 
 		// Trigger signal, and awake barrier when terminated is reached
-		this.terminatedBarrier = new StateWaitBarrier<>(this, LifecycleState.TERMINATED);
+		this.terminatedBarrier = new StateWaitBarrier<>(this, SystemState.TERMINATED);
 	}
 
 	/**
@@ -116,7 +114,7 @@ public class SessionStateMachine
 	 * @return the component tree
 	 */
 	@Override
-	public ComponentTree<LifecycleState> components() {
+	public StateHierarchyTree<SystemState> components() {
 		return components;
 	}
 
@@ -126,7 +124,7 @@ public class SessionStateMachine
 	 * @return true if transition occurred
 	 */
 	public boolean start() {
-		return transitionTo(LifecycleState.RUNNING);
+		return transitionTo(SystemState.RUNNING);
 	}
 
 	/**
@@ -136,7 +134,7 @@ public class SessionStateMachine
 	 */
 	public boolean shutdown() {
 		shutdownScheduler.cancel();
-		return transitionTo(LifecycleState.SHUTDOWN);
+		return transitionTo(SystemState.SHUTDOWN);
 	}
 
 	/**
@@ -184,8 +182,8 @@ public class SessionStateMachine
 	 * @param parent the parent lifecycle
 	 * @return registration to detach from parent
 	 */
-	public Registration registerParent(SessionStateMachine parent) {
-		return components.registerParent(parent.components); // Correct - passes ComponentTree
+	public Registration registerParent(SystemStateMachine parent) {
+		return components.registerParent(parent.components); // Correct - passes StateHierarchyTree
 	}
 
 	/**
@@ -193,35 +191,27 @@ public class SessionStateMachine
 	 *
 	 * @throws InterruptedException if interrupted while waiting
 	 */
-	public void await() throws InterruptedException {
-		terminatedBarrier.await(LifecycleState.TERMINATED);
+	public void awaitTerminated() throws InterruptedException {
+		terminatedBarrier.await(SystemState.TERMINATED);
 	}
 
 	/**
-	 * @see com.slytechs.sdk.common.session.SessionState#await(long,
-	 *      java.util.concurrent.TimeUnit)
+	 * @see com.slytechs.sdk.common.session.state.SessionState#awaitTerminated(java.time.Duration)
 	 */
-	public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
-		return terminatedBarrier.await(LifecycleState.TERMINATED, timeout, unit);
-	}
-
-	/**
-	 * @see com.slytechs.sdk.common.session.SessionState#await(java.time.Duration)
-	 */
-	public boolean await(Duration timeout) throws InterruptedException {
-		return terminatedBarrier.await(LifecycleState.TERMINATED, timeout.toMillis(), TimeUnit.MILLISECONDS);
+	public boolean awaitTerminated(Duration timeout) throws InterruptedException {
+		return terminatedBarrier.await(timeout, SystemState.TERMINATED);
 	}
 
 	public boolean isCreated() {
-		return currentState() == LifecycleState.CREATED;
+		return currentState() == SystemState.CREATED;
 	}
 
 	public boolean isRunning() {
-		return currentState() == LifecycleState.RUNNING;
+		return currentState() == SystemState.RUNNING;
 	}
 
 	public boolean isShutdown() {
-		return currentState() == LifecycleState.SHUTDOWN;
+		return currentState() == SystemState.SHUTDOWN;
 	}
 
 	public boolean isShutdownScheduled() {
@@ -229,7 +219,7 @@ public class SessionStateMachine
 	}
 
 	public boolean isTerminated() {
-		return currentState() == LifecycleState.TERMINATED;
+		return currentState() == SystemState.TERMINATED;
 	}
 
 	/**
@@ -265,7 +255,7 @@ public class SessionStateMachine
 	}
 
 	/**
-	 * @see com.slytechs.sdk.common.session.state.HierarchalState#registerParent(com.slytechs.sdk.common.session.state.ComponentTree)
+	 * @see com.slytechs.sdk.common.session.state.HierarchalState#registerParent(com.slytechs.sdk.common.session.state.StateHierarchyTree)
 	 */
 	@Override
 	public Registration registerParent(HierarchalState parent) {

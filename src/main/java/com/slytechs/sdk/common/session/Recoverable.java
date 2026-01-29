@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session.state;
+package com.slytechs.sdk.common.session;
 
-import com.slytechs.sdk.common.util.Registration;
+import com.slytechs.sdk.common.session.state.ErrorContext;
+import com.slytechs.sdk.common.session.state.ErrorPolicy;
+import com.slytechs.sdk.common.session.state.Recovery;
 
 /**
  * 
@@ -23,9 +25,10 @@ import com.slytechs.sdk.common.util.Registration;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface HierarchalState {
+public interface Recoverable {
 
-	Registration registerParent(HierarchalState parent);
+	ErrorPolicy<? extends Recovery<?>> errorPolicy();
 
-	StateHierarchyTree<?> components();
+	ErrorContext error();
+
 }

@@ -15,6 +15,7 @@
  */
 package com.slytechs.sdk.common.session.state;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -64,8 +65,8 @@ public class StateWaitBarrier<T extends Enum<T> & State<T>> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public boolean await(T awaitState, long timeout, TimeUnit unit) throws InterruptedException {
-		return awaitAnyState(timeout, unit, awaitState);
+	public boolean await(Duration timeout, T awaitState) throws InterruptedException {
+		return awaitAnyState(timeout, awaitState);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -107,10 +108,10 @@ public class StateWaitBarrier<T extends Enum<T> & State<T>> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public boolean awaitAnyState(long timeout, TimeUnit unit, T awaitState, T... awaitStates)
+	public boolean awaitAnyState(Duration timeout, T awaitState, T... awaitStates)
 			throws InterruptedException {
 
-		long timeoutAt = System.nanoTime() + unit.toNanos(timeout);
+		long timeoutAt = System.nanoTime() + timeout.toNanos();
 		Set<T> waitSet = ofSet(awaitState, awaitStates);
 		if (!monitorStates.containsAll(waitSet) || waitSet.isEmpty())
 			throw new IllegalArgumentException("Not monitoring the supplied awaitStates "

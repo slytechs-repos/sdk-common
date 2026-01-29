@@ -23,7 +23,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import com.slytechs.sdk.common.session.state.ComponentTree.ZeroCountCallback;
+import com.slytechs.sdk.common.session.state.StateHierarchyTree.ZeroCountCallback;
 import com.slytechs.sdk.common.session.state.recorder.StateRecord;
 import com.slytechs.sdk.common.util.Registration;
 

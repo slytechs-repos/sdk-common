@@ -56,9 +56,9 @@
  * <li>Reset capability for task restart scenarios</li>
  * </ul>
  * 
- * <h3>ComponentTree</h3>
+ * <h3>StateHierarchyTree</h3>
  * <p>
- * The {@link ComponentTree}&lt;T&gt; class manages parent-child relationships:
+ * The {@link StateHierarchyTree}&lt;T&gt; class manages parent-child relationships:
  * </p>
  * <ul>
  * <li>Counter-based tracking via {@code increment()}/{@code decrement()}</li>
@@ -69,7 +69,7 @@
  * 
  * <h2>Pre-built State Machines</h2>
  * 
- * <h3>SessionStateMachine</h3>
+ * <h3>SystemStateMachine</h3>
  * <p>
  * Standard session lifecycle with states:
  * </p>
@@ -216,8 +216,8 @@
  * <h3>Parent-Child Registration</h3>
  * {@snippet :
  * // Parent creates child and registers
- * SessionStateMachine parent = new SessionStateMachine("parent");
- * SessionStateMachine child = new SessionStateMachine("child");
+ * SystemStateMachine parent = new SystemStateMachine("parent");
+ * SystemStateMachine child = new SystemStateMachine("child");
  * 
  * child.registerParent(parent);  // Increments parent's count
  * child.start();
@@ -231,7 +231,7 @@
  * 
  * <h3>Scheduled Shutdown</h3>
  * {@snippet :
- * SessionStateMachine machine = new SessionStateMachine("timed");
+ * SystemStateMachine machine = new SystemStateMachine("timed");
  * machine.start();
  * 
  * // Shutdown after 5 minutes
@@ -282,8 +282,8 @@
  * @author Sly Technologies Inc.
  * @see com.slytechs.sdk.common.session.state.State
  * @see com.slytechs.sdk.common.session.state.StateMachine
- * @see com.slytechs.sdk.common.session.state.SessionStateMachine
- * @see com.slytechs.sdk.common.session.state.ComponentTree
+ * @see com.slytechs.sdk.common.session.state.SystemStateMachine
+ * @see com.slytechs.sdk.common.session.state.StateHierarchyTree
  * @see com.slytechs.sdk.common.session.state.StateTreeRenderer
  */
 package com.slytechs.sdk.common.session.state;

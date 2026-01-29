@@ -26,12 +26,12 @@
  * </p>
  * <ul>
  * <li>{@code StateMachine} - Base state machine with transition validation</li>
- * <li>{@code SessionStateMachine} - Top-level lifecycle (CREATED → RUNNING →
+ * <li>{@code SystemStateMachine} - Top-level lifecycle (CREATED → RUNNING →
  * SHUTDOWN → TERMINATED)</li>
  * <li>{@code ServiceStateMachine} - Restartable services (ACTIVE ⇄ STOPPED →
  * TERMINATED)</li>
  * <li>{@code TaskStateMachine} - One-shot tasks with error handling</li>
- * <li>{@code ComponentTree} - Parent/child hierarchy with auto-termination</li>
+ * <li>{@code StateHierarchyTree} - Parent/child hierarchy with auto-termination</li>
  * <li>{@code StateWaitBarrier} - Thread synchronization on state
  * transitions</li>
  * <li>{@code ErrorPolicy} - Configurable error handling and recovery</li>
@@ -56,7 +56,7 @@
  * </p>
  * <ul>
  * <li>{@code Session} - Base session interface</li>
- * <li>{@code LifecycleSession} - Session with managed lifecycle</li>
+ * <li>{@code SystemSession} - Session with managed lifecycle</li>
  * <li>{@code SessionState} - Session state access</li>
  * </ul>
  * 

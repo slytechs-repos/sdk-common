@@ -94,7 +94,7 @@ public class StateTreeRenderer {
 	 * @param root the root of the hierarchy
 	 * @return formatted ASCII tree
 	 */
-	public String render(ComponentTree<?> root) {
+	public String render(StateHierarchyTree<?> root) {
 		StringBuilder sb = new StringBuilder();
 		renderNode(sb, root, "", true, true);
 		return sb.toString();
@@ -103,18 +103,18 @@ public class StateTreeRenderer {
 	/**
 	 * Static convenience method with default settings.
 	 */
-	public static String render(ComponentTree<?> root, LogLevel threshold) {
+	public static String render(StateHierarchyTree<?> root, LogLevel threshold) {
 		return new StateTreeRenderer(threshold, true, false).render(root);
 	}
 
 	/**
 	 * Static convenience method - hierarchy only, no records.
 	 */
-	public static String renderHierarchyOnly(ComponentTree<?> root) {
+	public static String renderHierarchyOnly(StateHierarchyTree<?> root) {
 		return new StateTreeRenderer(LogLevel.OFF, false, false).render(root);
 	}
 
-	private void renderNode(StringBuilder sb, ComponentTree<?> node,
+	private void renderNode(StringBuilder sb, StateHierarchyTree<?> node,
 	                        String prefix, boolean isLast, boolean isRoot) {
 		// Render the component node
 		if (isRoot) {
@@ -177,7 +177,7 @@ public class StateTreeRenderer {
 		}
 	}
 
-	private String formatNode(ComponentTree<?> node) {
+	private String formatNode(StateHierarchyTree<?> node) {
 		StateMachine<?> machine = node.stateMachine();
 		String typeName = formatTypeName(machine);
 		String stateStr = formatState(machine);
@@ -314,7 +314,7 @@ public class StateTreeRenderer {
 			return new StateTreeRenderer(threshold, showRecords, showThreadInfo);
 		}
 
-		public String render(ComponentTree<?> root) {
+		public String render(StateHierarchyTree<?> root) {
 			return build().render(root);
 		}
 	}

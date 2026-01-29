@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session.state;
-
-import com.slytechs.sdk.common.util.Registration;
+package com.slytechs.sdk.common.session;
 
 /**
  * 
@@ -23,9 +21,10 @@ import com.slytechs.sdk.common.util.Registration;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface HierarchalState {
+public interface Stoppable {
 
-	Registration registerParent(HierarchalState parent);
+	Stoppable start() throws SessionStateException;
 
-	StateHierarchyTree<?> components();
+	Stoppable stop() throws SessionStateException;
+
 }

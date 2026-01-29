@@ -29,29 +29,29 @@ class TreeRendererTest {
 		// Simulate: Net -> Capture, Channel -> Task, Task
 		
 		// Root: PcapBackend
-		SessionStateMachine net = new SessionStateMachine("PcapBackend", () -> {});
+		SystemStateMachine net = new SystemStateMachine("PcapBackend", () -> {});
 		net.start();
 		net.register(); // Count for self
 		
 		// Child: Capture
-		SessionStateMachine capture = new SessionStateMachine("hello-capture", () -> {});
+		SystemStateMachine capture = new SystemStateMachine("hello-capture", () -> {});
 		capture.registerParent(net);
 		capture.start();
 		capture.register();
 		
 		// Child: Channel
-		SessionStateMachine channel = new SessionStateMachine("hello-channel", () -> {});
+		SystemStateMachine channel = new SystemStateMachine("hello-channel", () -> {});
 		channel.registerParent(net);
 		channel.start();
 		channel.register();
 		
 		// Grandchildren: Tasks under Channel
-		SessionStateMachine worker0 = new SessionStateMachine("worker-0", () -> {});
+		SystemStateMachine worker0 = new SystemStateMachine("worker-0", () -> {});
 		worker0.registerParent(channel);
 		worker0.start();
 		worker0.register();
 		
-		SessionStateMachine worker1 = new SessionStateMachine("worker-1", () -> {});
+		SystemStateMachine worker1 = new SystemStateMachine("worker-1", () -> {});
 		worker1.registerParent(channel);
 		worker1.start();
 		worker1.register();
@@ -93,7 +93,7 @@ class TreeRendererTest {
 	
 	@Test
 	void renderShowsComponentCount() {
-		SessionStateMachine parent = new SessionStateMachine("parent", () -> {});
+		SystemStateMachine parent = new SystemStateMachine("parent", () -> {});
 		parent.start();
 		parent.register();
 		parent.register();
@@ -108,7 +108,7 @@ class TreeRendererTest {
 	
 	@Test
 	void renderShowsStateTransition() {
-		SessionStateMachine machine = new SessionStateMachine("test", () -> {});
+		SystemStateMachine machine = new SystemStateMachine("test", () -> {});
 		machine.start();
 		machine.register();
 		machine.shutdown();

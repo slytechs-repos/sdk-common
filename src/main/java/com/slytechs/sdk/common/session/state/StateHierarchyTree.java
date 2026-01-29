@@ -27,9 +27,9 @@ import com.slytechs.sdk.common.util.Registration;
  * Tree-based implementation of {@link ComponentHierarchy} with single parent.
  * 
  * <p>
- * ComponentTree tracks parent/child relationships and component counts within a
- * single state domain. When the component count reaches zero, a configurable
- * callback is invoked - typically to trigger a state transition.
+ * StateHierarchyTree tracks parent/child relationships and component counts
+ * within a single state domain. When the component count reaches zero, a
+ * configurable callback is invoked - typically to trigger a state transition.
  * </p>
  * 
  * <p>
@@ -42,7 +42,7 @@ import com.slytechs.sdk.common.util.Registration;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
+public class StateHierarchyTree<T extends Enum<T> & State<T>> implements Named {
 
 	public interface ZeroCountCallback {
 		void run() throws Exception;
@@ -51,9 +51,9 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 	private final StateMachine<T> stateMachine;
 	private final ZeroCountCallback onZeroCallback;
 
-	private ComponentTree<?> parent;
+	private StateHierarchyTree<?> parent;
 	private Registration parentRegistration;
-	private final List<ComponentTree<?>> children = new LinkedList<>();
+	private final List<StateHierarchyTree<?>> children = new LinkedList<>();
 	private long count = 0;
 
 	/**
@@ -67,7 +67,7 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 	 * @param machine         the owning state machine
 	 * @param transitionState state to transition to when count reaches zero
 	 */
-	public ComponentTree(StateMachine<T> machine, T transitionState) {
+	public StateHierarchyTree(StateMachine<T> machine, T transitionState) {
 		this(machine, () -> machine.transitionTo(transitionState));
 	}
 
@@ -77,7 +77,7 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 	 * @param machine        the owning state machine
 	 * @param onZeroCallback callback invoked when component count reaches zero
 	 */
-	public ComponentTree(StateMachine<T> machine, ZeroCountCallback onZeroCallback) {
+	public StateHierarchyTree(StateMachine<T> machine, ZeroCountCallback onZeroCallback) {
 		this.stateMachine = machine;
 		this.onZeroCallback = onZeroCallback;
 	}
@@ -91,11 +91,11 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 		return stateMachine;
 	}
 
-	public synchronized Optional<ComponentTree<?>> parent() {
+	public synchronized Optional<StateHierarchyTree<?>> parent() {
 		return Optional.ofNullable(parent);
 	}
 
-	public synchronized List<ComponentTree<?>> children() {
+	public synchronized List<StateHierarchyTree<?>> children() {
 		return Collections.unmodifiableList(children);
 	}
 
@@ -103,7 +103,7 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 		return count;
 	}
 
-	public synchronized Registration registerParent(ComponentTree<?> newParent) {
+	public synchronized Registration registerParent(StateHierarchyTree<?> newParent) {
 		if (this.parent != null)
 			throw new IllegalStateException(
 					"Cannot register with parent '%s', already registered with '%s'"
@@ -119,7 +119,7 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 		return () -> deregisterParent(newParent);
 	}
 
-	private synchronized void deregisterParent(ComponentTree<?> previousParent) {
+	private synchronized void deregisterParent(StateHierarchyTree<?> previousParent) {
 		if (parent != previousParent)
 			return;
 
@@ -132,7 +132,7 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 		parent = null;
 	}
 
-	public synchronized Registration registerChild(ComponentTree<?> child) {
+	public synchronized Registration registerChild(StateHierarchyTree<?> child) {
 		children.add(child);
 		return () -> children.remove(child);
 	}
@@ -168,7 +168,7 @@ public class ComponentTree<T extends Enum<T> & State<T>> implements Named {
 
 	@Override
 	public String toString() {
-		return "ComponentTree[name=%s, state=%s, count=%d, children=%d]".formatted(
+		return "StateHierarchyTree[name=%s, state=%s, count=%d, children=%d]".formatted(
 				name(),
 				stateMachine.currentState(),
 				count,

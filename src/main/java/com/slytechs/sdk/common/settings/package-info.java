@@ -39,7 +39,7 @@
  *     settings with additional properties and different namespaces</li>
  * <li><b>Fluent API</b> - Chainable configuration with covariant return types</li>
  * <li><b>Comments</b> - Self-documenting configuration files</li>
- * <li><b>Transient Properties</b> - LifecycleSession-only values excluded from persistence</li>
+ * <li><b>Transient Properties</b> - SystemSession-only values excluded from persistence</li>
  * </ul>
  * 
  * <h2>Resolution Order</h2>

@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session;
+package com.slytechs.sdk.common.session.state;
 
 import java.time.Duration;
 import java.time.Instant;
 
-import com.slytechs.sdk.common.session.state.StateMachine;
+import com.slytechs.sdk.common.session.SystemSession;
 
 /**
- * Interface for querying the state of a {@link LifecycleSession} in the
+ * Interface for querying the state of a {@link SystemSession} in the
  * jNetworks SDK. Provides read-only access to the lifecycle stages of a network
  * session: running, shutdown scheduled, shutdown initiated, and terminated.
  * This interface allows users to inspect session state without modifying it,
@@ -33,8 +33,8 @@ import com.slytechs.sdk.common.session.state.StateMachine;
  * sub-sessions (e.g., Capture for packet capture, Transmitter for transmission,
  * Config for configuration, FileCapture for file operations, Statistics for
  * metrics, and EventMonitor for events). Each sub-session implements
- * {@link LifecycleSession} and provides a {@link SessionState} for querying its
- * state. The root NetWorks also implements {@link LifecycleSession}, allowing
+ * {@link SystemSession} and provides a {@link SessionState} for querying its
+ * state. The root NetWorks also implements {@link SystemSession}, allowing
  * unified lifecycle management.
  * </p>
  * 
@@ -49,12 +49,12 @@ import com.slytechs.sdk.common.session.state.StateMachine;
  * open and false when shutdown is initiated.</li>
  * <li><b>Shutdown Scheduled ({@link #isShutdownScheduled()}):</b> Indicates a
  * shutdown has been scheduled (e.g., via
- * {@link LifecycleSession#shutdownAfter(Duration)} or
- * {@link LifecycleSession#shutdownAt(Instant)}), but not yet initiated. The
+ * {@link SystemSession#shutdownAfter(Duration)} or
+ * {@link SystemSession#shutdownAt(Instant)}), but not yet initiated. The
  * session remains running until the deadline.</li>
  * <li><b>Shutdown Initiated ({@link #isShutdown()}):</b> Indicates shutdown has
- * started (e.g., via {@link LifecycleSession#shutdown()},
- * {@link LifecycleSession#shutdownNow()}, or scheduled deadline reached), but
+ * started (e.g., via {@link SystemSession#shutdown()},
+ * {@link SystemSession#shutdownNow()}, or scheduled deadline reached), but
  * internal tasks are still completing. No new operations are accepted.</li>
  * <li><b>Terminated ({@link #isTerminated()}):</b> Indicates all internal tasks
  * and registered sub-sessions/components have completed after shutdown, and the
@@ -69,7 +69,7 @@ import com.slytechs.sdk.common.session.state.StateMachine;
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see LifecycleSession
+ * @see SystemSession
  * @see StateMachine
  * @see ManagedStateMachine
  */

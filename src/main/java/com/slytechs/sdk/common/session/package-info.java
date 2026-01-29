@@ -44,9 +44,9 @@
  * <ul>
  * <li>{@link com.slytechs.sdk.common.session.Session} - Primary interface for
  *     lifecycle operations (shutdown, await, scheduling)</li>
- * <li>{@link com.slytechs.sdk.common.session.LifecycleSession} - Extended session
+ * <li>{@link com.slytechs.sdk.common.session.SystemSession} - Extended session
  *     with closeable support for try-with-resources</li>
- * <li>{@link com.slytechs.sdk.common.session.SessionState} - Read-only state queries
+ * <li>{@link com.slytechs.sdk.common.session.state.SessionState} - Read-only state queries
  *     (isRunning, isShutdown, isTerminated)</li>
  * <li>{@link com.slytechs.sdk.common.session.SessionException} - Base exception for
  *     session errors</li>
@@ -63,9 +63,9 @@
  *     with transition rules</li>
  * <li>{@link com.slytechs.sdk.common.session.state.StateMachine} - Generic state machine
  *     base with observers and actions</li>
- * <li>{@link com.slytechs.sdk.common.session.state.SessionStateMachine} - Standard
+ * <li>{@link com.slytechs.sdk.common.session.state.SystemStateMachine} - Standard
  *     CREATED/RUNNING/SHUTDOWN/TERMINATED lifecycle</li>
- * <li>{@link com.slytechs.sdk.common.session.state.ComponentTree} - Parent-child hierarchy
+ * <li>{@link com.slytechs.sdk.common.session.state.StateHierarchyTree} - Parent-child hierarchy
  *     with counter-based tracking</li>
  * <li>{@link com.slytechs.sdk.common.session.state.CountableState} - Interface for states
  *     that support increment/decrement counting</li>
@@ -318,7 +318,7 @@
  * <h2>Design Principles</h2>
  * 
  * <ul>
- * <li><b>Composition over inheritance</b> - StateMachine composes with ComponentTree</li>
+ * <li><b>Composition over inheritance</b> - StateMachine composes with StateHierarchyTree</li>
  * <li><b>Generic state machines</b> - State&lt;T&gt; enables type-safe custom states</li>
  * <li><b>Counter-based coordination</b> - increment/decrement for parent-child tracking</li>
  * <li><b>Observable state</b> - Tree rendering with filtered log records</li>
@@ -329,8 +329,8 @@
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see com.slytechs.sdk.common.session.Session
- * @see com.slytechs.sdk.common.session.SessionState
+ * @see com.slytechs.sdk.common.session.state.SessionState
  * @see com.slytechs.sdk.common.session.state.StateMachine
- * @see com.slytechs.sdk.common.session.state.SessionStateMachine
+ * @see com.slytechs.sdk.common.session.state.SystemStateMachine
  */
 package com.slytechs.sdk.common.session;

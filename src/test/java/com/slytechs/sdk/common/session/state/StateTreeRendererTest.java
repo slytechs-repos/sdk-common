@@ -27,7 +27,7 @@ class StateTreeRendererTest {
 	@Test
 	void renderHierarchyWithRecords() {
 		// Build hierarchy
-		SessionStateMachine net = new SessionStateMachine("PcapBackend", () -> {});
+		SystemStateMachine net = new SystemStateMachine("PcapBackend", () -> {});
 		net.start();
 		net.register();
 		
@@ -35,7 +35,7 @@ class StateTreeRendererTest {
 		net.recorder().info("Backend initialized with {} ports", 4);
 		net.recorder().debug("Port discovery completed");
 
-		SessionStateMachine capture = new SessionStateMachine("hello-capture", () -> {});
+		SystemStateMachine capture = new SystemStateMachine("hello-capture", () -> {});
 		capture.registerParent(net);
 		capture.start();
 		capture.register();
@@ -44,7 +44,7 @@ class StateTreeRendererTest {
 		capture.recorder().info("Capture started on port {}", "en0");
 		capture.recorder().trace("Dispatch loop entered");
 
-		SessionStateMachine channel = new SessionStateMachine("hello-channel", () -> {});
+		SystemStateMachine channel = new SystemStateMachine("hello-channel", () -> {});
 		channel.registerParent(net);
 		channel.start();
 		channel.register();
@@ -95,7 +95,7 @@ class StateTreeRendererTest {
 
 	@Test
 	void renderNestedRecords() {
-		SessionStateMachine machine = new SessionStateMachine("test-machine", () -> {});
+		SystemStateMachine machine = new SystemStateMachine("test-machine", () -> {});
 		machine.start();
 		machine.register();
 
@@ -121,7 +121,7 @@ class StateTreeRendererTest {
 
 	@Test
 	void renderWithThreadInfo() {
-		SessionStateMachine machine = new SessionStateMachine("threaded", () -> {});
+		SystemStateMachine machine = new SystemStateMachine("threaded", () -> {});
 		machine.start();
 		machine.register();
 
@@ -140,12 +140,12 @@ class StateTreeRendererTest {
 
 	@Test
 	void renderDuringShutdown() {
-		SessionStateMachine net = new SessionStateMachine("PcapBackend", () -> {});
+		SystemStateMachine net = new SystemStateMachine("PcapBackend", () -> {});
 		net.start();
 		net.register();
 		net.recorder().info("Backend started");
 
-		SessionStateMachine worker = new SessionStateMachine("worker-0", () -> {});
+		SystemStateMachine worker = new SystemStateMachine("worker-0", () -> {});
 		worker.registerParent(net);
 		worker.start();
 		worker.register();

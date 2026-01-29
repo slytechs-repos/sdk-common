@@ -18,8 +18,8 @@ package com.slytechs.sdk.common.session.state;
 import java.time.Duration;
 import java.util.function.Function;
 
+import com.slytechs.sdk.common.session.state.ComponentStateMachine.ComponentState;
 import com.slytechs.sdk.common.session.state.Recovery.Default;
-import com.slytechs.sdk.common.session.state.ServiceStateMachine.ServiceState;
 import com.slytechs.sdk.common.util.Registration;
 
 /**
@@ -93,15 +93,15 @@ import com.slytechs.sdk.common.util.Registration;
  * @see SystemStateMachine
  * @see TaskStateMachine
  */
-public class ServiceStateMachine extends StateMachine<ServiceState>
+public class ComponentStateMachine extends StateMachine<ComponentState>
 		implements CountableState, HierarchalState {
 
-	public enum ServiceState implements State<ServiceState> {
+	public enum ComponentState implements State<ComponentState> {
 
 		/** Handle allocated, not yet capturing. */
 		CREATED(true) {
 			@Override
-			public boolean canTransistion(ServiceState newState) {
+			public boolean canTransistion(ComponentState newState) {
 				return newState == ACTIVE || newState == TERMINATED;
 			}
 		},
@@ -109,7 +109,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 		/** Dispatch/poll loop active, packets flowing. */
 		ACTIVE(true) {
 			@Override
-			public boolean canTransistion(ServiceState newState) {
+			public boolean canTransistion(ComponentState newState) {
 				return newState == STOPPED || newState == TERMINATED || newState == SHUTDOWN;
 			}
 		},
@@ -117,14 +117,14 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 		/** Loop exited via breakloop, handle still open. Can restart. */
 		STOPPED(true) {
 			@Override
-			public boolean canTransistion(ServiceState newState) {
+			public boolean canTransistion(ComponentState newState) {
 				return newState == ACTIVE || newState == TERMINATED || newState == SHUTDOWN;
 			}
 		},
 
 		ERROR(true) {
 			@Override
-			public boolean canTransistion(ServiceState newState) {
+			public boolean canTransistion(ComponentState newState) {
 				return newState == ACTIVE || newState == TERMINATED || newState == SHUTDOWN;
 			}
 
@@ -133,7 +133,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 		/** Indicates the port is shutting down followed by transition to terminated */
 		SHUTDOWN(true) {
 			@Override
-			public boolean canTransistion(ServiceState newState) {
+			public boolean canTransistion(ComponentState newState) {
 				return newState == TERMINATED;
 			}
 
@@ -158,19 +158,19 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 
 		private final boolean transitionsAllowed;
 
-		ServiceState(boolean transitionsAllowed) {
+		ComponentState(boolean transitionsAllowed) {
 			this.transitionsAllowed = transitionsAllowed;
 		}
 
 		@Override
-		public boolean canTransistion(ServiceState newState) {
+		public boolean canTransistion(ComponentState newState) {
 			return transitionsAllowed;
 		}
 	}
 
-	private final StateHierarchyTree<ServiceState> components;
-	private final StateWaitBarrier<ServiceState> barrier;
-	private final TransitionScheduler<ServiceState> scheduler;
+	private final StateHierarchyTree<ComponentState> components;
+	private final StateWaitBarrier<ComponentState> barrier;
+	private final TransitionScheduler<ComponentState> scheduler;
 	private final ErrorPolicy<Recovery.Default> errorPolicy;
 
 	/**
@@ -178,11 +178,11 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 *
 	 * @param name the source name (e.g., port name)
 	 */
-	public ServiceStateMachine(String name) {
-		super(name, ServiceState.CREATED);
-		this.components = new StateHierarchyTree<>(this, ServiceState.TERMINATED);
-		this.barrier = new StateWaitBarrier<>(this, ServiceState.TERMINATED, ServiceState.ACTIVE);
-		this.scheduler = new TransitionScheduler<>(this, ServiceState.TERMINATED);
+	public ComponentStateMachine(String name) {
+		super(name, ComponentState.CREATED);
+		this.components = new StateHierarchyTree<>(this, ComponentState.TERMINATED);
+		this.barrier = new StateWaitBarrier<>(this, ComponentState.TERMINATED, ComponentState.ACTIVE);
+		this.scheduler = new TransitionScheduler<>(this, ComponentState.TERMINATED);
 		this.errorPolicy = new ErrorPolicy<>(this, Default.FAIL);
 	}
 
@@ -213,19 +213,19 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	}
 
 	public void awaitActive() throws InterruptedException {
-		barrier.await(ServiceState.ACTIVE);
+		barrier.await(ComponentState.ACTIVE);
 	}
 
 	public void awaitActiveOrShutdown() throws InterruptedException {
-		barrier.await(ServiceState.SHUTDOWN, ServiceState.TERMINATED, ServiceState.ACTIVE);
+		barrier.await(ComponentState.SHUTDOWN, ComponentState.TERMINATED, ComponentState.ACTIVE);
 	}
 
 	public void awaitTermination() throws InterruptedException {
-		barrier.await(ServiceState.TERMINATED);
+		barrier.await(ComponentState.TERMINATED);
 	}
 
 	public boolean awaitTermination(Duration timeout) throws InterruptedException {
-		return barrier.await(timeout, ServiceState.TERMINATED);
+		return barrier.await(timeout, ComponentState.TERMINATED);
 	}
 
 	/**
@@ -242,7 +242,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	}
 
 	public boolean error() {
-		return transitionTo(ServiceState.ERROR);
+		return transitionTo(ComponentState.ERROR);
 	}
 
 	public ErrorPolicy<Recovery.Default> errorPolicy() {
@@ -268,11 +268,11 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * @return true if CREATED, ACTIVE, or STOPPED
 	 */
 	public boolean isActive() {
-		return currentState() != ServiceState.TERMINATED;
+		return currentState() != ComponentState.TERMINATED;
 	}
 
 	public boolean isCreated() {
-		return currentState() == ServiceState.CREATED;
+		return currentState() == ComponentState.CREATED;
 	}
 
 	/**
@@ -281,19 +281,19 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * @return true if ACTIVE
 	 */
 	public boolean isRunning() {
-		return currentState() == ServiceState.ACTIVE;
+		return currentState() == ComponentState.ACTIVE;
 	}
 
 	public boolean isShutdown() {
-		return currentState() == ServiceState.SHUTDOWN;
+		return currentState() == ComponentState.SHUTDOWN;
 	}
 
 	public boolean isStopped() {
-		return currentState() == ServiceState.STOPPED;
+		return currentState() == ComponentState.STOPPED;
 	}
 
 	public boolean isTerminated() {
-		return currentState() == ServiceState.TERMINATED;
+		return currentState() == ComponentState.TERMINATED;
 	}
 
 	/**
@@ -324,7 +324,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * @return true if transition succeeded
 	 */
 	public boolean restart() {
-		return transitionTo(ServiceState.ACTIVE);
+		return transitionTo(ComponentState.ACTIVE);
 	}
 
 	/**
@@ -334,7 +334,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * @return true if transition succeeded
 	 */
 	public boolean shutdown() {
-		return transitionTo(ServiceState.SHUTDOWN);
+		return transitionTo(ComponentState.SHUTDOWN);
 	}
 
 	/**
@@ -343,7 +343,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * @return true if transition succeeded
 	 */
 	public boolean start() {
-		return transitionTo(ServiceState.ACTIVE);
+		return transitionTo(ComponentState.ACTIVE);
 	}
 
 	/**
@@ -352,7 +352,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * @return true if transition succeeded
 	 */
 	public boolean stop() {
-		return transitionTo(ServiceState.STOPPED);
+		return transitionTo(ComponentState.STOPPED);
 	}
 
 	/**
@@ -361,7 +361,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * @return true if transition succeeded
 	 */
 	public boolean terminate() {
-		return transitionTo(ServiceState.TERMINATED);
+		return transitionTo(ComponentState.TERMINATED);
 	}
 
 	/**
@@ -377,7 +377,7 @@ public class ServiceStateMachine extends StateMachine<ServiceState>
 	 * 
 	 */
 	public void awaitStop() throws InterruptedException {
-		barrier.await(ServiceState.STOPPED);
+		barrier.await(ComponentState.STOPPED);
 	}
 
 }

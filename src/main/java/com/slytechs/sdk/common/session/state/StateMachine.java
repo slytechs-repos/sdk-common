@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.slytechs.sdk.common.session.SessionState;
 import com.slytechs.sdk.common.session.state.recorder.StateRecorder;
 import com.slytechs.sdk.common.session.state.recorder.StateSnapshot;
 import com.slytechs.sdk.common.util.Named;
@@ -47,7 +46,7 @@ import com.slytechs.sdk.common.util.Registration;
  * 
  * <p>
  * Subclasses define domain-specific state enums and compose with helper
- * components like {@link ComponentTree}, {@link TransitionScheduler}, and
+ * components like {@link StateHierarchyTree}, {@link TransitionScheduler}, and
  * {@link StateWaitBarrier}.
  * </p>
  *
@@ -151,13 +150,32 @@ public class StateMachine<T extends Enum<T> & State<T>> implements Named, Sessio
 	}
 
 	/**
+	 * Registers an observer for state transitions including the initial state if
+	 * its current. The initial state notification happens immediately on
+	 * registration if the current state is at initial and notify flag is true.
+	 *
+	 * @param observer             the observer to notify transitions, including the
+	 *                             initial if desired
+	 * @param notifyOnInitialState the notify on initial state
+	 * @return this state machine for fluent method chaining
+	 */
+	public final StateMachine<T> observeTransisions(TransitionObserver<T> observer, boolean notifyOnInitialState) {
+		registerTransitionObserver(observer);
+
+		if (notifyOnInitialState && currentState() == initialState)
+			observer.onStateTransition(this, null, initialState);
+
+		return this;
+	}
+
+	/**
 	 * Registers an observer for state transitions.
 	 *
 	 * @param observer the observer
 	 * @return this state machine for fluent method chaining
 	 */
-	public final Registration observeTransisions(TransitionObserver<T> observer) {
-		return registerTransitionObserver(observer);
+	public final StateMachine<T> observeTransisions(TransitionObserver<T> observer) {
+		return observeTransisions(observer, false);
 	}
 
 	/**
