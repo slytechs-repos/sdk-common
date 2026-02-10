@@ -918,7 +918,7 @@ public final class DataRate implements Comparable<DataRate> {
 	 */
 	@Override
 	public String toString() {
-		return DataRateUnit.formatScaled("%v %s", bitsPerSecond);
+		return DataRateUnit.formatScaled("%s %s", bitsPerSecond);
 	}
 
 	/**

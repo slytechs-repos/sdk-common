@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
-import com.slytechs.sdk.common.session.text.LazyArg;
-import com.slytechs.sdk.common.session.text.LazyArg.Mode;
+import com.slytechs.sdk.common.text.LazyArg;
+import com.slytechs.sdk.common.text.LazyArg.Mode;
 
 /**
  * Edge case tests for {@link LazyArg}.

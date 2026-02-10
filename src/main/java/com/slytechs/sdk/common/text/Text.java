@@ -13,27 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session.state.recorder;
+package com.slytechs.sdk.common.text;
 
-import java.util.function.Supplier;
+import java.io.IOException;
 
-import com.slytechs.sdk.common.text.LazyArg;
+/**
+ * Immutable text snapshot produced by a renderer. Contains no reference to the
+ * source object — safe to hold after the target has been recycled or reused.
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ */
+public interface Text {
 
-public interface StateLogger {
+	@Override
+	String toString();
 
-	static <T> Supplier<T> lazy(Supplier<T> supplier) {
-		return supplier;
-	}
+	Appendable append(Appendable out) throws IOException;
 
-	static <T> LazyArg<T> lazyArg(Supplier<T> supplier) {
-		return LazyArg.of(supplier);
-	}
-
-	<R extends StateRecord> R logRecord(R newRecord);
-
-	<R extends StateRecord> R logRecord(LogLevel level, R newRecord);
-
-	StateRecord log(String template, Object... args);
-
-	StateRecord log(LogLevel level, String template, Object... args);
+	StringBuilder append(StringBuilder sb);
 }

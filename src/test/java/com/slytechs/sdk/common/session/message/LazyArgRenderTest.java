@@ -22,8 +22,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
-import com.slytechs.sdk.common.session.text.LazyArg;
-import com.slytechs.sdk.common.session.text.LazyArg.Mode;
+import com.slytechs.sdk.common.text.LazyArg;
+import com.slytechs.sdk.common.text.LazyArg.Mode;
 
 /**
  * Unit tests for {@link LazyArg} rendering functionality.

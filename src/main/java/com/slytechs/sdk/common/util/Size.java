@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.memory;
+package com.slytechs.sdk.common.util;
 
 import java.util.Objects;
 import java.util.function.LongPredicate;
@@ -22,12 +22,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * An immutable representation of a memory size.
+ * An immutable representation of a data size.
  * 
  * <p>
- * This class models a memory size as a quantity in bytes and provides methods
- * for conversion to and from different {@link MemoryUnit}s. It follows the
- * design patterns of the java.time API classes like Duration.
+ * This class models a data size as a quantity in bytes and provides methods for
+ * conversion to and from different {@link SizeUnit}s. It follows the design
+ * patterns of the java.time API classes like Duration.
  * </p>
  * 
  * <p>
@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
  * </p>
  * 
  * {@snippet :
- * // Create memory sizes
+ * // Create data sizes
  * MemorySize size1 = MemorySize.ofMegabytes(100);
  * MemorySize size2 = MemorySize.of(5, MemoryUnit.GIGABYTES);
  * 
@@ -81,12 +81,12 @@ import java.util.regex.Pattern;
  *
  * @author Mark Bednarczyk
  */
-public final class MemorySize implements Comparable<MemorySize> {
+public final class Size implements Comparable<Size> {
 
 	/** A constant for zero bytes. */
-	public static final MemorySize ZERO = new MemorySize(0);
+	public static final Size ZERO = new Size(0);
 
-	/** Pattern for parsing memory size strings. */
+	/** Pattern for parsing data size strings. */
 	private static final Pattern PARSE_PATTERN = Pattern.compile(
 			"^\\s*([+-]?\\d+(?:\\.\\d+)?)\\s*([a-zA-Z]+)?\\s*$");
 
@@ -98,7 +98,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 *
 	 * @param bytes the size in bytes
 	 */
-	private MemorySize(long bytes) {
+	private Size(long bytes) {
 		this.bytes = bytes;
 	}
 
@@ -110,9 +110,9 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize of(long value, MemoryUnit unit) {
+	public static Size of(long value, SizeUnit unit) {
 		Objects.requireNonNull(unit, "unit");
-		return new MemorySize(unit.toBytes(value));
+		return new Size(unit.toBytes(value));
 	}
 
 	/**
@@ -122,8 +122,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize ofBits(long bits) {
-		return new MemorySize(MemoryUnit.BITS.toBytes(bits));
+	public static Size ofBits(long bits) {
+		return new Size(SizeUnit.BITS.toBytes(bits));
 	}
 
 	/**
@@ -132,8 +132,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param bytes the number of bytes
 	 * @return a MemorySize
 	 */
-	public static MemorySize ofBytes(long bytes) {
-		return bytes == 0 ? ZERO : new MemorySize(bytes);
+	public static Size ofBytes(long bytes) {
+		return bytes == 0 ? ZERO : new Size(bytes);
 	}
 
 	/**
@@ -143,8 +143,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize ofKilobytes(long kilobytes) {
-		return new MemorySize(MemoryUnit.KILOBYTES.toBytes(kilobytes));
+	public static Size ofKilobytes(long kilobytes) {
+		return new Size(SizeUnit.KILOBYTES.toBytes(kilobytes));
 	}
 
 	/**
@@ -154,8 +154,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize ofMegabytes(long megabytes) {
-		return new MemorySize(MemoryUnit.MEGABYTES.toBytes(megabytes));
+	public static Size ofMegabytes(long megabytes) {
+		return new Size(SizeUnit.MEGABYTES.toBytes(megabytes));
 	}
 
 	/**
@@ -165,8 +165,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize ofGigabytes(long gigabytes) {
-		return new MemorySize(MemoryUnit.GIGABYTES.toBytes(gigabytes));
+	public static Size ofGigabytes(long gigabytes) {
+		return new Size(SizeUnit.GIGABYTES.toBytes(gigabytes));
 	}
 
 	/**
@@ -176,8 +176,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize ofTerabytes(long terabytes) {
-		return new MemorySize(MemoryUnit.TERABYTES.toBytes(terabytes));
+	public static Size ofTerabytes(long terabytes) {
+		return new Size(SizeUnit.TERABYTES.toBytes(terabytes));
 	}
 
 	/**
@@ -187,8 +187,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize ofPetabytes(long petabytes) {
-		return new MemorySize(MemoryUnit.PETABYTES.toBytes(petabytes));
+	public static Size ofPetabytes(long petabytes) {
+		return new Size(SizeUnit.PETABYTES.toBytes(petabytes));
 	}
 
 	/**
@@ -198,8 +198,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public static MemorySize ofExabytes(long exabytes) {
-		return new MemorySize(MemoryUnit.EXABYTES.toBytes(exabytes));
+	public static Size ofExabytes(long exabytes) {
+		return new Size(SizeUnit.EXABYTES.toBytes(exabytes));
 	}
 
 	/**
@@ -208,7 +208,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * <p>
 	 * The string must consist of an optional sign, a number (integer or decimal),
 	 * and an optional unit suffix. Valid unit suffixes are case-insensitive and
-	 * include any of the symbols recognized by {@link MemoryUnit}. If no unit is
+	 * include any of the symbols recognized by {@link SizeUnit}. If no unit is
 	 * specified, bytes are assumed.
 	 * </p>
 	 * 
@@ -220,7 +220,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize
 	 * @throws IllegalArgumentException if the text cannot be parsed
 	 */
-	public static MemorySize parse(CharSequence text) {
+	public static Size parse(CharSequence text) {
 		Objects.requireNonNull(text, "text");
 		Matcher matcher = PARSE_PATTERN.matcher(text);
 
@@ -232,13 +232,13 @@ public final class MemorySize implements Comparable<MemorySize> {
 
 		double value = Double.parseDouble(valueStr);
 
-		MemoryUnit unit = MemoryUnit.BYTES;
+		SizeUnit unit = SizeUnit.BYTES;
 		if (unitStr != null && !unitStr.isEmpty()) {
 			unit = parseUnit(unitStr);
 		}
 
 		long bytes = (long) (value * unit.toBytes(1));
-		return new MemorySize(bytes);
+		return new Size(bytes);
 	}
 
 	/**
@@ -248,10 +248,10 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the MemoryUnit
 	 * @throws IllegalArgumentException if the unit cannot be parsed
 	 */
-	private static MemoryUnit parseUnit(String unitStr) {
+	private static SizeUnit parseUnit(String unitStr) {
 		String normalized = unitStr.toLowerCase().trim();
 
-		for (MemoryUnit unit : MemoryUnit.values()) {
+		for (SizeUnit unit : SizeUnit.values()) {
 			if (unit.name().equalsIgnoreCase(normalized))
 				return unit;
 
@@ -265,26 +265,26 @@ public final class MemorySize implements Comparable<MemorySize> {
 	}
 
 	/**
-	 * Returns the minimum of two memory sizes.
+	 * Returns the minimum of two data sizes.
 	 *
 	 * @param size1 the first size
 	 * @param size2 the second size
 	 * @return the minimum size
 	 */
-	public static MemorySize min(MemorySize size1, MemorySize size2) {
+	public static Size min(Size size1, Size size2) {
 		Objects.requireNonNull(size1, "size1");
 		Objects.requireNonNull(size2, "size2");
 		return size1.bytes <= size2.bytes ? size1 : size2;
 	}
 
 	/**
-	 * Returns the maximum of two memory sizes.
+	 * Returns the maximum of two data sizes.
 	 *
 	 * @param size1 the first size
 	 * @param size2 the second size
 	 * @return the maximum size
 	 */
-	public static MemorySize max(MemorySize size1, MemorySize size2) {
+	public static Size max(Size size1, Size size2) {
 		Objects.requireNonNull(size1, "size1");
 		Objects.requireNonNull(size2, "size2");
 		return size1.bytes >= size2.bytes ? size1 : size2;
@@ -311,7 +311,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param unit  the unit of the value
 	 * @return a predicate for testing multiples
 	 */
-	public static LongPredicate multipleOf(long value, MemoryUnit unit) {
+	public static LongPredicate multipleOf(long value, SizeUnit unit) {
 		Objects.requireNonNull(unit, "unit");
 		if (value <= 0)
 			throw new IllegalArgumentException("value must be positive");
@@ -336,7 +336,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param max the maximum size
 	 * @return a predicate for testing range
 	 */
-	public static LongPredicate between(MemorySize min, MemorySize max) {
+	public static LongPredicate between(Size min, Size max) {
 		Objects.requireNonNull(min, "min");
 		Objects.requireNonNull(max, "max");
 		return size -> size >= min.bytes && size <= max.bytes;
@@ -348,7 +348,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param min the minimum size
 	 * @return a predicate for testing minimum
 	 */
-	public static LongPredicate atLeast(MemorySize min) {
+	public static LongPredicate atLeast(Size min) {
 		Objects.requireNonNull(min, "min");
 		return size -> size >= min.bytes;
 	}
@@ -359,7 +359,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param max the maximum size
 	 * @return a predicate for testing maximum
 	 */
-	public static LongPredicate atMost(MemorySize max) {
+	public static LongPredicate atMost(Size max) {
 		Objects.requireNonNull(max, "max");
 		return size -> size <= max.bytes;
 	}
@@ -370,7 +370,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the size in bits
 	 */
 	public long toBits() {
-		return MemoryUnit.BYTES.toBits(bytes);
+		return SizeUnit.BYTES.toBits(bytes);
 	}
 
 	/**
@@ -388,7 +388,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the size in kilobytes
 	 */
 	public long toKilobytes() {
-		return MemoryUnit.KILOBYTES.convert(bytes, MemoryUnit.BYTES);
+		return SizeUnit.KILOBYTES.convert(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -397,7 +397,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the size in megabytes
 	 */
 	public long toMegabytes() {
-		return MemoryUnit.MEGABYTES.convert(bytes, MemoryUnit.BYTES);
+		return SizeUnit.MEGABYTES.convert(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -406,7 +406,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the size in gigabytes
 	 */
 	public long toGigabytes() {
-		return MemoryUnit.GIGABYTES.convert(bytes, MemoryUnit.BYTES);
+		return SizeUnit.GIGABYTES.convert(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -415,7 +415,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the size in terabytes
 	 */
 	public long toTerabytes() {
-		return MemoryUnit.TERABYTES.convert(bytes, MemoryUnit.BYTES);
+		return SizeUnit.TERABYTES.convert(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -424,7 +424,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the size in petabytes
 	 */
 	public long toPetabytes() {
-		return MemoryUnit.PETABYTES.convert(bytes, MemoryUnit.BYTES);
+		return SizeUnit.PETABYTES.convert(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -433,7 +433,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the size in exabytes
 	 */
 	public long toExabytes() {
-		return MemoryUnit.EXABYTES.convert(bytes, MemoryUnit.BYTES);
+		return SizeUnit.EXABYTES.convert(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -442,9 +442,9 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param unit the target unit
 	 * @return the size in the specified unit
 	 */
-	public long to(MemoryUnit unit) {
+	public long to(SizeUnit unit) {
 		Objects.requireNonNull(unit, "unit");
-		return unit.convert(bytes, MemoryUnit.BYTES);
+		return unit.convert(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -453,9 +453,9 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param unit the target unit
 	 * @return the size in the specified unit as a double
 	 */
-	public double toDouble(MemoryUnit unit) {
+	public double toDouble(SizeUnit unit) {
 		Objects.requireNonNull(unit, "unit");
-		return unit.convertf(bytes, MemoryUnit.BYTES);
+		return unit.convertf(bytes, SizeUnit.BYTES);
 	}
 
 	/**
@@ -465,7 +465,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified size added
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize plus(MemorySize other) {
+	public Size plus(Size other) {
 		Objects.requireNonNull(other, "other");
 		return ofBytes(Math.addExact(bytes, other.bytes));
 	}
@@ -478,8 +478,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified size added
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize plus(long value, MemoryUnit unit) {
-		return plus(MemorySize.of(value, unit));
+	public Size plus(long value, SizeUnit unit) {
+		return plus(Size.of(value, unit));
 	}
 
 	/**
@@ -489,7 +489,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified bytes added
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize plusBytes(long bytes) {
+	public Size plusBytes(long bytes) {
 		return ofBytes(Math.addExact(this.bytes, bytes));
 	}
 
@@ -500,8 +500,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified kilobytes added
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize plusKilobytes(long kilobytes) {
-		return plus(kilobytes, MemoryUnit.KILOBYTES);
+	public Size plusKilobytes(long kilobytes) {
+		return plus(kilobytes, SizeUnit.KILOBYTES);
 	}
 
 	/**
@@ -511,8 +511,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified megabytes added
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize plusMegabytes(long megabytes) {
-		return plus(megabytes, MemoryUnit.MEGABYTES);
+	public Size plusMegabytes(long megabytes) {
+		return plus(megabytes, SizeUnit.MEGABYTES);
 	}
 
 	/**
@@ -522,8 +522,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified gigabytes added
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize plusGigabytes(long gigabytes) {
-		return plus(gigabytes, MemoryUnit.GIGABYTES);
+	public Size plusGigabytes(long gigabytes) {
+		return plus(gigabytes, SizeUnit.GIGABYTES);
 	}
 
 	/**
@@ -533,7 +533,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified size subtracted
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize minus(MemorySize other) {
+	public Size minus(Size other) {
 		Objects.requireNonNull(other, "other");
 		return ofBytes(Math.subtractExact(bytes, other.bytes));
 	}
@@ -546,8 +546,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified size subtracted
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize minus(long value, MemoryUnit unit) {
-		return minus(MemorySize.of(value, unit));
+	public Size minus(long value, SizeUnit unit) {
+		return minus(Size.of(value, unit));
 	}
 
 	/**
@@ -557,7 +557,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the specified bytes subtracted
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize minusBytes(long bytes) {
+	public Size minusBytes(long bytes) {
 		return ofBytes(Math.subtractExact(this.bytes, bytes));
 	}
 
@@ -570,8 +570,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 *         subtracted
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize minusKilobytes(long kilobytes) {
-		return minus(kilobytes, MemoryUnit.KILOBYTES);
+	public Size minusKilobytes(long kilobytes) {
+		return minus(kilobytes, SizeUnit.KILOBYTES);
 	}
 
 	/**
@@ -583,8 +583,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 *         subtracted
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize minusMegabytes(long megabytes) {
-		return minus(megabytes, MemoryUnit.MEGABYTES);
+	public Size minusMegabytes(long megabytes) {
+		return minus(megabytes, SizeUnit.MEGABYTES);
 	}
 
 	/**
@@ -596,8 +596,8 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 *         subtracted
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize minusGigabytes(long gigabytes) {
-		return minus(gigabytes, MemoryUnit.GIGABYTES);
+	public Size minusGigabytes(long gigabytes) {
+		return minus(gigabytes, SizeUnit.GIGABYTES);
 	}
 
 	/**
@@ -607,7 +607,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size multiplied by the specified scalar
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize multipliedBy(long multiplicand) {
+	public Size multipliedBy(long multiplicand) {
 		return ofBytes(Math.multiplyExact(bytes, multiplicand));
 	}
 
@@ -618,7 +618,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size divided by the specified divisor
 	 * @throws ArithmeticException if the divisor is zero
 	 */
-	public MemorySize dividedBy(long divisor) {
+	public Size dividedBy(long divisor) {
 		if (divisor == 0)
 			throw new ArithmeticException("Cannot divide by zero");
 		return ofBytes(bytes / divisor);
@@ -630,7 +630,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return a MemorySize based on this size with the size negated
 	 * @throws ArithmeticException if numeric overflow occurs
 	 */
-	public MemorySize negated() {
+	public Size negated() {
 		return ofBytes(Math.negateExact(bytes));
 	}
 
@@ -639,7 +639,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 *
 	 * @return a MemorySize based on this size with an absolute size
 	 */
-	public MemorySize abs() {
+	public Size abs() {
 		return bytes < 0 ? negated() : this;
 	}
 
@@ -682,7 +682,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return true if this size is a multiple of the specified value
 	 * @throws IllegalArgumentException if value is zero or negative
 	 */
-	public boolean isMultipleOf(long value, MemoryUnit unit) {
+	public boolean isMultipleOf(long value, SizeUnit unit) {
 		Objects.requireNonNull(unit, "unit");
 		if (value <= 0)
 			throw new IllegalArgumentException("value must be positive");
@@ -732,7 +732,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return this MemorySize for method chaining
 	 * @throws IllegalArgumentException if the predicate is not satisfied
 	 */
-	public MemorySize validate(LongPredicate predicate) {
+	public Size validate(LongPredicate predicate) {
 		Objects.requireNonNull(predicate, "predicate");
 		if (!predicate.test(bytes))
 			throw new IllegalArgumentException("Size validation failed: " + this);
@@ -752,7 +752,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return this MemorySize for method chaining
 	 * @throws IllegalArgumentException if the predicate is not satisfied
 	 */
-	public MemorySize validate(LongPredicate predicate, String message) {
+	public Size validate(LongPredicate predicate, String message) {
 		Objects.requireNonNull(predicate, "predicate");
 		if (!predicate.test(bytes))
 			throw new IllegalArgumentException(message);
@@ -773,7 +773,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return this MemorySize for method chaining
 	 * @throws IllegalArgumentException if the predicate is not satisfied
 	 */
-	public MemorySize validate(LongPredicate predicate,
+	public Size validate(LongPredicate predicate,
 			Supplier<String> messageSupplier) {
 		Objects.requireNonNull(predicate, "predicate");
 		Objects.requireNonNull(messageSupplier, "messageSupplier");
@@ -789,7 +789,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @return the comparator value, negative if less, positive if greater
 	 */
 	@Override
-	public int compareTo(MemorySize other) {
+	public int compareTo(Size other) {
 		return Long.compare(this.bytes, other.bytes);
 	}
 
@@ -803,9 +803,9 @@ public final class MemorySize implements Comparable<MemorySize> {
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
-		if (!(obj instanceof MemorySize))
+		if (!(obj instanceof Size))
 			return false;
-		MemorySize other = (MemorySize) obj;
+		Size other = (Size) obj;
 		return this.bytes == other.bytes;
 	}
 
@@ -832,7 +832,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 */
 	@Override
 	public String toString() {
-		return MemoryUnit.format("%s %s", bytes);
+		return SizeUnit.format("%s %s", bytes);
 	}
 
 	/**
@@ -841,7 +841,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * @param unit the unit to use for the string representation
 	 * @return a string representation of this size in the specified unit
 	 */
-	public String toString(MemoryUnit unit) {
+	public String toString(SizeUnit unit) {
 		Objects.requireNonNull(unit, "unit");
 		long value = to(unit);
 		return value + " " + unit.getSymbol().toUpperCase();
@@ -851,7 +851,7 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 * Formats this size according to the specified format string.
 	 * 
 	 * <p>
-	 * The format string is passed to {@link MemoryUnit#format(String, long)} for
+	 * The format string is passed to {@link SizeUnit#format(String, long)} for
 	 * processing.
 	 * </p>
 	 *
@@ -860,6 +860,6 @@ public final class MemorySize implements Comparable<MemorySize> {
 	 */
 	public String format(String format) {
 		Objects.requireNonNull(format, "format");
-		return MemoryUnit.format(format, bytes);
+		return SizeUnit.format(format, bytes);
 	}
 }

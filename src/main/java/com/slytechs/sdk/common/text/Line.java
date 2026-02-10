@@ -13,27 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session.state.recorder;
+package com.slytechs.sdk.common.text;
 
-import java.util.function.Supplier;
+import java.util.List;
 
-import com.slytechs.sdk.common.text.LazyArg;
+/**
+ * Text2 line representation with nested sublines.
+ * 
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ */
+public interface Line {
 
-public interface StateLogger {
-
-	static <T> Supplier<T> lazy(Supplier<T> supplier) {
-		return supplier;
-	}
-
-	static <T> LazyArg<T> lazyArg(Supplier<T> supplier) {
-		return LazyArg.of(supplier);
-	}
-
-	<R extends StateRecord> R logRecord(R newRecord);
-
-	<R extends StateRecord> R logRecord(LogLevel level, R newRecord);
-
-	StateRecord log(String template, Object... args);
-
-	StateRecord log(LogLevel level, String template, Object... args);
+	List<? extends Line> children();
 }

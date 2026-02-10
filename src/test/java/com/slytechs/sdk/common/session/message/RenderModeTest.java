@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-import com.slytechs.sdk.common.session.text.LazyArg.Mode;
+import com.slytechs.sdk.common.text.LazyArg.Mode;
 
 /**
  * Unit tests for {@link Mode} enum.

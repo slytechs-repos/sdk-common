@@ -23,7 +23,7 @@ import java.util.function.Supplier;
 
 import com.slytechs.sdk.common.session.state.recorder.LogLevel;
 import com.slytechs.sdk.common.session.state.recorder.StateRecord;
-import com.slytechs.sdk.common.session.text.LazyArg;
+import com.slytechs.sdk.common.text.LazyArg;
 
 /**
  * Renders a {@link ComponentHierarchy} as an ASCII tree with state records.

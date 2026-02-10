@@ -13,17 +13,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.common.session.text;
+package com.slytechs.sdk.common.text;
 
-import java.util.List;
+import java.io.IOException;
 
 /**
- * Text line representation with nested sublines.
- * 
+ * A {@link Text} implementation backed by a rendered string. Immutable
+ * snapshot with no reference to the source object.
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Line {
+public class StringText implements Text {
 
-	List<? extends Line> children();
+	private final String content;
+
+	public StringText(String content) {
+		this.content = content;
+	}
+
+	@Override
+	public String toString() {
+		return content;
+	}
+
+	@Override
+	public Appendable append(Appendable out) throws IOException {
+		out.append(content);
+		return out;
+	}
+
+	@Override
+	public StringBuilder append(StringBuilder sb) {
+		sb.append(content);
+		return sb;
+	}
 }

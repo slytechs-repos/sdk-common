@@ -31,7 +31,8 @@
  * <li>{@code ServiceStateMachine} - Restartable services (ACTIVE ⇄ STOPPED →
  * TERMINATED)</li>
  * <li>{@code TaskStateMachine} - One-shot tasks with error handling</li>
- * <li>{@code StateHierarchyTree} - Parent/child hierarchy with auto-termination</li>
+ * <li>{@code StateHierarchyTree} - Parent/child hierarchy with
+ * auto-termination</li>
  * <li>{@code StateWaitBarrier} - Thread synchronization on state
  * transitions</li>
  * <li>{@code ErrorPolicy} - Configurable error handling and recovery</li>
@@ -86,6 +87,9 @@ module com.slytechs.sdk.common {
 	exports com.slytechs.sdk.common.detail;
 	exports com.slytechs.sdk.common.detail.render;
 	exports com.slytechs.sdk.common.license;
+	exports com.slytechs.sdk.common.text;
+	exports com.slytechs.sdk.common.text.format;
+	exports com.slytechs.sdk.common.text.renderer;
 	exports com.slytechs.sdk.common.session;
 	exports com.slytechs.sdk.common.session.state;
 	exports com.slytechs.sdk.common.session.state.recorder;

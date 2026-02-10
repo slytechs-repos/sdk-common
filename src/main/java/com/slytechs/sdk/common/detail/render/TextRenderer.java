@@ -3,7 +3,6 @@ package com.slytechs.sdk.common.detail.render;
 import java.util.List;
 
 import com.slytechs.sdk.common.detail.DataDetail;
-import com.slytechs.sdk.common.detail.Detail;
 import com.slytechs.sdk.common.detail.DetailFlags;
 import com.slytechs.sdk.common.detail.DetailNode;
 import com.slytechs.sdk.common.detail.ExpertDetail;
@@ -11,6 +10,7 @@ import com.slytechs.sdk.common.detail.FieldDetail;
 import com.slytechs.sdk.common.detail.HeaderDetail;
 import com.slytechs.sdk.common.detail.SectionDetail;
 import com.slytechs.sdk.common.format.HexDump;
+import com.slytechs.sdk.common.text.Detail;
 
 /**
  * Renders DetailNode tree to formatted text string.

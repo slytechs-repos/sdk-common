@@ -23,7 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import com.slytechs.sdk.common.session.state.StateMachine;
-import com.slytechs.sdk.common.session.text.Line;
+import com.slytechs.sdk.common.text.Line;
 
 /**
  * A recorded state event with thread and state context.

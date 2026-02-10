@@ -999,7 +999,7 @@ public abstract class MemoryHandle<T> {
 		return layout.byteOffset(parsePath(path));
 	}
 
-	private static PathElement[] parsePath(String... path) {
+	public static PathElement[] parsePath(String... path) {
 		List<PathElement> elements = new ArrayList<>();
 
 		for (String element : path) {

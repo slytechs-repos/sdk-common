@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.common.detail;
+package com.slytechs.sdk.common.text;
 
 /**
  * A constant which specifies the detail level to generate by various utility
@@ -125,6 +125,10 @@ public enum Detail {
 	 */
 	public boolean isTrace() {
 		return compareTo(TRACE) == 0;
+	}
+
+	public boolean isVisible(Detail other) {
+		return this.ordinal() <= other.ordinal();
 	}
 
 }
