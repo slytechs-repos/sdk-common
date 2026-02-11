@@ -84,8 +84,6 @@ module com.slytechs.sdk.common {
 	exports com.slytechs.sdk.common.util.function;
 	exports com.slytechs.sdk.common.util.collection;
 	exports com.slytechs.sdk.common.settings;
-	exports com.slytechs.sdk.common.detail;
-	exports com.slytechs.sdk.common.detail.render;
 	exports com.slytechs.sdk.common.license;
 	exports com.slytechs.sdk.common.text;
 	exports com.slytechs.sdk.common.text.format;
