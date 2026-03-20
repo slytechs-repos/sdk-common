@@ -922,6 +922,36 @@ public final class DataRate implements Comparable<DataRate> {
 	}
 
 	/**
+	 * Returns a string representation of this rate using the nearest appropriate
+	 * bit unit.
+	 * 
+	 * <p>
+	 * The format is controlled by the DataRateUnit formatting rules and will
+	 * automatically select the most appropriate unit for readability.
+	 * </p>
+	 *
+	 * @return a string representation of this rate
+	 */
+	public String toStringBits() {
+		return DataRateUnit.formatScaledBits("%s %s", bitsPerSecond);
+	}
+
+	/**
+	 * Returns a string representation of this rate using the nearest appropriate
+	 * byte unit.
+	 * 
+	 * <p>
+	 * The format is controlled by the DataRateUnit formatting rules and will
+	 * automatically select the most appropriate unit for readability.
+	 * </p>
+	 *
+	 * @return a string representation of this rate
+	 */
+	public String toStringBytes() {
+		return DataRateUnit.formatScaledBytes("%s %s", bitsPerSecond);
+	}
+
+	/**
 	 * Returns a string representation of this rate in the specified unit.
 	 *
 	 * @param unit the unit to use for the string representation

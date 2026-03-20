@@ -89,6 +89,24 @@ public enum DataRateUnit implements ConvertableUnit<DataRateUnit>, Unit {
 	/** Represents petabytes per second (8,000,000,000,000,000 bps). */
 	PETABYTES_PER_SECOND("PBps", "PB/s", "pbyte/s");
 
+	private static final DataRateUnit[] BIT_UNITS = {
+			BITS_PER_SECOND,
+			KILOBITS_PER_SECOND,
+			MEGABITS_PER_SECOND,
+			GIGABITS_PER_SECOND,
+			TERABITS_PER_SECOND,
+			PETABITS_PER_SECOND
+	};
+
+	private static final DataRateUnit[] BYTE_UNITS = {
+			BYTES_PER_SECOND,
+			KILOBYTES_PER_SECOND,
+			MEGABYTES_PER_SECOND,
+			GIGABYTES_PER_SECOND,
+			TERABYTES_PER_SECOND,
+			PETABYTES_PER_SECOND
+	};
+
 	/** Conversion factor from bits to bytes. */
 	private static final int BITS_PER_BYTE = 8;
 
@@ -112,7 +130,9 @@ public enum DataRateUnit implements ConvertableUnit<DataRateUnit>, Unit {
 	DataRateUnit(String... symbols) {
 		this.base = calculateBase(ordinal());
 		this.basef = this.base;
-		this.symbols = symbols != null ? symbols : new String[] { "" + name().charAt(0) };
+		this.symbols = symbols != null ? symbols : new String[] {
+				"" + name().charAt(0)
+		};
 	}
 
 	/**
@@ -153,6 +173,46 @@ public enum DataRateUnit implements ConvertableUnit<DataRateUnit>, Unit {
 	 */
 	public static String formatScaled(String fmt, long bitsPerSecond) {
 		return UnitUtils.format(fmt, bitsPerSecond, DataRateUnit.class, BITS_PER_SECOND);
+	}
+
+	/**
+	 * Formats a data rate value into a string representation using the specified
+	 * format string.
+	 * 
+	 * <p>
+	 * The format string accepts two arguments:
+	 * </p>
+	 * <ul>
+	 * <li>{@code arg1}: The scaled value in the nearest appropriate unit</li>
+	 * <li>{@code arg2}: The unit abbreviation (e.g., "Gbps", "MB/s")</li>
+	 * </ul>
+	 *
+	 * @param fmt           The format string, such as {@code "%v %s"}
+	 * @param bitsPerSecond The data rate in bits per second
+	 * @return The formatted string
+	 */
+	public static String formatScaledBits(String fmt, long bitsPerSecond) {
+		return UnitUtils.format(fmt, bitsPerSecond, BIT_UNITS, BITS_PER_SECOND);
+	}
+
+	/**
+	 * Formats a data rate value into a string representation using the specified
+	 * format string.
+	 * 
+	 * <p>
+	 * The format string accepts two arguments:
+	 * </p>
+	 * <ul>
+	 * <li>{@code arg1}: The scaled value in the nearest appropriate unit</li>
+	 * <li>{@code arg2}: The unit abbreviation (e.g., "Gbps", "MB/s")</li>
+	 * </ul>
+	 *
+	 * @param fmt           The format string, such as {@code "%v %s"}
+	 * @param bitsPerSecond The data rate in bits per second
+	 * @return The formatted string
+	 */
+	public static String formatScaledBytes(String fmt, long bitsPerSecond) {
+		return UnitUtils.format(fmt, bitsPerSecond, BYTE_UNITS, BITS_PER_SECOND);
 	}
 
 	/**
