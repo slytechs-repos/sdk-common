@@ -54,9 +54,36 @@ public final class License {
 	 * @return true, if is activated
 	 */
 	public static boolean isActivated() {
+
 		try {
 			return LexActivator.IsLicenseGenuine() == LexActivator.LA_OK;
 		} catch (LexActivatorException e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Checks if is feature enabled.
+	 *
+	 * @param featureName the feature name
+	 * @return true, if is feature enabled
+	 */
+	public static boolean isActivated(String productName, String productData) {
+
+		try {
+			LexActivator.SetProductData(productData);
+			
+			if (LexActivator.IsLicenseGenuine() == LexActivator.LA_OK) {
+				return true;
+			}
+		} catch (LexActivatorException e) {
+			return false;
+		}
+
+		try {
+			FeatureEntitlement ent = LexActivator.GetFeatureEntitlement(productName);
+			return ent != null && "yes".equals(ent.value);
+		} catch (LexActivatorException | UnsupportedEncodingException e) {
 			return false;
 		}
 	}
