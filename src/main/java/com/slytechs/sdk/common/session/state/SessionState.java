@@ -21,10 +21,10 @@ import java.time.Instant;
 import com.slytechs.sdk.common.session.SystemSession;
 
 /**
- * Interface for querying the state of a {@link SystemSession} in the
- * jNetworks SDK. Provides read-only access to the lifecycle stages of a network
- * session: running, shutdown scheduled, shutdown initiated, and terminated.
- * This interface allows users to inspect session state without modifying it,
+ * Interface for querying the state of a {@link SystemSession} in the jNetworks
+ * SDK. Provides read-only access to the lifecycle stages of a network session:
+ * running, shutdown scheduled, shutdown initiated, and terminated. This
+ * interface allows users to inspect session state without modifying it,
  * ensuring safe interaction with session lifecycle management.
  * 
  * <p>
@@ -74,6 +74,15 @@ import com.slytechs.sdk.common.session.SystemSession;
  * @see ManagedStateMachine
  */
 public interface SessionState {
+
+	/** A closed session instance. */
+	SessionState CLOSED = new SessionState() {
+
+		@Override
+		public String name() {
+			return "CLOSED";
+		}
+	};
 
 	/**
 	 * Returns the name of the session.
