@@ -1,34 +1,63 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.slytechs.jnet.core</groupId>
-    <artifactId>core-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>Core API</name>
-    <description>Core network utilities and packages</description>
 
-    <properties>
-        <maven.compiler.source>22</maven.compiler.source>
-        <maven.compiler.target>22</maven.compiler.target>
-    </properties>
+    <parent>
+        <groupId>com.slytechs.sdk</groupId>
+        <artifactId>sdk-parent</artifactId>
+        <version>3.0.0</version>
+        <relativePath>../sdk-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sdk-common</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Sly Technologies SDK Common</name>
+    <description>Core network utilities and shared packages for the Sly Technologies SDK</description>
+    <url>https://github.com/slytechs-repos/sdk-common</url>
+
+    <scm>
+        <connection>scm:git:git://github.com/slytechs-repos/sdk-common.git</connection>
+        <developerConnection>scm:git:ssh://github.com:slytechs-repos/sdk-common.git</developerConnection>
+        <url>https://github.com/slytechs-repos/sdk-common</url>
+    </scm>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.slytechs.sdk</groupId>
+                <artifactId>sdk-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
+        <!-- License management -->
+        <dependency>
+            <groupId>com.cryptlex.lexactivator</groupId>
+            <artifactId>lexactivator</artifactId>
+        </dependency>
+
+        <!-- Logging facade - implementation provided by consumer -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.11.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.platform</groupId>
-            <artifactId>junit-platform-commons</artifactId>
-            <version>1.11.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-launcher</artifactId>
-            <version>1.11.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -38,39 +67,20 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <release>22</release>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <configuration>
-                            <release>22</release>
-                            <compilerArgs>
-                                <arg>--module-source-path</arg>
-                                <arg>${project.basedir}/src/main/java;${project.basedir}/src/test/java</arg>
-                            </compilerArgs>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
+
 </project>
