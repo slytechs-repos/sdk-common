@@ -1,50 +1,64 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" 
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    
-    <groupId>com.slytechs.sdk</groupId>
+
+    <parent>
+        <groupId>com.slytechs.sdk</groupId>
+        <artifactId>sdk-parent</artifactId>
+        <version>3.0.0-SNAPSHOT</version>
+        <relativePath>../sdk-parent/pom.xml</relativePath>
+    </parent>
+
     <artifactId>sdk-common</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
-    <name>SDK Common</name>
-    <description>Core network utilities and packages</description>
-    
-    <properties>
-        <maven.compiler.source>22</maven.compiler.source>
-        <maven.compiler.target>22</maven.compiler.target>
-        <maven.compiler.release>22</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+    <packaging>jar</packaging>
+
+    <name>Sly Technologies SDK Common</name>
+    <description>Core network utilities and shared packages for the Sly Technologies SDK</description>
+    <url>https://github.com/slytechs-repos/sdk-common</url>
+
+    <scm>
+        <connection>scm:git:git://github.com/slytechs-repos/sdk-common.git</connection>
+        <developerConnection>scm:git:ssh://github.com:slytechs-repos/sdk-common.git</developerConnection>
+        <url>https://github.com/slytechs-repos/sdk-common</url>
+    </scm>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>com.slytechs.sdk</groupId>
                 <artifactId>sdk-bom</artifactId>
-                <version>3.0.0-SNAPSHOT</version>
+                <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
-    
+
     <dependencies>
+        <!-- License management -->
+        <dependency>
+            <groupId>com.cryptlex.lexactivator</groupId>
+            <artifactId>lexactivator</artifactId>
+        </dependency>
+
+        <!-- Logging facade - implementation provided by consumer -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.cryptlex.lexactivator</groupId>
-            <artifactId>lexactivator</artifactId>
-            <!-- Optional: specify version if not in BOM; latest is 3.33.0 -->
-            <!-- <version>3.33.0</version> -->
-        </dependency>
-        <!-- Logging facade dependencies -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>2.0.17</version>  <!-- Latest stable as of early 2026 -->
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -52,23 +66,21 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>  <!-- Latest as of early 2026 -->
-                <configuration>
-                    <argLine>
-                        --add-opens com.slytechs.sdk.common/com.slytechs.sdk.common.memory=ALL-UNNAMED
-                    </argLine>
-                </configuration>
+                <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
             <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.9.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                </configuration>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
+
 </project>
