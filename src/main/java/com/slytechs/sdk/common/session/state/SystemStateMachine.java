@@ -63,13 +63,13 @@ public class SystemStateMachine
 			}
 
 			@Override
-			public String presentTense() {
-				return "terminating";
+			public String pastTense() {
+				return "terminated";
 			}
 
 			@Override
-			public String pastTense() {
-				return "terminated";
+			public String presentTense() {
+				return "terminating";
 			}
 		};
 
@@ -109,6 +109,26 @@ public class SystemStateMachine
 	}
 
 	/**
+	 * Awaits termination indefinitely.
+	 *
+	 * @throws InterruptedException if interrupted while waiting
+	 */
+	public void awaitTerminated() throws InterruptedException {
+		terminatedBarrier.await(SystemState.TERMINATED);
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.session.state.SessionState#awaitTerminated(java.time.Duration)
+	 */
+	public boolean awaitTerminated(Duration timeout) throws InterruptedException {
+		return terminatedBarrier.await(timeout, SystemState.TERMINATED);
+	}
+
+	public void cancelScheduledShutdown() {
+		shutdownScheduler.cancel();
+	}
+
+	/**
 	 * Returns the component hierarchy for this lifecycle.
 	 *
 	 * @return the component tree
@@ -118,13 +138,89 @@ public class SystemStateMachine
 		return components;
 	}
 
+	@Override
+	public void decrement() {
+		components.decrement();
+	}
+
 	/**
-	 * Transitions to RUNNING state.
-	 *
-	 * @return true if transition occurred
+	 * Deregisters a component, decrementing the active count. When count reaches
+	 * zero, transitions to TERMINATED.
 	 */
-	public boolean start() {
-		return transitionTo(SystemState.RUNNING);
+	public void deregister() {
+		components.decrement();
+	}
+
+	@Override
+	public void increment() {
+		components.increment();
+	}
+
+	public boolean isCreated() {
+		return currentState() == SystemState.CREATED;
+	}
+
+	public boolean isRunning() {
+		return currentState() == SystemState.RUNNING;
+	}
+
+	public boolean isShutdown() {
+		return currentState() == SystemState.SHUTDOWN;
+	}
+
+	public boolean isShutdownScheduled() {
+		return shutdownScheduler.isScheduled();
+	}
+
+	public boolean isTerminated() {
+		return currentState() == SystemState.TERMINATED;
+	}
+
+	/**
+	 * Registers a component, incrementing the active count.
+	 */
+	public void register() {
+		components.increment();
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.session.state.HierarchalState#registerParent(com.slytechs.sdk.common.session.state.StateHierarchyTree)
+	 */
+	@Override
+	public Registration registerParent(HierarchalState parent) {
+		return components.registerParent(parent.components());
+	}
+
+	/**
+	 * Registers this lifecycle as a child of a parent lifecycle.
+	 *
+	 * @param parent the parent lifecycle
+	 * @return registration to detach from parent
+	 */
+	public Registration registerParent(SystemStateMachine parent) {
+		return components.registerParent(parent.components); // Correct - passes StateHierarchyTree
+	}
+
+	/**
+	 * Renders this lifecycle and its children as an ASCII tree.
+	 *
+	 * @return formatted tree string
+	 */
+	public String renderTree() {
+		return renderTree(LogLevel.INFO);
+	}
+
+	/**
+	 * Renders this lifecycle and its children as an ASCII tree.
+	 *
+	 * @return formatted tree string
+	 */
+	public String renderTree(LogLevel level) {
+		return StateTreeRenderer.builder()
+				.showRecords(true)
+				.showThreadInfo(true)
+				.threshold(level)
+				.render(components);
 	}
 
 	/**
@@ -157,108 +253,22 @@ public class SystemStateMachine
 		return shutdownScheduler.shutdownAt(atTime);
 	}
 
-	public void cancelScheduledShutdown() {
-		shutdownScheduler.cancel();
-	}
-
 	/**
-	 * Registers a component, incrementing the active count.
-	 */
-	public void register() {
-		components.increment();
-	}
-
-	/**
-	 * Deregisters a component, decrementing the active count. When count reaches
-	 * zero, transitions to TERMINATED.
-	 */
-	public void deregister() {
-		components.decrement();
-	}
-
-	/**
-	 * Registers this lifecycle as a child of a parent lifecycle.
+	 * Transitions to RUNNING state.
 	 *
-	 * @param parent the parent lifecycle
-	 * @return registration to detach from parent
+	 * @return true if transition occurred
 	 */
-	public Registration registerParent(SystemStateMachine parent) {
-		return components.registerParent(parent.components); // Correct - passes StateHierarchyTree
+	public boolean start() {
+		return transitionTo(SystemState.RUNNING);
 	}
-
+	
 	/**
-	 * Awaits termination indefinitely.
+	 * Forces immediate transition to TERMINATED state.
+	 * Used by shutdownNow() to bypass component drain wait.
 	 *
-	 * @throws InterruptedException if interrupted while waiting
+	 * @return true if transition occurred
 	 */
-	public void awaitTerminated() throws InterruptedException {
-		terminatedBarrier.await(SystemState.TERMINATED);
-	}
-
-	/**
-	 * @see com.slytechs.sdk.common.session.state.SessionState#awaitTerminated(java.time.Duration)
-	 */
-	public boolean awaitTerminated(Duration timeout) throws InterruptedException {
-		return terminatedBarrier.await(timeout, SystemState.TERMINATED);
-	}
-
-	public boolean isCreated() {
-		return currentState() == SystemState.CREATED;
-	}
-
-	public boolean isRunning() {
-		return currentState() == SystemState.RUNNING;
-	}
-
-	public boolean isShutdown() {
-		return currentState() == SystemState.SHUTDOWN;
-	}
-
-	public boolean isShutdownScheduled() {
-		return shutdownScheduler.isScheduled();
-	}
-
-	public boolean isTerminated() {
-		return currentState() == SystemState.TERMINATED;
-	}
-
-	/**
-	 * Renders this lifecycle and its children as an ASCII tree.
-	 *
-	 * @return formatted tree string
-	 */
-	public String renderTree() {
-		return renderTree(LogLevel.INFO);
-	}
-
-	/**
-	 * Renders this lifecycle and its children as an ASCII tree.
-	 *
-	 * @return formatted tree string
-	 */
-	public String renderTree(LogLevel level) {
-		return StateTreeRenderer.builder()
-				.showRecords(true)
-				.showThreadInfo(true)
-				.threshold(level)
-				.render(components);
-	}
-
-	@Override
-	public void increment() {
-		components.increment();
-	}
-
-	@Override
-	public void decrement() {
-		components.decrement();
-	}
-
-	/**
-	 * @see com.slytechs.sdk.common.session.state.HierarchalState#registerParent(com.slytechs.sdk.common.session.state.StateHierarchyTree)
-	 */
-	@Override
-	public Registration registerParent(HierarchalState parent) {
-		return components.registerParent(parent.components());
+	public boolean terminate() {
+	    return transitionTo(SystemState.TERMINATED);
 	}
 }

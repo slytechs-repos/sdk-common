@@ -103,8 +103,7 @@ class TreeRendererTest {
 		System.out.println("=== Component Count ===");
 		System.out.println(tree);
 		
-		assertTrue(tree.contains("components=3"));
-	}
+		assertTrue(tree.contains("count=3"));	}
 	
 	@Test
 	void renderShowsStateTransition() {

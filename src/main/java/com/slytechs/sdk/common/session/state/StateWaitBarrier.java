@@ -120,20 +120,23 @@ public class StateWaitBarrier<T extends Enum<T> & State<T>> {
 		monitorLock.lock();
 
 		try {
-			long remaining = timeoutAt - System.nanoTime();
-			while (remaining > 0) {
+		    // Early exit — already in target state before we started waiting
+		    if (waitSet.contains(state.currentState()))
+		        return true;
 
-				boolean signalled = awaitCondition.await(remaining, TimeUnit.NANOSECONDS);
-				if (signalled && waitSet.contains(state.currentState()))
-					return true;
+		    long remaining = timeoutAt - System.nanoTime();
+		    while (remaining > 0) {
+		        boolean signalled = awaitCondition.await(remaining, TimeUnit.NANOSECONDS);
+		        if (signalled && waitSet.contains(state.currentState()))
+		            return true;
 
-				remaining = timeoutAt - System.nanoTime();
-			}
+		        remaining = timeoutAt - System.nanoTime();
+		    }
 
-			return false;
+		    return false;
 
 		} finally {
-			monitorLock.unlock();
+		    monitorLock.unlock();
 		}
 	}
 

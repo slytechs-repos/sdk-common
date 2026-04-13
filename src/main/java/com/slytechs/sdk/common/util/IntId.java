@@ -53,7 +53,7 @@ package com.slytechs.sdk.common.util;
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see EtherType
+ * @see com.slytechs.sdk.protocol.core.id.EtherType
  */
 public interface IntId {
 

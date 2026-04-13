@@ -33,6 +33,7 @@ import java.util.function.Supplier;
  * 
  * <p>
  * The snapshot serves multiple purposes:
+ * </p>
  * <ul>
  * <li>Provides a baseline for transition rendering (showing change from initial
  * to current state)</li>
@@ -40,7 +41,6 @@ import java.util.function.Supplier;
  * object is garbage collected or session is closed)</li>
  * <li>Ensures diagnostic output always produces meaningful values</li>
  * </ul>
- * </p>
  * 
  * <p>
  * When a LazyArg is frozen (typically when its parent session terminates), all
@@ -55,7 +55,7 @@ import java.util.function.Supplier;
 public final class LazyArg<T> {
 
 	/**
-	 * Controls how {@link LazyArg} and {@link MessageRecord} values are rendered.
+	 * Controls how {@link LazyArg} values are rendered.
 	 * 
 	 * <p>
 	 * The render mode determines what information is included in the output:

@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -44,7 +43,8 @@ class SessionTest {
 
 	@AfterEach
 	void tearDown() {
-		session.state.shutdown();
+		if (!session.isTerminated())
+			session.state.shutdown();
 	}
 
 	@Test
@@ -72,7 +72,6 @@ class SessionTest {
 	}
 
 	@Test
-	@Disabled
 	void isTerminatedDelegatesToState() throws InterruptedException {
 		assertFalse(session.isTerminated());
 
@@ -134,14 +133,13 @@ class SessionTest {
 		}
 
 		@Override
-		public boolean shutdown() {
-			return state.shutdown();
+		public boolean awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException {
+			return state.awaitTerminated(Duration.of(timeout, unit.toChronoUnit()));
 		}
 
 		@Override
-		public void shutdownNow() throws InterruptedException {
-			state.shutdown();
-			awaitCompletion(); // Block until done
+		public boolean shutdown() {
+			return state.shutdown();
 		}
 
 		@Override
@@ -204,5 +202,21 @@ class SessionTest {
 			shutdown();
 		}
 
+		@Override
+		public boolean isShutdownScheduled() {
+			return state.isShutdownScheduled();
+		}
+
+		@Override
+		public TestSession cancelShutdown() {
+			state.cancelScheduledShutdown();
+			return this;
+		}
+
+		@Override
+		public void shutdownNow() throws InterruptedException {
+		    state.shutdown();
+		    state.terminate();
+		}
 	}
 }
