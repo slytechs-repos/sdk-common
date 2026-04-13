@@ -147,6 +147,10 @@ public interface Memory extends MemoryWindow, MemoryRefCounter {
 	default ByteBuffer asByteBuffer() {
 		return segment().asSlice(start(), length()).asByteBuffer();
 	}
+	
+	default MemoryBuffer asMemoryBuffer() {
+		return new MemoryBuffer(this);
+	}
 
 	/**
 	 * Checks if this is a FixedMemory with fixed native memory segment defined.

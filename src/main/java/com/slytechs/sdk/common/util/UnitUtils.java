@@ -1,19 +1,17 @@
 /*
- * Sly Technologies Free License
- * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2005-2026 Sly Technologies Inc.
  *
- * Licensed under the Sly Technologies Free License (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.slytechs.com/free-license-text
- * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.slytechs.sdk.common.util;
 
@@ -63,8 +61,7 @@ public class UnitUtils {
 	/**
 	 * Instantiates a new unit utils.
 	 */
-	private UnitUtils() {
-	}
+	private UnitUtils() {}
 
 	/**
 	 * Nearest.
@@ -77,6 +74,20 @@ public class UnitUtils {
 	 */
 	public static <T extends Enum<T> & ConvertableUnit<T>> T nearest(long value, Class<T> type, T base) {
 		T[] values = type.getEnumConstants();
+
+		return nearest(value, values, base);
+	}
+
+	/**
+	 * Nearest.
+	 *
+	 * @param <T>   the generic type
+	 * @param value the value
+	 * @param type  the type
+	 * @param base  the base
+	 * @return the t
+	 */
+	public static <T extends Enum<T> & ConvertableUnit<T>> T nearest(long value, T[] values, T base) {
 
 		for (int i = values.length - 1; i >= 0; i--) {
 			T u = values[i];
@@ -104,6 +115,24 @@ public class UnitUtils {
 			Class<T> type,
 			T base) {
 		T unit = nearest(value, type, base);
+		return String.format(fmt, unit.convertf(value), unit.getSymbol());
+	}
+
+	/**
+	 * Format.
+	 *
+	 * @param <T>    the generic type
+	 * @param fmt    the fmt
+	 * @param value  the value
+	 * @param values the values constant table
+	 * @param base   the base
+	 * @return the string
+	 */
+	public static <T extends Enum<T> & ConvertableUnit<T>> String format(String fmt,
+			long value,
+			T[] values,
+			T base) {
+		T unit = nearest(value, values, base);
 		return String.format(fmt, unit.convertf(value), unit.getSymbol());
 	}
 

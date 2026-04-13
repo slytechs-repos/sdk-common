@@ -123,6 +123,7 @@ public interface Registration {
 			public synchronized void accept(Registration t) {
 				super.accept(t);
 			}
+
 		}
 
 		/** The list. */
@@ -176,6 +177,11 @@ public interface Registration {
 		public Cleanup threadSafe() {
 			return new ConcurrentCleanup();
 		}
+
+		public void cleanup() {
+			unregister();
+		}
+
 	}
 
 	/**

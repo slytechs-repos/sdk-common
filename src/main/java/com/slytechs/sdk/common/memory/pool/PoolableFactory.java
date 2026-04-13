@@ -34,13 +34,13 @@ import java.lang.foreign.SegmentAllocator;
  * <h3>Simple Objects (no memory needed)</h3>
  * <pre>{@code
  * // Use Supplier directly - allocator ignored
- * FreeListPool<MyObject> pool = new FreeListPool<>(settings, MyObject::new);
+ * LockFreePool<MyObject> pool = new LockFreePool<>(settings, MyObject::new);
  * }</pre>
  * 
  * <h3>Objects with Memory Components</h3>
  * <pre>{@code
  * // Use PoolableFactory to allocate memory during creation
- * FreeListPool<Packet> pool = new FreeListPool<>(settings, allocator -> {
+ * LockFreePool<Packet> pool = new LockFreePool<>(settings, allocator -> {
  *     MemorySegment data = allocator.allocate(9000, 8);
  *     MemorySegment desc = allocator.allocate(128, 8);
  *     return Packet.ofFixed(DescriptorType.NET, data, desc);
@@ -59,7 +59,7 @@ import java.lang.foreign.SegmentAllocator;
  * @param <T> the type of poolable objects created by this factory
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see FreeListPool
+ * @see LockFreePool
  * @see SlabAllocator
  */
 @FunctionalInterface

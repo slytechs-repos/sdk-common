@@ -36,8 +36,7 @@ package com.slytechs.sdk.common.memory.pool;
  * </p>
  * 
  * <pre>
- * {
- * 	&#64;code
+ * {@snippet :
  * 	public class Packet implements Poolable {
  * 
  * 		private final PoolEntry poolEntry = new PoolEntry() {

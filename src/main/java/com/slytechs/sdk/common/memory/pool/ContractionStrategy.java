@@ -29,30 +29,30 @@ package com.slytechs.sdk.common.memory.pool;
  * <h2>Hot Path Optimization</h2>
  * 
  * <p>
- * The {@link #disabled()} strategy returns a singleton that does nothing.
- * The JIT compiler completely eliminates calls to this no-op implementation,
+ * The {@link #disabled()} strategy returns a singleton that does nothing. The
+ * JIT compiler completely eliminates calls to this no-op implementation,
  * ensuring zero overhead when contraction is disabled.
  * </p>
  * 
  * <h2>Active Strategy</h2>
  * 
  * <p>
- * The {@link #enabled(PoolSettings)} strategy performs periodic checks using
- * a bitmask counter (avoiding modulo operations). When excess capacity remains
+ * The {@link #enabled(PoolSettings)} strategy performs periodic checks using a
+ * bitmask counter (avoiding modulo operations). When excess capacity remains
  * idle for multiple consecutive checkpoints, contraction is triggered.
  * </p>
  * 
- * <pre>{@code
+ * {@snippet :
  * // No contraction overhead for small pools
- * Pool<Packet> smallPool = new FreeListPool<>(
- *     new PoolSettings().maxCapacity(1000).contractionEnabled(false),
- *     Packet::new);
+ * Pool<Packet> smallPool = new LockFreePool<>(
+ * 		new PoolSettings().maxCapacity(1000).contractionEnabled(false),
+ * 		Packet::new);
  * 
  * // Auto-contraction for large pools
- * Pool<Packet> largePool = new FreeListPool<>(
- *     new PoolSettings().maxCapacity(100_000).contractionEnabled(true),
- *     Packet::new);
- * }</pre>
+ * Pool<Packet> largePool = new LockFreePool<>(
+ * 		new PoolSettings().maxCapacity(100_000).contractionEnabled(true),
+ * 		Packet::new);
+ * }
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
@@ -61,131 +61,47 @@ package com.slytechs.sdk.common.memory.pool;
  */
 public interface ContractionStrategy {
 
-    /**
-     * Called on each pool allocation.
-     * 
-     * <p>
-     * The strategy may use this to track allocation cycles and periodically
-     * check for contraction opportunities.
-     * </p>
-     *
-     * @param pool the pool being allocated from
-     */
-    void onAllocate(Pool<?> pool);
+	/**
+	 * Called on each pool allocation.
+	 * 
+	 * <p>
+	 * The strategy may use this to track allocation cycles and periodically check
+	 * for contraction opportunities.
+	 * </p>
+	 *
+	 * @param pool the pool being allocated from
+	 */
+	void onAllocate(Pool<?> pool);
 
-    /**
-     * Called on each pool release.
-     *
-     * @param pool the pool being released to
-     */
-    void onRelease(Pool<?> pool);
+	/**
+	 * Called on each pool release.
+	 *
+	 * @param pool the pool being released to
+	 */
+	void onRelease(Pool<?> pool);
 
-    /**
-     * Returns a disabled (no-op) contraction strategy.
-     * 
-     * <p>
-     * The returned singleton has empty method bodies. The JIT compiler
-     * eliminates calls to this implementation entirely, ensuring zero
-     * overhead when contraction is disabled.
-     * </p>
-     *
-     * @return disabled strategy singleton
-     */
-    static ContractionStrategy disabled() {
-        return DisabledContractionStrategy.INSTANCE;
-    }
+	/**
+	 * Returns a disabled (no-op) contraction strategy.
+	 * 
+	 * <p>
+	 * The returned singleton has empty method bodies. The JIT compiler eliminates
+	 * calls to this implementation entirely, ensuring zero overhead when
+	 * contraction is disabled.
+	 * </p>
+	 *
+	 * @return disabled strategy singleton
+	 */
+	static ContractionStrategy disabled() {
+		return DisabledContractionStrategy.INSTANCE;
+	}
 
-    /**
-     * Returns an active contraction strategy with the given settings.
-     *
-     * @param settings pool settings containing contraction parameters
-     * @return active contraction strategy
-     */
-    static ContractionStrategy enabled(PoolSettings settings) {
-        return new ActiveContractionStrategy(settings);
-    }
-}
-
-/**
- * No-op contraction strategy - JIT eliminates entirely.
- */
-final class DisabledContractionStrategy implements ContractionStrategy {
-
-    static final DisabledContractionStrategy INSTANCE = new DisabledContractionStrategy();
-
-    private DisabledContractionStrategy() {
-    }
-
-    @Override
-    public void onAllocate(Pool<?> pool) {
-        // No-op - JIT eliminates
-    }
-
-    @Override
-    public void onRelease(Pool<?> pool) {
-        // No-op - JIT eliminates
-    }
-}
-
-/**
- * Active contraction strategy with checkpoint-based idle detection.
- */
-final class ActiveContractionStrategy implements ContractionStrategy {
-
-    private final int checkpointMask;
-    private final int contractionCheckpoints;
-    private final float contractionThreshold;
-
-    private int cycleCounter;
-    private int idleCheckpoints;
-
-    ActiveContractionStrategy(PoolSettings settings) {
-        // Ensure power of 2 for bitmask
-        int interval = Integer.highestOneBit(settings.checkpointInterval());
-        this.checkpointMask = interval - 1;
-        this.contractionCheckpoints = settings.contractionCheckpoints();
-        this.contractionThreshold = settings.contractionThreshold();
-    }
-
-    @Override
-    public void onAllocate(Pool<?> pool) {
-        if ((++cycleCounter & checkpointMask) == 0) {
-            checkContraction(pool);
-        }
-    }
-
-    @Override
-    public void onRelease(Pool<?> pool) {
-        // Could also trigger on release - currently allocate-only
-    }
-
-    private void checkContraction(Pool<?> pool) {
-        long capacity = pool.capacity();
-        long minCapacity = pool.minCapacity();
-        long excess = capacity - minCapacity;
-
-        if (excess <= 0) {
-            return; // At minimum, nothing to contract
-        }
-
-        long available = pool.available();
-        long excessAvailable = available - minCapacity;
-
-        if (excessAvailable <= 0) {
-            idleCheckpoints = 0; // Excess is being used
-            return;
-        }
-
-        float idleRatio = (float) excessAvailable / excess;
-
-        if (idleRatio > contractionThreshold) {
-            if (++idleCheckpoints >= contractionCheckpoints) {
-                // Trigger contraction - 50% of unused excess
-                pool.contractUnused(0.5f);
-                idleCheckpoints = 0;
-            }
-        } else {
-            idleCheckpoints = 0; // Reset - excess is being used
-        }
-    }
+	/**
+	 * Returns an active contraction strategy with the given settings.
+	 *
+	 * @param settings pool settings containing contraction parameters
+	 * @return active contraction strategy
+	 */
+	static ContractionStrategy enabled(PoolSettings settings) {
+		return new ActiveContractionStrategy(settings);
+	}
 }

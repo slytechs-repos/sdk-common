@@ -46,7 +46,7 @@ package com.slytechs.sdk.common.settings;
  *     public MemoryPoolSettings(String baseName) {
  *         super("config", baseName);
  *         this.size = longProperty("size", 256L * 1024 * 1024)
- *             .comment("FreeListPool size in bytes");
+ *             .comment("LockFreePool size in bytes");
  *     }
  *     
  *     public long size() { return size.getLong(); }

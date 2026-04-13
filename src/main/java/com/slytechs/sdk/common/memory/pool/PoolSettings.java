@@ -73,7 +73,7 @@ import com.slytechs.sdk.common.settings.Settings;
  *     .preallocate(true)
  *     .contractionEnabled(true);
  * 
- * Pool<Packet> pool = new FreeListPool<>(settings, Packet::new);
+ * Pool<Packet> pool = new LockFreePool<>(settings, Packet::new);
  * }</pre>
  * 
  * <h2>Configuration File</h2>
@@ -202,7 +202,7 @@ public class PoolSettings extends Settings {
      * Returns the memory segment size.
      * 
      * <p>
-     * <b>Note:</b> This setting is primarily for direct {@link FreeListPool} usage.
+     * <b>Note:</b> This setting is primarily for direct {@link LockFreePool} usage.
      * When using {@link com.slytechs.sdk.protocol.core.stack.PacketPool} factory
      * methods, pass segment size directly to the factory method instead:
      * </p>
@@ -221,7 +221,7 @@ public class PoolSettings extends Settings {
      * Sets the memory segment size.
      * 
      * <p>
-     * For memory-backed pools created directly via {@link FreeListPool}, this
+     * For memory-backed pools created directly via {@link LockFreePool}, this
      * specifies the size of each backing segment.
      * </p>
      * 

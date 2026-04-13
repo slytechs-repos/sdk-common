@@ -34,7 +34,7 @@ import java.lang.foreign.MemorySegment;
  * <ul>
  * <li><strong>Immutable segment:</strong> The memory segment is final and set
  * at construction</li>
- * <li><strong>FreeListPool-managed:</strong> Typically allocated from and
+ * <li><strong>LockFreePool-managed:</strong> Typically allocated from and
  * returned to memory pools</li>
  * <li><strong>Chainable:</strong> Supports linking multiple segments for
  * scatter-gather</li>
@@ -44,7 +44,7 @@ import java.lang.foreign.MemorySegment;
  * 
  * <h2>Usage Patterns</h2>
  * 
- * <h3>FreeListPool Allocation</h3>
+ * <h3>LockFreePool Allocation</h3>
  * 
  * <pre>{@code
  * // Allocate from freeListPool
