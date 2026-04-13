@@ -200,8 +200,7 @@ class SessionTest {
 		/**
 		 * @see com.slytechs.sdk.common.session.CloseableSession#close()
 		 */
-		@Override
-		public void close() throws SessionException {
+		public void close() throws SessionException, InterruptedException {
 			shutdown();
 		}
 

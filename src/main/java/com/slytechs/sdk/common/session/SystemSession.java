@@ -37,7 +37,7 @@ import com.slytechs.sdk.common.session.state.SystemStateMachine;
  * @author Sly Technologies Inc.
  */
 public interface SystemSession
-		extends CloseableSession, Shutdownable, Schedulable, Awaitable {
+		extends Session, Shutdownable, Schedulable, Awaitable {
 
 	Duration DEFAULT_TIMEOUT = Session.DEFAULT_TIMEOUT;
 
