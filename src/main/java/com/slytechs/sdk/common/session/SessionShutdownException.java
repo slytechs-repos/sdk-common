@@ -15,6 +15,8 @@
  */
 package com.slytechs.sdk.common.session;
 
+import java.util.List;
+
 /**
  * Runtime exception for shutdown-specific errors, such as failures during task
  * interruption or resource release. Subclass of {@link SessionException}.
@@ -55,5 +57,16 @@ public class SessionShutdownException extends SessionException {
 	 */
 	public SessionShutdownException(Session session, String message, Throwable cause) {
 		super(session, message, cause);
+	}
+
+	/**
+	 * Constructs a new exception with cause.
+	 *
+	 * @param session the associated session
+	 * @param message the detail message
+	 * @param cause   the cause
+	 */
+	public SessionShutdownException(Session session, String message, List<Exception> cause) {
+		super(session, message);
 	}
 }

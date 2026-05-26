@@ -18,6 +18,7 @@ package com.slytechs.sdk.common.session.state;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.slytechs.sdk.common.session.Schedulable;
 import com.slytechs.sdk.common.session.state.StateHierarchyTree.ZeroCountCallback;
 import com.slytechs.sdk.common.session.state.SystemStateMachine.SystemState;
 import com.slytechs.sdk.common.session.state.recorder.LogLevel;
@@ -35,7 +36,8 @@ import com.slytechs.sdk.common.util.Registration;
  * Composes with:
  * </p>
  * <ul>
- * <li>{@link StateHierarchyTree} - parent/child tracking and component counting</li>
+ * <li>{@link StateHierarchyTree} - parent/child tracking and component
+ * counting</li>
  * <li>{@link TransitionScheduler} - scheduled shutdown (shutdownAfter/At)</li>
  * <li>{@link StateWaitBarrier} - await termination</li>
  * </ul>
@@ -45,7 +47,7 @@ import com.slytechs.sdk.common.util.Registration;
  */
 public class SystemStateMachine
 		extends StateMachine<SystemState>
-		implements SessionState, HierarchalState, CountableState {
+		implements SessionState, HierarchalState, CountableState, Schedulable {
 
 	public enum SystemState implements State<SystemState> {
 		CREATED(true),
@@ -168,6 +170,7 @@ public class SystemStateMachine
 		return currentState() == SystemState.SHUTDOWN;
 	}
 
+	@Override
 	public boolean isShutdownScheduled() {
 		return shutdownScheduler.isScheduled();
 	}
@@ -239,8 +242,11 @@ public class SystemStateMachine
 	 * @param duration time until shutdown
 	 * @return registration to cancel the scheduled shutdown
 	 */
-	public Registration shutdownAfter(Duration duration) {
-		return shutdownScheduler.scheduleAfter(duration);
+	@Override
+	public Schedulable shutdownAfter(Duration duration) {
+		shutdownScheduler.scheduleAfter(duration);
+
+		return this;
 	}
 
 	/**
@@ -249,8 +255,11 @@ public class SystemStateMachine
 	 * @param atTime the time to shutdown
 	 * @return registration to cancel the scheduled shutdown
 	 */
-	public Registration shutdownAt(Instant atTime) {
-		return shutdownScheduler.shutdownAt(atTime);
+	@Override
+	public Schedulable shutdownAt(Instant atTime) {
+		shutdownScheduler.shutdownAt(atTime);
+
+		return this;
 	}
 
 	/**
@@ -261,14 +270,14 @@ public class SystemStateMachine
 	public boolean start() {
 		return transitionTo(SystemState.RUNNING);
 	}
-	
+
 	/**
-	 * Forces immediate transition to TERMINATED state.
-	 * Used by shutdownNow() to bypass component drain wait.
+	 * Forces immediate transition to TERMINATED state. Used by shutdownNow() to
+	 * bypass component drain wait.
 	 *
 	 * @return true if transition occurred
 	 */
 	public boolean terminate() {
-	    return transitionTo(SystemState.TERMINATED);
+		return transitionTo(SystemState.TERMINATED);
 	}
 }

@@ -83,6 +83,8 @@ module com.slytechs.sdk.common {
 	exports com.slytechs.sdk.common.util;
 	exports com.slytechs.sdk.common.util.function;
 	exports com.slytechs.sdk.common.util.collection;
+	exports com.slytechs.sdk.common.util.metrics;
+	exports com.slytechs.sdk.common.util.ring;
 	exports com.slytechs.sdk.common.settings;
 	exports com.slytechs.sdk.common.license;
 	exports com.slytechs.sdk.common.text;

@@ -64,4 +64,5 @@ public interface IntId {
 	 * @return the integer value this constant represents
 	 */
 	int id();
+
 }
